@@ -1,0 +1,113 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2026-02-25T09:16:56.887055+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "current_hash": "c75ce8d88efeb05968667f2393f674f626d0e16affcf2d77773eeae41bfc6dc9"
+  },
+  {
+    "id": 2,
+    "timestamp": "2026-02-25T09:21:16.615407+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "c75ce8d88efeb05968667f2393f674f626d0e16affcf2d77773eeae41bfc6dc9",
+    "current_hash": "ed157cbe9acafa62ef9b3b334efc99bac6970a678821388513309923e188fb8b"
+  },
+  {
+    "id": 3,
+    "timestamp": "2026-02-25T09:21:37.760138+00:00",
+    "user": "officer_01",
+    "action": "Login Successful | user=officer_01 | role=Officer",
+    "metadata": {
+      "department": "Retail Banking"
+    },
+    "previous_hash": "ed157cbe9acafa62ef9b3b334efc99bac6970a678821388513309923e188fb8b",
+    "current_hash": "d9d1edc3acb782f2df0cf6e7f0aa0dcdfb55336c1336a2cb41c1121db0fe2767"
+  },
+  {
+    "id": 4,
+    "timestamp": "2026-02-25T09:22:22.253071+00:00",
+    "user": "officer_01",
+    "action": "Logout | user=officer_01 | role=Officer",
+    "metadata": {},
+    "previous_hash": "d9d1edc3acb782f2df0cf6e7f0aa0dcdfb55336c1336a2cb41c1121db0fe2767",
+    "current_hash": "93d4b190e4062f33b085f326d541bd8407dd461c7842b00d7880a31c0e71066f"
+  },
+  {
+    "id": 5,
+    "timestamp": "2026-02-25T09:22:37.353211+00:00",
+    "user": "auditor_01",
+    "action": "Login Successful | user=auditor_01 | role=Auditor",
+    "metadata": {
+      "department": "Internal Audit"
+    },
+    "previous_hash": "93d4b190e4062f33b085f326d541bd8407dd461c7842b00d7880a31c0e71066f",
+    "current_hash": "98d7b2dc447fdb0fcfba7440cbe2f48ece87c23082f1caef0d3df11204efd9ee"
+  },
+  {
+    "id": 6,
+    "timestamp": "2026-02-25T09:23:09.567193+00:00",
+    "user": "auditor_01",
+    "action": "Logout | user=auditor_01 | role=Auditor",
+    "metadata": {},
+    "previous_hash": "98d7b2dc447fdb0fcfba7440cbe2f48ece87c23082f1caef0d3df11204efd9ee",
+    "current_hash": "e7572380afc2925d2fca178cfac9ed7c270d0af6533bb197c402e96bab5c393e"
+  },
+  {
+    "id": 7,
+    "timestamp": "2026-02-25T09:23:23.860136+00:00",
+    "user": "board_01",
+    "action": "Login Successful | user=board_01 | role=Board",
+    "metadata": {
+      "department": "Board of Directors"
+    },
+    "previous_hash": "e7572380afc2925d2fca178cfac9ed7c270d0af6533bb197c402e96bab5c393e",
+    "current_hash": "fa181694f9bee587b92d0af8dc4803e40120846cb64b3d21058746cbc8837946"
+  },
+  {
+    "id": 8,
+    "timestamp": "2026-02-25T09:23:36.148147+00:00",
+    "user": "board_01",
+    "action": "Logout | user=board_01 | role=Board",
+    "metadata": {},
+    "previous_hash": "fa181694f9bee587b92d0af8dc4803e40120846cb64b3d21058746cbc8837946",
+    "current_hash": "da7100803e07d7f56a93132f180e7bbb21f6c85afd1a38be695e6d46e52acd6c"
+  },
+  {
+    "id": 9,
+    "timestamp": "2026-02-25T09:23:49.199651+00:00",
+    "user": "customer_01",
+    "action": "Login Successful | user=customer_01 | role=Customer",
+    "metadata": {
+      "department": "—"
+    },
+    "previous_hash": "da7100803e07d7f56a93132f180e7bbb21f6c85afd1a38be695e6d46e52acd6c",
+    "current_hash": "fba58b3fe119a900872da13335cd40ebf2f1f76e7056d2df4e80aa4046335469"
+  },
+  {
+    "id": 10,
+    "timestamp": "2026-02-25T09:24:01.842393+00:00",
+    "user": "customer_01",
+    "action": "Logout | user=customer_01 | role=Customer",
+    "metadata": {},
+    "previous_hash": "fba58b3fe119a900872da13335cd40ebf2f1f76e7056d2df4e80aa4046335469",
+    "current_hash": "07d4f8240b8c96ce6204808bd654f66741820c7872e2c7fd66bb6fd4ab9f7a04"
+  },
+  {
+    "id": 11,
+    "timestamp": "2026-02-25T09:35:42.724106+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "07d4f8240b8c96ce6204808bd654f66741820c7872e2c7fd66bb6fd4ab9f7a04",
+    "current_hash": "79405f54d7cbd318c6b885bb45306367a081d7d3c1b30836f31733e43791c002"
+  }
+]

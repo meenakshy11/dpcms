@@ -1,0 +1,287 @@
+[
+  {
+    "rule_id": "SEC3_APPLICABILITY_CHECK",
+    "section": "3",
+    "clause": "3(1)",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition": {
+      "field": "digital_personal_data",
+      "operator": "EQUALS",
+      "value": true
+    },
+    "decision": {
+      "action_code": "DPDP_APPLICABILITY_EVALUATION_REQUIRED",
+      "blocking": false,
+      "severity": "MANDATORY",
+      "rfp_module": "Governance",
+      "audit_required": true
+    },
+    "execution_priority": 1
+  },
+  {
+    "rule_id": "SEC3_EXEMPTION_BYPASS",
+    "section": "3",
+    "clause": "3(2)",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition": {
+      "field": "exemption_flag",
+      "operator": "IN",
+      "value": ["personal_domestic","publicly_available","legal_enforcement","journalistic"]
+    },
+    "decision": {
+      "action_code": "DPDP_ENFORCEMENT_BYPASSED_WITH_LOGGED_EXEMPTION",
+      "blocking": true,
+      "severity": "MANDATORY",
+      "rfp_module": "Governance",
+      "audit_required": true
+    },
+    "execution_priority": 2
+  },
+  {
+    "rule_id": "SEC4_LAWFUL_PURPOSE_BLOCK",
+    "section": "4",
+    "clause": "4(1)",
+    "trigger_event": "DATA_PROCESSING_OPERATION",
+    "condition": {
+      "field": "lawful_purpose",
+      "operator": "EQUALS",
+      "value": false
+    },
+    "decision": {
+      "action_code": "PROCESSING_BLOCKED_UNLAWFUL_PURPOSE",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "Governance",
+      "audit_required": true
+    },
+    "execution_priority": 10
+  },
+  {
+    "rule_id": "SEC4_LEGAL_GROUND_MISSING",
+    "section": "4",
+    "clause": "4(1)",
+    "trigger_event": "DATA_PROCESSING_OPERATION",
+    "condition": {
+      "field": "legal_ground_missing",
+      "operator": "EQUALS",
+      "value": true
+    },
+    "decision": {
+      "action_code": "PROCESSING_BLOCKED_NO_VALID_LEGAL_GROUND",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "Governance",
+      "audit_required": true
+    },
+    "execution_priority": 11
+  },
+  {
+    "rule_id": "SEC6_COERCION_INVALID",
+    "section": "6",
+    "clause": "6(1)(a)",
+    "trigger_event": "CONSENT_CAPTURED",
+    "condition": {
+      "field": "coercion_detected",
+      "operator": "EQUALS",
+      "value": true
+    },
+    "decision": {
+      "action_code": "CONSENT_INVALIDATED_COERCION_DETECTED",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "Consent",
+      "audit_required": true
+    },
+    "execution_priority": 20
+  },
+  {
+    "rule_id": "SEC6_NO_AFFIRMATIVE_ACTION",
+    "section": "6",
+    "clause": "6(1)(e)",
+    "trigger_event": "CONSENT_CAPTURED",
+    "condition": {
+      "field": "affirmative_action_missing",
+      "operator": "EQUALS",
+      "value": true
+    },
+    "decision": {
+      "action_code": "CONSENT_INVALIDATED_NO_EXPLICIT_OPT_IN",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "Consent",
+      "audit_required": true
+    },
+    "execution_priority": 21
+  },
+  {
+    "rule_id": "SEC7_VALID_LEGITIMATE_USE",
+    "section": "7",
+    "clause": "7",
+    "trigger_event": "DATA_PROCESSING_REQUEST",
+    "condition": {
+      "field": "legitimate_use_category",
+      "operator": "NOT_NULL",
+      "value": null
+    },
+    "decision": {
+      "action_code": "PROCESSING_APPROVED_LEGITIMATE_USE_CONFIRMED",
+      "blocking": false,
+      "severity": "MANDATORY",
+      "rfp_module": "Governance",
+      "audit_required": true
+    },
+    "execution_priority": 30
+  },
+  {
+    "rule_id": "SEC8_PROCESSOR_CONTRACT_MISSING",
+    "section": "8",
+    "clause": "8(2)",
+    "trigger_event": "PROCESSOR_ENGAGED",
+    "condition": {
+      "field": "processor_contract_missing",
+      "operator": "EQUALS",
+      "value": true
+    },
+    "decision": {
+      "action_code": "PROCESSOR_ENGAGEMENT_BLOCKED_NO_VALID_CONTRACT",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "Governance",
+      "audit_required": true
+    },
+    "execution_priority": 40
+  },
+  {
+    "rule_id": "SEC9_CHILD_TRACKING_PROHIBITED",
+    "section": "9",
+    "clause": "9(3)",
+    "trigger_event": "CHILD_TRACKING_ATTEMPT",
+    "condition": {
+      "field": "user_category",
+      "operator": "EQUALS",
+      "value": "CHILD"
+    },
+    "decision": {
+      "action_code": "HARD_PROHIBITION_CHILD_TRACKING_BLOCKED",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "BehaviorControl",
+      "audit_required": true
+    },
+    "execution_priority": 50
+  },
+  {
+    "rule_id": "SEC10_DPIA_REQUIRED",
+    "section": "10",
+    "clause": "10(2)(c)(i)",
+    "trigger_event": "HIGH_RISK_PROCESSING_INITIATED",
+    "condition": {
+      "field": "dpia_completed",
+      "operator": "EQUALS",
+      "value": false
+    },
+    "decision": {
+      "action_code": "PROCESSING_BLOCKED_DPIA_PENDING",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "DPIA",
+      "audit_required": true
+    },
+    "execution_priority": 60
+  },
+  {
+    "rule_id": "SEC11_IDENTITY_NOT_VERIFIED",
+    "section": "11",
+    "clause": "Rule13",
+    "trigger_event": "ACCESS_REQUEST_SUBMITTED",
+    "condition": {
+      "field": "identity_verified",
+      "operator": "EQUALS",
+      "value": false
+    },
+    "decision": {
+      "action_code": "ACCESS_REQUEST_REJECTED_IDENTITY_NOT_VERIFIED",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "RightsWorkflow",
+      "audit_required": true
+    },
+    "execution_priority": 70
+  },
+  {
+    "rule_id": "SEC12_RETENTION_OVERRIDE",
+    "section": "12",
+    "clause": "12(5)(b)",
+    "trigger_event": "ERASURE_REQUEST_SUBMITTED",
+    "condition": {
+      "field": "retention_required",
+      "operator": "EQUALS",
+      "value": true
+    },
+    "decision": {
+      "action_code": "ERASURE_PARTIALLY_DENIED_LEGAL_RETENTION_OVERRIDE",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "RetentionEngine",
+      "audit_required": true
+    },
+    "execution_priority": 80
+  },
+  {
+    "rule_id": "SEC13_SLA_BREACH",
+    "section": "13",
+    "clause": "13(2)",
+    "trigger_event": "RESPONSE_TIMER_CHECK",
+    "condition": {
+      "field": "days_since_submission",
+      "operator": "GREATER_THAN",
+      "value": 30
+    },
+    "decision": {
+      "action_code": "SLA_NON_COMPLIANCE_RECORDED_AND_ESCALATION_ENABLED",
+      "blocking": false,
+      "severity": "CRITICAL",
+      "rfp_module": "SLAEngine",
+      "audit_required": true
+    },
+    "execution_priority": 90
+  },
+  {
+    "rule_id": "SEC14_NOMINEE_UNAUTHORIZED",
+    "section": "14",
+    "clause": "14(1)",
+    "trigger_event": "NOMINEE_REQUEST_INITIATED",
+    "condition": {
+      "field": "nominee_authority_flag",
+      "operator": "EQUALS",
+      "value": false
+    },
+    "decision": {
+      "action_code": "NOMINEE_ACTION_BLOCKED_UNAUTHORIZED_ACTIVATION",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "DelegationEngine",
+      "audit_required": true
+    },
+    "execution_priority": 100
+  },
+  {
+    "rule_id": "SEC15_LEGAL_OVERRIDE",
+    "section": "15",
+    "clause": "15(a)",
+    "trigger_event": "ERASURE_REQUEST_SUBMITTED",
+    "condition": {
+      "field": "litigation_hold",
+      "operator": "EQUALS",
+      "value": true
+    },
+    "decision": {
+      "action_code": "RIGHT_EXECUTION_DENIED_DUE_TO_ACTIVE_LEGAL_HOLD",
+      "blocking": true,
+      "severity": "CRITICAL",
+      "rfp_module": "LegalConflictEngine",
+      "audit_required": true
+    },
+    "execution_priority": 200
+  }
+]

@@ -1,0 +1,1515 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2026-02-26T07:33:02.285192+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "current_hash": "f02c0b6ebf994dd6c8a819e4138f5ff8f28acdfb1c3daf21a76a349f7b30d0ce"
+  },
+  {
+    "id": 2,
+    "timestamp": "2026-02-26T07:37:56.902506+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C001 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C001",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "f02c0b6ebf994dd6c8a819e4138f5ff8f28acdfb1c3daf21a76a349f7b30d0ce",
+    "current_hash": "648b95d381759642e06e7f56cbdae41ec639e7fb1c897e674a797ad106bffad1"
+  },
+  {
+    "id": 3,
+    "timestamp": "2026-02-26T07:37:57.087942+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C001 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C001",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "648b95d381759642e06e7f56cbdae41ec639e7fb1c897e674a797ad106bffad1",
+    "current_hash": "88ef29541c317c0e091965801c6b29b737f205ad01d92e66b4c6b09559f61801"
+  },
+  {
+    "id": 4,
+    "timestamp": "2026-02-26T07:37:57.125484+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C001",
+      "purpose": "kyc",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "88ef29541c317c0e091965801c6b29b737f205ad01d92e66b4c6b09559f61801",
+    "current_hash": "d25d7195d8679f6b4e0ccd94f989620fc4bde4da9d5af65df4c047da422f1ee3"
+  },
+  {
+    "id": 5,
+    "timestamp": "2026-02-26T07:37:57.168103+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C001-kyc-001 | customer=C001 | purpose=kyc",
+    "metadata": {
+      "consent_id": "CON-C001-kyc-001",
+      "customer_id": "C001",
+      "purpose": "kyc"
+    },
+    "previous_hash": "d25d7195d8679f6b4e0ccd94f989620fc4bde4da9d5af65df4c047da422f1ee3",
+    "current_hash": "7458733c70f2210847b8cc29dfef7bb70a0d30278598d7fedaf673dffce539f0"
+  },
+  {
+    "id": 6,
+    "timestamp": "2026-02-26T07:37:57.203849+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C001-kyc-001 | customer=C001 | purpose=kyc | Draft → Active | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C001-kyc-001",
+      "customer_id": "C001",
+      "purpose": "kyc",
+      "from_status": "Draft",
+      "to_status": "Active",
+      "version": "v1.0",
+      "reason": null
+    },
+    "previous_hash": "7458733c70f2210847b8cc29dfef7bb70a0d30278598d7fedaf673dffce539f0",
+    "current_hash": "7f74dd5aa9ad56e7d077233ebd3b68b74153522351393f9853274d73ed837847"
+  },
+  {
+    "id": 7,
+    "timestamp": "2026-02-26T07:38:20.307793+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C002 | purpose=insurance | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C002",
+      "purpose": "insurance",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "7f74dd5aa9ad56e7d077233ebd3b68b74153522351393f9853274d73ed837847",
+    "current_hash": "3ac2de6dbd3bb75c2bccebe59d6101c974b851e8cae98c89fdec264459272e8f"
+  },
+  {
+    "id": 8,
+    "timestamp": "2026-02-26T07:38:21.103820+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C002 | purpose=insurance | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C002",
+      "purpose": "insurance",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "3ac2de6dbd3bb75c2bccebe59d6101c974b851e8cae98c89fdec264459272e8f",
+    "current_hash": "250733529b752555a97208954935370da03dd7ec3843e9d19cd83bd5626af665"
+  },
+  {
+    "id": 9,
+    "timestamp": "2026-02-26T07:38:23.457904+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C002 | purpose=fraud_detection | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C002",
+      "purpose": "fraud_detection",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "250733529b752555a97208954935370da03dd7ec3843e9d19cd83bd5626af665",
+    "current_hash": "55fbc38fdea09b16df30ff6617c17dec90fb443df63c8e069d6f0b740208d1fe"
+  },
+  {
+    "id": 10,
+    "timestamp": "2026-02-26T07:38:26.451665+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C002 | purpose=credit_scoring | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C002",
+      "purpose": "credit_scoring",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "55fbc38fdea09b16df30ff6617c17dec90fb443df63c8e069d6f0b740208d1fe",
+    "current_hash": "ed3a6a6830cb4db9239b3edff95d30b8f1c8ff6731baa535b63adddc58ee790a"
+  },
+  {
+    "id": 11,
+    "timestamp": "2026-02-26T07:38:29.058331+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C002 | purpose=credit_scoring | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C002",
+      "purpose": "credit_scoring",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "ed3a6a6830cb4db9239b3edff95d30b8f1c8ff6731baa535b63adddc58ee790a",
+    "current_hash": "f1036ff6d691d9597d2a094bbf76c2a8d6b91fbf75774c872d0a5db84327c445"
+  },
+  {
+    "id": 12,
+    "timestamp": "2026-02-26T07:38:29.093644+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C002",
+      "purpose": "credit_scoring",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "f1036ff6d691d9597d2a094bbf76c2a8d6b91fbf75774c872d0a5db84327c445",
+    "current_hash": "084361878b29073f5f6af0880c77858cf2fcbffa815faec39787ea7266295a75"
+  },
+  {
+    "id": 13,
+    "timestamp": "2026-02-26T07:38:29.137468+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C002-credit_scoring-001 | customer=C002 | purpose=credit_scoring",
+    "metadata": {
+      "consent_id": "CON-C002-credit_scoring-001",
+      "customer_id": "C002",
+      "purpose": "credit_scoring"
+    },
+    "previous_hash": "084361878b29073f5f6af0880c77858cf2fcbffa815faec39787ea7266295a75",
+    "current_hash": "bc6fe797ec7e2add07e327ecdfd546d0057f8c0f166d2e599687f5ef8f2a20f2"
+  },
+  {
+    "id": 14,
+    "timestamp": "2026-02-26T07:38:29.171373+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C002-credit_scoring-001 | customer=C002 | purpose=credit_scoring | Draft → Active | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C002-credit_scoring-001",
+      "customer_id": "C002",
+      "purpose": "credit_scoring",
+      "from_status": "Draft",
+      "to_status": "Active",
+      "version": "v1.0",
+      "reason": null
+    },
+    "previous_hash": "bc6fe797ec7e2add07e327ecdfd546d0057f8c0f166d2e599687f5ef8f2a20f2",
+    "current_hash": "8b80b31aa184582fbdb467db8f33a371955f73deb2991a5330beb412ee6225e4"
+  },
+  {
+    "id": 15,
+    "timestamp": "2026-02-26T07:38:47.486267+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C005 | purpose=credit_scoring | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C005",
+      "purpose": "credit_scoring",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "8b80b31aa184582fbdb467db8f33a371955f73deb2991a5330beb412ee6225e4",
+    "current_hash": "cf5ad28b92ddc4b84f3a8a76aef9f2c0ab85e9accd821c796978b7d5506944a2"
+  },
+  {
+    "id": 16,
+    "timestamp": "2026-02-26T07:38:49.172930+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C005 | purpose=authentication | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C005",
+      "purpose": "authentication",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "cf5ad28b92ddc4b84f3a8a76aef9f2c0ab85e9accd821c796978b7d5506944a2",
+    "current_hash": "15cd38e226ee7f70163fc2ceffa7384fefa298c962260abf71522761d0e0145d"
+  },
+  {
+    "id": 17,
+    "timestamp": "2026-02-26T07:38:50.647538+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C005 | purpose=authentication | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C005",
+      "purpose": "authentication",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "15cd38e226ee7f70163fc2ceffa7384fefa298c962260abf71522761d0e0145d",
+    "current_hash": "0aeda0c05e5078488c35b9babff5b4f48b64eb6eb937664c7525f0bbf84ca1d7"
+  },
+  {
+    "id": 18,
+    "timestamp": "2026-02-26T07:38:50.684989+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C005",
+      "purpose": "authentication",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "0aeda0c05e5078488c35b9babff5b4f48b64eb6eb937664c7525f0bbf84ca1d7",
+    "current_hash": "b1a5165020522abeaae5e58d3ed1e85ae3d7b16377b5bec0f5d31e255556315d"
+  },
+  {
+    "id": 19,
+    "timestamp": "2026-02-26T07:38:50.727508+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C005-authentication-001 | customer=C005 | purpose=authentication",
+    "metadata": {
+      "consent_id": "CON-C005-authentication-001",
+      "customer_id": "C005",
+      "purpose": "authentication"
+    },
+    "previous_hash": "b1a5165020522abeaae5e58d3ed1e85ae3d7b16377b5bec0f5d31e255556315d",
+    "current_hash": "7a9951dda00aa28c08f1bf05e5e7b079e529ef095526477a4a28618a1f6880c1"
+  },
+  {
+    "id": 20,
+    "timestamp": "2026-02-26T07:38:50.761399+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C005-authentication-001 | customer=C005 | purpose=authentication | Draft → Active | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C005-authentication-001",
+      "customer_id": "C005",
+      "purpose": "authentication",
+      "from_status": "Draft",
+      "to_status": "Active",
+      "version": "v1.0",
+      "reason": null
+    },
+    "previous_hash": "7a9951dda00aa28c08f1bf05e5e7b079e529ef095526477a4a28618a1f6880c1",
+    "current_hash": "061ee6f2a4b77e862e252be9e6876c166de54c4288c3fdd66cd81844b2c67e64"
+  },
+  {
+    "id": 21,
+    "timestamp": "2026-02-26T07:39:04.824996+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C009 | purpose=authentication | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C009",
+      "purpose": "authentication",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "061ee6f2a4b77e862e252be9e6876c166de54c4288c3fdd66cd81844b2c67e64",
+    "current_hash": "6757198743f264ddaa8b4667efded826ec1422326de6a2ff53b6f4c459ea83ee"
+  },
+  {
+    "id": 22,
+    "timestamp": "2026-02-26T07:39:05.028629+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C009 | purpose=authentication | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C009",
+      "purpose": "authentication",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "6757198743f264ddaa8b4667efded826ec1422326de6a2ff53b6f4c459ea83ee",
+    "current_hash": "409e2e0a5614898bd05ebc6cdd0db702361c7efbc3cfc610ed0f27c17f06b889"
+  },
+  {
+    "id": 23,
+    "timestamp": "2026-02-26T07:39:08.350276+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C009 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C009",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "409e2e0a5614898bd05ebc6cdd0db702361c7efbc3cfc610ed0f27c17f06b889",
+    "current_hash": "1327c97a0173d3500e0a498e241d128c97a5f62fd1b4fe5e52019006c0bc6ac1"
+  },
+  {
+    "id": 24,
+    "timestamp": "2026-02-26T07:39:09.492696+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C009 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C009",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "1327c97a0173d3500e0a498e241d128c97a5f62fd1b4fe5e52019006c0bc6ac1",
+    "current_hash": "63d4477d1a0b0595fb3e51b0d6ab1d6fc0995c3aa7e6605511a111e10da21dc5"
+  },
+  {
+    "id": 25,
+    "timestamp": "2026-02-26T07:39:09.530082+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C009",
+      "purpose": "kyc",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "63d4477d1a0b0595fb3e51b0d6ab1d6fc0995c3aa7e6605511a111e10da21dc5",
+    "current_hash": "0c3609a6108990714988880d21b98592024c11a6f8dd5f629b591fa31119d155"
+  },
+  {
+    "id": 26,
+    "timestamp": "2026-02-26T07:39:09.575197+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C009-kyc-001 | customer=C009 | purpose=kyc",
+    "metadata": {
+      "consent_id": "CON-C009-kyc-001",
+      "customer_id": "C009",
+      "purpose": "kyc"
+    },
+    "previous_hash": "0c3609a6108990714988880d21b98592024c11a6f8dd5f629b591fa31119d155",
+    "current_hash": "25d44938f9d7ed25c13730877ea3450c81a3be06ab2eef870e55248906f0e024"
+  },
+  {
+    "id": 27,
+    "timestamp": "2026-02-26T07:39:09.608373+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C009-kyc-001 | customer=C009 | purpose=kyc | Draft → Revoked | reason=Consent denied at capture | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C009-kyc-001",
+      "customer_id": "C009",
+      "purpose": "kyc",
+      "from_status": "Draft",
+      "to_status": "Revoked",
+      "version": "v1.0",
+      "reason": "Consent denied at capture"
+    },
+    "previous_hash": "25d44938f9d7ed25c13730877ea3450c81a3be06ab2eef870e55248906f0e024",
+    "current_hash": "fdd133509bb7bab32f2eaad13615ed9f34fccb7096d57b1b444c01281d5554cf"
+  },
+  {
+    "id": 28,
+    "timestamp": "2026-02-26T07:39:09.737713+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C009 | purpose=kyc | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C009",
+      "purpose": "kyc",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "fdd133509bb7bab32f2eaad13615ed9f34fccb7096d57b1b444c01281d5554cf",
+    "current_hash": "252a47ebdea6a78287c9df5b4c1e71107da763844f353df6ae5f3ea69c3af1f5"
+  },
+  {
+    "id": 29,
+    "timestamp": "2026-02-26T07:39:23.095214+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C111 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C111",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "252a47ebdea6a78287c9df5b4c1e71107da763844f353df6ae5f3ea69c3af1f5",
+    "current_hash": "5dffbf3c72c338b6cb7b16990c95639be0b74c0ca72efc573f4aa044b55a151c"
+  },
+  {
+    "id": 30,
+    "timestamp": "2026-02-26T07:39:27.872490+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C111 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C111",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "5dffbf3c72c338b6cb7b16990c95639be0b74c0ca72efc573f4aa044b55a151c",
+    "current_hash": "763cb068543bed1af9f74a97fffa77ab2b6b3e3169a0c62eaffc089fbadb9c92"
+  },
+  {
+    "id": 31,
+    "timestamp": "2026-02-26T07:39:27.919292+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C111",
+      "purpose": "kyc",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "763cb068543bed1af9f74a97fffa77ab2b6b3e3169a0c62eaffc089fbadb9c92",
+    "current_hash": "1a2de9cefc16b35fa62d49fbf4122116711f8a336620687be35d3c9999562c70"
+  },
+  {
+    "id": 32,
+    "timestamp": "2026-02-26T07:39:27.961541+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C111-kyc-001 | customer=C111 | purpose=kyc",
+    "metadata": {
+      "consent_id": "CON-C111-kyc-001",
+      "customer_id": "C111",
+      "purpose": "kyc"
+    },
+    "previous_hash": "1a2de9cefc16b35fa62d49fbf4122116711f8a336620687be35d3c9999562c70",
+    "current_hash": "ab75692a559d8fe24169f8e68ee2595071dd1e842e620163598dbd086c0d1301"
+  },
+  {
+    "id": 33,
+    "timestamp": "2026-02-26T07:39:27.993945+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C111-kyc-001 | customer=C111 | purpose=kyc | Draft → Revoked | reason=Consent denied at capture | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C111-kyc-001",
+      "customer_id": "C111",
+      "purpose": "kyc",
+      "from_status": "Draft",
+      "to_status": "Revoked",
+      "version": "v1.0",
+      "reason": "Consent denied at capture"
+    },
+    "previous_hash": "ab75692a559d8fe24169f8e68ee2595071dd1e842e620163598dbd086c0d1301",
+    "current_hash": "3308fd8153f58c207db892b3f679529431d9b13dbfe7c0882bcb07291b580e28"
+  },
+  {
+    "id": 34,
+    "timestamp": "2026-02-26T07:39:28.114063+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C111 | purpose=kyc | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C111",
+      "purpose": "kyc",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "3308fd8153f58c207db892b3f679529431d9b13dbfe7c0882bcb07291b580e28",
+    "current_hash": "e5de6bb9519d2ef376aa1823484e3fc403768f030e8f31dbdd2eb9940e0e9f8d"
+  },
+  {
+    "id": 35,
+    "timestamp": "2026-02-26T07:39:48.284400+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C200 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C200",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "e5de6bb9519d2ef376aa1823484e3fc403768f030e8f31dbdd2eb9940e0e9f8d",
+    "current_hash": "ae36cc561b2de1bbad8ecd0ee9f3b2c952f95cf81177e9d1ae8a66151f3039ec"
+  },
+  {
+    "id": 36,
+    "timestamp": "2026-02-26T07:39:52.524971+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C200 | purpose=digital_lending | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C200",
+      "purpose": "digital_lending",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "ae36cc561b2de1bbad8ecd0ee9f3b2c952f95cf81177e9d1ae8a66151f3039ec",
+    "current_hash": "9dee941223ea9f95249737cf9fb4c98239f43097a21744f160e28ee466cb8db7"
+  },
+  {
+    "id": 37,
+    "timestamp": "2026-02-26T07:39:54.848008+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C200 | purpose=digital_lending | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C200",
+      "purpose": "digital_lending",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "9dee941223ea9f95249737cf9fb4c98239f43097a21744f160e28ee466cb8db7",
+    "current_hash": "6be8725b43bc7870fe8972748b1a3b1caa3b1c2e2f4b9aa0a6ae424e62bb7c2a"
+  },
+  {
+    "id": 38,
+    "timestamp": "2026-02-26T07:39:54.888377+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C200",
+      "purpose": "digital_lending",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "6be8725b43bc7870fe8972748b1a3b1caa3b1c2e2f4b9aa0a6ae424e62bb7c2a",
+    "current_hash": "6e53b5652733fc5248e0a8bd688fe3a40a76e3bbe1ac248a8db051b30676deae"
+  },
+  {
+    "id": 39,
+    "timestamp": "2026-02-26T07:39:54.928069+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C200-digital_lending-001 | customer=C200 | purpose=digital_lending",
+    "metadata": {
+      "consent_id": "CON-C200-digital_lending-001",
+      "customer_id": "C200",
+      "purpose": "digital_lending"
+    },
+    "previous_hash": "6e53b5652733fc5248e0a8bd688fe3a40a76e3bbe1ac248a8db051b30676deae",
+    "current_hash": "cbc1de6814ff9aaa53fb04ffa046eb371c61e73051d8735b28bb19f9c3c07c02"
+  },
+  {
+    "id": 40,
+    "timestamp": "2026-02-26T07:39:54.961099+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C200-digital_lending-001 | customer=C200 | purpose=digital_lending | Draft → Revoked | reason=Consent denied at capture | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C200-digital_lending-001",
+      "customer_id": "C200",
+      "purpose": "digital_lending",
+      "from_status": "Draft",
+      "to_status": "Revoked",
+      "version": "v1.0",
+      "reason": "Consent denied at capture"
+    },
+    "previous_hash": "cbc1de6814ff9aaa53fb04ffa046eb371c61e73051d8735b28bb19f9c3c07c02",
+    "current_hash": "fdc8b133b8b9cde2770b5ada87afd1f8bba083e50a4eb137cc745a34b5135f0e"
+  },
+  {
+    "id": 41,
+    "timestamp": "2026-02-26T07:39:55.086071+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C200 | purpose=digital_lending | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C200",
+      "purpose": "digital_lending",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "fdc8b133b8b9cde2770b5ada87afd1f8bba083e50a4eb137cc745a34b5135f0e",
+    "current_hash": "2040fd36fcb3992fbd5a71075df62de5f134625b6c17425ff5f2198ca3e6a393"
+  },
+  {
+    "id": 42,
+    "timestamp": "2026-02-26T07:40:04.592790+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C225 | purpose=digital_lending | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C225",
+      "purpose": "digital_lending",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "2040fd36fcb3992fbd5a71075df62de5f134625b6c17425ff5f2198ca3e6a393",
+    "current_hash": "d73b4bb17cd75af378a481c169d4ff9bf86ebb02284405fe7b4854a850aab2e9"
+  },
+  {
+    "id": 43,
+    "timestamp": "2026-02-26T07:40:06.835988+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C225 | purpose=third_party_share | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C225",
+      "purpose": "third_party_share",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "d73b4bb17cd75af378a481c169d4ff9bf86ebb02284405fe7b4854a850aab2e9",
+    "current_hash": "8b487684f03655dfdec560d36998ea83a0579ccde2a67ea8460bd406aa90d861"
+  },
+  {
+    "id": 44,
+    "timestamp": "2026-02-26T07:40:08.919131+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C225 | purpose=third_party_share | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C225",
+      "purpose": "third_party_share",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "8b487684f03655dfdec560d36998ea83a0579ccde2a67ea8460bd406aa90d861",
+    "current_hash": "aab220ebc0582af24c611b097e95a41e6efa13701d069f4500a557fc1179bae3"
+  },
+  {
+    "id": 45,
+    "timestamp": "2026-02-26T07:40:08.953833+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C225",
+      "purpose": "third_party_share",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "aab220ebc0582af24c611b097e95a41e6efa13701d069f4500a557fc1179bae3",
+    "current_hash": "6ee44337b3abc1267ed061defcf5615dbec0071acc0f23859113db608c60922a"
+  },
+  {
+    "id": 46,
+    "timestamp": "2026-02-26T07:40:08.997373+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C225-third_party_share-001 | customer=C225 | purpose=third_party_share",
+    "metadata": {
+      "consent_id": "CON-C225-third_party_share-001",
+      "customer_id": "C225",
+      "purpose": "third_party_share"
+    },
+    "previous_hash": "6ee44337b3abc1267ed061defcf5615dbec0071acc0f23859113db608c60922a",
+    "current_hash": "f6c48e68cba0d7a4c9ae0262faea203d69e066a50b5ccba914becbecb49fe862"
+  },
+  {
+    "id": 47,
+    "timestamp": "2026-02-26T07:40:09.033364+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C225-third_party_share-001 | customer=C225 | purpose=third_party_share | Draft → Revoked | reason=Consent denied at capture | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C225-third_party_share-001",
+      "customer_id": "C225",
+      "purpose": "third_party_share",
+      "from_status": "Draft",
+      "to_status": "Revoked",
+      "version": "v1.0",
+      "reason": "Consent denied at capture"
+    },
+    "previous_hash": "f6c48e68cba0d7a4c9ae0262faea203d69e066a50b5ccba914becbecb49fe862",
+    "current_hash": "64dc1a378c07543355f7933b6d62ec3bc0e96ac3ae5e5f8ef4ad175392d66381"
+  },
+  {
+    "id": 48,
+    "timestamp": "2026-02-26T07:40:09.151085+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C225 | purpose=third_party_share | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C225",
+      "purpose": "third_party_share",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "64dc1a378c07543355f7933b6d62ec3bc0e96ac3ae5e5f8ef4ad175392d66381",
+    "current_hash": "1fa56cd7c2cdea1746ffc05278efd9a472ebe3c3d51d8f63f39fe1a13b8e8c69"
+  },
+  {
+    "id": 49,
+    "timestamp": "2026-02-26T07:40:14.669923+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C106 | purpose=third_party_share | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C106",
+      "purpose": "third_party_share",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "1fa56cd7c2cdea1746ffc05278efd9a472ebe3c3d51d8f63f39fe1a13b8e8c69",
+    "current_hash": "08d94eb2ab47bcc0079698b99f4fa549cd60a3bcbc17e48f48a875da24ba0c40"
+  },
+  {
+    "id": 50,
+    "timestamp": "2026-02-26T07:40:17.532184+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C106 | purpose=credit_scoring | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C106",
+      "purpose": "credit_scoring",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "08d94eb2ab47bcc0079698b99f4fa549cd60a3bcbc17e48f48a875da24ba0c40",
+    "current_hash": "ab3c8f2f64a5602e1b003d907c20827bacdef83cf1d13088ee0c9e11085f6116"
+  },
+  {
+    "id": 51,
+    "timestamp": "2026-02-26T07:40:21.066467+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C106 | purpose=credit_scoring | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C106",
+      "purpose": "credit_scoring",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "ab3c8f2f64a5602e1b003d907c20827bacdef83cf1d13088ee0c9e11085f6116",
+    "current_hash": "c7505d56f9e665f1bc7f4634744b1cf7b747cee4ddf5d2d625e9d430eeafb1f9"
+  },
+  {
+    "id": 52,
+    "timestamp": "2026-02-26T07:40:22.055563+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C106 | purpose=credit_scoring | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C106",
+      "purpose": "credit_scoring",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "c7505d56f9e665f1bc7f4634744b1cf7b747cee4ddf5d2d625e9d430eeafb1f9",
+    "current_hash": "1ac7731086b71647e600e7192e1e06e6f483ebbbcc66dd048f3fd115519a1017"
+  },
+  {
+    "id": 53,
+    "timestamp": "2026-02-26T07:40:22.100749+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C106",
+      "purpose": "credit_scoring",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "1ac7731086b71647e600e7192e1e06e6f483ebbbcc66dd048f3fd115519a1017",
+    "current_hash": "6952ab8967a45d163874c4f6aab0a94dbe2b8e3122e2833bbd8273208385cb9f"
+  },
+  {
+    "id": 54,
+    "timestamp": "2026-02-26T07:40:22.139857+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C106-credit_scoring-001 | customer=C106 | purpose=credit_scoring",
+    "metadata": {
+      "consent_id": "CON-C106-credit_scoring-001",
+      "customer_id": "C106",
+      "purpose": "credit_scoring"
+    },
+    "previous_hash": "6952ab8967a45d163874c4f6aab0a94dbe2b8e3122e2833bbd8273208385cb9f",
+    "current_hash": "8c55687abebb188370044991f8006d1bacaa893cb2ad5a0671a0057899b1c421"
+  },
+  {
+    "id": 55,
+    "timestamp": "2026-02-26T07:40:22.179125+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C106-credit_scoring-001 | customer=C106 | purpose=credit_scoring | Draft → Active | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C106-credit_scoring-001",
+      "customer_id": "C106",
+      "purpose": "credit_scoring",
+      "from_status": "Draft",
+      "to_status": "Active",
+      "version": "v1.0",
+      "reason": null
+    },
+    "previous_hash": "8c55687abebb188370044991f8006d1bacaa893cb2ad5a0671a0057899b1c421",
+    "current_hash": "3ed651ea891522760e326899e29f2c5bf9cbed4128c467fc1ec928a1bbe36e40"
+  },
+  {
+    "id": 56,
+    "timestamp": "2026-02-26T07:41:47.209971+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C005-authentication-001 | customer=C005 | purpose=authentication | Active → Revoked | reason=Revoked by officer | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C005-authentication-001",
+      "customer_id": "C005",
+      "purpose": "authentication",
+      "from_status": "Active",
+      "to_status": "Revoked",
+      "version": "v1.0",
+      "reason": "Revoked by officer"
+    },
+    "previous_hash": "3ed651ea891522760e326899e29f2c5bf9cbed4128c467fc1ec928a1bbe36e40",
+    "current_hash": "d98c8dff495cf0a4ae738aad90ab71000183de2c4843cf2f76501cdb8993c09f"
+  },
+  {
+    "id": 57,
+    "timestamp": "2026-02-26T07:42:22.023426+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C001-kyc-001 | customer=C001 | purpose=kyc | Active → Revoked | reason=Revoked by officer | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C001-kyc-001",
+      "customer_id": "C001",
+      "purpose": "kyc",
+      "from_status": "Active",
+      "to_status": "Revoked",
+      "version": "v1.0",
+      "reason": "Revoked by officer"
+    },
+    "previous_hash": "d98c8dff495cf0a4ae738aad90ab71000183de2c4843cf2f76501cdb8993c09f",
+    "current_hash": "3c1e1bd04eccd9ba60ecd3f4dfbaa4918a48f59f48b83e8c6ff0920a8bf6d2eb"
+  },
+  {
+    "id": 58,
+    "timestamp": "2026-02-26T07:43:01.391545+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C002-credit_scoring-001 | customer=C002 | purpose=credit_scoring | Active → Renewed | version=v1.1 | new_expiry=2026-08-25T07:43:01.365696+00:00",
+    "metadata": {
+      "consent_id": "CON-C002-credit_scoring-001",
+      "customer_id": "C002",
+      "purpose": "credit_scoring",
+      "from_status": "Active",
+      "to_status": "Renewed",
+      "version": "v1.1",
+      "reason": null
+    },
+    "previous_hash": "3c1e1bd04eccd9ba60ecd3f4dfbaa4918a48f59f48b83e8c6ff0920a8bf6d2eb",
+    "current_hash": "27c91a3fb8076af8c9b95c42eae0e8708e81508f626ae0481d6489a8c346bfe8"
+  },
+  {
+    "id": 59,
+    "timestamp": "2026-02-26T07:43:31.659502+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C103 | purpose=credit_scoring | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C103",
+      "purpose": "credit_scoring",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "27c91a3fb8076af8c9b95c42eae0e8708e81508f626ae0481d6489a8c346bfe8",
+    "current_hash": "9bd85506f9c0e7cc93c34c8ba6b3f9574c2293f9ab99dd971482dbcebbbb5c09"
+  },
+  {
+    "id": 60,
+    "timestamp": "2026-02-26T07:43:34.320455+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C103 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C103",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "9bd85506f9c0e7cc93c34c8ba6b3f9574c2293f9ab99dd971482dbcebbbb5c09",
+    "current_hash": "3eb5c0472d522dd72152f10594b5c54f5ead5de543309cdb9acad2af9ddcedd8"
+  },
+  {
+    "id": 61,
+    "timestamp": "2026-02-26T07:43:37.527824+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C103 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C103",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "3eb5c0472d522dd72152f10594b5c54f5ead5de543309cdb9acad2af9ddcedd8",
+    "current_hash": "a636ef1aed739a1a656188e69a186048dbdf24e560f2998f25afb5cd8ac397f7"
+  },
+  {
+    "id": 62,
+    "timestamp": "2026-02-26T07:43:37.568223+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C103",
+      "purpose": "kyc",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "a636ef1aed739a1a656188e69a186048dbdf24e560f2998f25afb5cd8ac397f7",
+    "current_hash": "8914be1ccbe16bfdc6d247ffe23530d28f9f8344fc3ef0c5701d9b2ef04e5acc"
+  },
+  {
+    "id": 63,
+    "timestamp": "2026-02-26T07:43:37.614934+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C103-kyc-001 | customer=C103 | purpose=kyc",
+    "metadata": {
+      "consent_id": "CON-C103-kyc-001",
+      "customer_id": "C103",
+      "purpose": "kyc"
+    },
+    "previous_hash": "8914be1ccbe16bfdc6d247ffe23530d28f9f8344fc3ef0c5701d9b2ef04e5acc",
+    "current_hash": "0065963b9fb7971df7e17d35422c41f3e0f52c19838adf5aed6881e17e22acd9"
+  },
+  {
+    "id": 64,
+    "timestamp": "2026-02-26T07:43:37.653249+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C103-kyc-001 | customer=C103 | purpose=kyc | Draft → Active | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C103-kyc-001",
+      "customer_id": "C103",
+      "purpose": "kyc",
+      "from_status": "Draft",
+      "to_status": "Active",
+      "version": "v1.0",
+      "reason": null
+    },
+    "previous_hash": "0065963b9fb7971df7e17d35422c41f3e0f52c19838adf5aed6881e17e22acd9",
+    "current_hash": "e21df99c01ddd84dd114e13a12c49d3b77f2b2a9954229e5e06861ebf792b5e2"
+  },
+  {
+    "id": 65,
+    "timestamp": "2026-02-26T09:42:03.658013+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "e21df99c01ddd84dd114e13a12c49d3b77f2b2a9954229e5e06861ebf792b5e2",
+    "current_hash": "2913d73fbd44c4d4f66245c72f7739e39e1973640cc3fa796971be1f143e1573"
+  },
+  {
+    "id": 66,
+    "timestamp": "2026-02-26T09:43:32.974985+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "2913d73fbd44c4d4f66245c72f7739e39e1973640cc3fa796971be1f143e1573",
+    "current_hash": "2a3eaf52867a29afcf665507de73a9a658b45b2c6013092c3a4cd14943dad84a"
+  },
+  {
+    "id": 67,
+    "timestamp": "2026-02-26T10:04:28.345703+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "2a3eaf52867a29afcf665507de73a9a658b45b2c6013092c3a4cd14943dad84a",
+    "current_hash": "73925a27ccf0c08c8672aff81c9e1f9eb90191dd3dc1a7a16b23ae6ab41163e9"
+  },
+  {
+    "id": 68,
+    "timestamp": "2026-02-26T10:04:43.337712+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "73925a27ccf0c08c8672aff81c9e1f9eb90191dd3dc1a7a16b23ae6ab41163e9",
+    "current_hash": "f87f5ac5c3322d7fe62c7aa83216284774754260c287512cae64a102ebaaed53"
+  },
+  {
+    "id": 69,
+    "timestamp": "2026-02-26T10:05:13.219003+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "f87f5ac5c3322d7fe62c7aa83216284774754260c287512cae64a102ebaaed53",
+    "current_hash": "f6523f096fab3bdbb77a73c0bab6c75576cf44a5ea1b633fede5b35c2cb7ea8b"
+  },
+  {
+    "id": 70,
+    "timestamp": "2026-02-26T10:05:25.664281+00:00",
+    "user": "customer_01",
+    "action": "Login Successful | user=customer_01 | role=Customer",
+    "metadata": {
+      "department": "—"
+    },
+    "previous_hash": "f6523f096fab3bdbb77a73c0bab6c75576cf44a5ea1b633fede5b35c2cb7ea8b",
+    "current_hash": "2ac98c0cf779f531a7ff892f0ee1e789351006d9d7f231db2d3b06c1d6b0c150"
+  },
+  {
+    "id": 71,
+    "timestamp": "2026-02-26T10:06:41.648501+00:00",
+    "user": "customer_01",
+    "action": "Logout | user=customer_01 | role=Customer",
+    "metadata": {},
+    "previous_hash": "2ac98c0cf779f531a7ff892f0ee1e789351006d9d7f231db2d3b06c1d6b0c150",
+    "current_hash": "3c24d476fafba5b910e77a1f1b3a0019158933b490f8148a10ed5d057e6a1552"
+  },
+  {
+    "id": 72,
+    "timestamp": "2026-02-26T10:06:53.186068+00:00",
+    "user": "dpo_admin\t",
+    "action": "Login Successful | user=dpo_admin\t | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "3c24d476fafba5b910e77a1f1b3a0019158933b490f8148a10ed5d057e6a1552",
+    "current_hash": "076980bf385434b7be5a754c5505dc3956b51abbf171bd1a3b3ba265884e3628"
+  },
+  {
+    "id": 73,
+    "timestamp": "2026-02-26T10:40:10.682638+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "076980bf385434b7be5a754c5505dc3956b51abbf171bd1a3b3ba265884e3628",
+    "current_hash": "1fb51a91c089dd72cfb9d61f7dd57ad49b895016ea27e63f65f35f407d5cec67"
+  },
+  {
+    "id": 74,
+    "timestamp": "2026-02-26T10:41:11.304582+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "1fb51a91c089dd72cfb9d61f7dd57ad49b895016ea27e63f65f35f407d5cec67",
+    "current_hash": "05823f9aa28e30c3051b5cac177f1c39da1a7dc73f439d2105180067f77ca664"
+  },
+  {
+    "id": 75,
+    "timestamp": "2026-02-26T10:43:36.039706+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "05823f9aa28e30c3051b5cac177f1c39da1a7dc73f439d2105180067f77ca664",
+    "current_hash": "6010287cb23003ea6d04aea94dbfb1d104c87abff99a0e76b2e1e79d786a7019"
+  },
+  {
+    "id": 76,
+    "timestamp": "2026-02-26T10:55:12.770436+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "6010287cb23003ea6d04aea94dbfb1d104c87abff99a0e76b2e1e79d786a7019",
+    "current_hash": "acc797c2b200528e5b3da0c19be2850eafb35d685372f32e3398b9be01855a40"
+  },
+  {
+    "id": 77,
+    "timestamp": "2026-02-26T10:56:54.424563+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C132 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C132",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "acc797c2b200528e5b3da0c19be2850eafb35d685372f32e3398b9be01855a40",
+    "current_hash": "f130259c80929b251b80af7e50321964f1b0f80b0916a1368d6bbb55ac6291f8"
+  },
+  {
+    "id": 78,
+    "timestamp": "2026-02-26T10:56:55.491769+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C132 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C132",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "f130259c80929b251b80af7e50321964f1b0f80b0916a1368d6bbb55ac6291f8",
+    "current_hash": "0d0fae7eac686296832cb7533b6c1ab81a7d71b99b2af6f435617dc2208c5a58"
+  },
+  {
+    "id": 79,
+    "timestamp": "2026-02-26T10:56:56.756182+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C132 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C132",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "0d0fae7eac686296832cb7533b6c1ab81a7d71b99b2af6f435617dc2208c5a58",
+    "current_hash": "eb0e01b45061f0f8c3b27bb8a78cdfa77087f1757db8aba94c357b7ef3e0231c"
+  },
+  {
+    "id": 80,
+    "timestamp": "2026-02-26T10:56:57.536336+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C132 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C132",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "eb0e01b45061f0f8c3b27bb8a78cdfa77087f1757db8aba94c357b7ef3e0231c",
+    "current_hash": "c925391b39b54b1a91fd4585411d8e8e249336b03e18cf3c2384f64a5d57c0f8"
+  },
+  {
+    "id": 81,
+    "timestamp": "2026-02-26T10:56:57.581429+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C132",
+      "purpose": "kyc",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "c925391b39b54b1a91fd4585411d8e8e249336b03e18cf3c2384f64a5d57c0f8",
+    "current_hash": "2c38bf7eee860fed9b50f5dbc36c83e4bf350550bffa08598db39ac3c9095a85"
+  },
+  {
+    "id": 82,
+    "timestamp": "2026-02-26T10:56:57.627941+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C132-kyc-001 | customer=C132 | purpose=kyc",
+    "metadata": {
+      "consent_id": "CON-C132-kyc-001",
+      "customer_id": "C132",
+      "purpose": "kyc"
+    },
+    "previous_hash": "2c38bf7eee860fed9b50f5dbc36c83e4bf350550bffa08598db39ac3c9095a85",
+    "current_hash": "76c26e99168579526c4c6d72a94f72d88f84dff73d03e996b3fcbb1800b34d02"
+  },
+  {
+    "id": 83,
+    "timestamp": "2026-02-26T10:56:57.663380+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C132-kyc-001 | customer=C132 | purpose=kyc | Draft → Active | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C132-kyc-001",
+      "customer_id": "C132",
+      "purpose": "kyc",
+      "from_status": "Draft",
+      "to_status": "Active",
+      "version": "v1.0",
+      "reason": null
+    },
+    "previous_hash": "76c26e99168579526c4c6d72a94f72d88f84dff73d03e996b3fcbb1800b34d02",
+    "current_hash": "37fd0703ce7f8fa0f14c20d25b24e995fc908a4295e63c0ab1201c4b4ca7bc15"
+  },
+  {
+    "id": 84,
+    "timestamp": "2026-02-26T10:58:14.839932+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "37fd0703ce7f8fa0f14c20d25b24e995fc908a4295e63c0ab1201c4b4ca7bc15",
+    "current_hash": "490df1d2dfaac786340c6f2f5beb25273d1b46714fc05152f5e2d7cf8aefb69c"
+  },
+  {
+    "id": 85,
+    "timestamp": "2026-02-26T11:00:13.467591+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "490df1d2dfaac786340c6f2f5beb25273d1b46714fc05152f5e2d7cf8aefb69c",
+    "current_hash": "28e345bb7a472ca5d464a976d5a77b41c12cb01235da15f7233900d4c546fbef"
+  },
+  {
+    "id": 86,
+    "timestamp": "2026-02-26T11:14:17.249845+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "28e345bb7a472ca5d464a976d5a77b41c12cb01235da15f7233900d4c546fbef",
+    "current_hash": "cb0440b3eb7f040e8393343539bd2a23e3028f84ce12d82fcaf642f10657fff8"
+  },
+  {
+    "id": 87,
+    "timestamp": "2026-02-26T12:02:55.440109+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "cb0440b3eb7f040e8393343539bd2a23e3028f84ce12d82fcaf642f10657fff8",
+    "current_hash": "8f87de09fac8cdf4ef9094677e1c576cee2959934841b1f4e0711720907ddfc0"
+  },
+  {
+    "id": 88,
+    "timestamp": "2026-02-26T12:16:08.107600+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "8f87de09fac8cdf4ef9094677e1c576cee2959934841b1f4e0711720907ddfc0",
+    "current_hash": "b88bc29dd140ab0f98e3a4b51f4c441c818b79d908de4284448ac0659138d7b8"
+  },
+  {
+    "id": 89,
+    "timestamp": "2026-02-26T12:16:17.024079+00:00",
+    "user": "officer_01",
+    "action": "Login Successful | user=officer_01 | role=Officer",
+    "metadata": {
+      "department": "Retail Banking"
+    },
+    "previous_hash": "b88bc29dd140ab0f98e3a4b51f4c441c818b79d908de4284448ac0659138d7b8",
+    "current_hash": "56ead66fb1be46fdd91eb84804ae87a32eea1040b60825e62046133639695631"
+  },
+  {
+    "id": 90,
+    "timestamp": "2026-02-26T12:18:31.914655+00:00",
+    "user": "officer_01",
+    "action": "Logout | user=officer_01 | role=Officer",
+    "metadata": {},
+    "previous_hash": "56ead66fb1be46fdd91eb84804ae87a32eea1040b60825e62046133639695631",
+    "current_hash": "fb7c2d1a6f5c587caf6d555b05af25868a6acec2518e5a612ea3ae81adc43864"
+  },
+  {
+    "id": 91,
+    "timestamp": "2026-02-26T12:18:41.459353+00:00",
+    "user": "auditor_01",
+    "action": "Login Successful | user=auditor_01 | role=Auditor",
+    "metadata": {
+      "department": "Internal Audit"
+    },
+    "previous_hash": "fb7c2d1a6f5c587caf6d555b05af25868a6acec2518e5a612ea3ae81adc43864",
+    "current_hash": "172556d1072ab4206f41cb592b97c8b39f06868292416d9752769b9af709efe7"
+  },
+  {
+    "id": 92,
+    "timestamp": "2026-02-26T12:21:20.376050+00:00",
+    "user": "auditor_01",
+    "action": "Logout | user=auditor_01 | role=Auditor",
+    "metadata": {},
+    "previous_hash": "172556d1072ab4206f41cb592b97c8b39f06868292416d9752769b9af709efe7",
+    "current_hash": "192e85ae8786a51a7ac3aea4b3e9dbf052bb65a021e11ded1a4fd0038f23cd86"
+  },
+  {
+    "id": 93,
+    "timestamp": "2026-02-26T12:22:04.840432+00:00",
+    "user": "board_01",
+    "action": "Login Successful | user=board_01 | role=Board",
+    "metadata": {
+      "department": "Board of Directors"
+    },
+    "previous_hash": "192e85ae8786a51a7ac3aea4b3e9dbf052bb65a021e11ded1a4fd0038f23cd86",
+    "current_hash": "c4f6bbb0607325942f17de9eef4a663f6fef842665e0264681fdba721f9e90de"
+  },
+  {
+    "id": 94,
+    "timestamp": "2026-02-26T12:22:37.801477+00:00",
+    "user": "board_01",
+    "action": "Logout | user=board_01 | role=Board",
+    "metadata": {},
+    "previous_hash": "c4f6bbb0607325942f17de9eef4a663f6fef842665e0264681fdba721f9e90de",
+    "current_hash": "2ffd9c2a61955c60bc2563ebc30eac40728a97ed751b781941daef59ef037e93"
+  },
+  {
+    "id": 95,
+    "timestamp": "2026-02-27T04:09:18.271677+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "2ffd9c2a61955c60bc2563ebc30eac40728a97ed751b781941daef59ef037e93",
+    "current_hash": "782fe32dd1815a0a9153b3d00135a3c03026e2da2c13c1d8992720e6a740f059"
+  },
+  {
+    "id": 96,
+    "timestamp": "2026-02-27T04:33:11.137672+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "782fe32dd1815a0a9153b3d00135a3c03026e2da2c13c1d8992720e6a740f059",
+    "current_hash": "c9b73e800038093abcf7890426334a7952b515042d7969c3779ef45327caf448"
+  },
+  {
+    "id": 97,
+    "timestamp": "2026-02-27T04:34:54.172698+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO",
+    "metadata": {
+      "department": "Data Protection Office"
+    },
+    "previous_hash": "c9b73e800038093abcf7890426334a7952b515042d7969c3779ef45327caf448",
+    "current_hash": "359cb40c570668e9ab0c744dd40cb104ce85934cbaf164da9c224c5ecebfd9a6"
+  },
+  {
+    "id": 98,
+    "timestamp": "2026-02-27T04:37:15.987345+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C135 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "359cb40c570668e9ab0c744dd40cb104ce85934cbaf164da9c224c5ecebfd9a6",
+    "current_hash": "66bcb6a97a59ca31ab62419acf7e33bf9c65d1f85d2264c339f34b94888ec222"
+  },
+  {
+    "id": 99,
+    "timestamp": "2026-02-27T04:38:36.235097+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C135 | purpose=kyc | reason=No consent record found",
+    "metadata": {
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "reason": "No consent record found",
+      "valid": false
+    },
+    "previous_hash": "66bcb6a97a59ca31ab62419acf7e33bf9c65d1f85d2264c339f34b94888ec222",
+    "current_hash": "a692fbd25d11b04f1174ff90c05f28a91c085105ffb7ccb224c523a48c34106c"
+  },
+  {
+    "id": 100,
+    "timestamp": "2026-02-27T04:38:36.280072+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=CONSENT_ACTIVATION",
+    "metadata": {
+      "event": "CONSENT_ACTIVATION",
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "user": "dpo_admin"
+    },
+    "previous_hash": "a692fbd25d11b04f1174ff90c05f28a91c085105ffb7ccb224c523a48c34106c",
+    "current_hash": "3d8904317fc5779a136c2b7e9fe3d070d75e4767601a51393a6aa63e2852f561"
+  },
+  {
+    "id": 101,
+    "timestamp": "2026-02-27T04:38:36.340726+00:00",
+    "user": "dpo_admin",
+    "action": "Consent Draft Created | ID=CON-C135-kyc-001 | customer=C135 | purpose=kyc",
+    "metadata": {
+      "consent_id": "CON-C135-kyc-001",
+      "customer_id": "C135",
+      "purpose": "kyc"
+    },
+    "previous_hash": "3d8904317fc5779a136c2b7e9fe3d070d75e4767601a51393a6aa63e2852f561",
+    "current_hash": "8f110feb63bc7e92f0a379b45c1b3f4dd1c61cf5e08cc8e906b4bc08fbfdeb52"
+  },
+  {
+    "id": 102,
+    "timestamp": "2026-02-27T04:38:36.382013+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C135-kyc-001 | customer=C135 | purpose=kyc | Draft → Active | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C135-kyc-001",
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "from_status": "Draft",
+      "to_status": "Active",
+      "version": "v1.0",
+      "reason": null
+    },
+    "previous_hash": "8f110feb63bc7e92f0a379b45c1b3f4dd1c61cf5e08cc8e906b4bc08fbfdeb52",
+    "current_hash": "7ff809c105f1c0f2d9f9ed982ac91ade341a96492ef0993c3f4b94cb30e2c30c"
+  },
+  {
+    "id": 103,
+    "timestamp": "2026-02-27T04:40:58.426521+00:00",
+    "user": "dpo_admin",
+    "action": "Consent State Change | ID=CON-C135-kyc-001 | customer=C135 | purpose=kyc | Active → Revoked | reason=Revoked by officer | version=v1.0",
+    "metadata": {
+      "consent_id": "CON-C135-kyc-001",
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "from_status": "Active",
+      "to_status": "Revoked",
+      "version": "v1.0",
+      "reason": "Revoked by officer"
+    },
+    "previous_hash": "7ff809c105f1c0f2d9f9ed982ac91ade341a96492ef0993c3f4b94cb30e2c30c",
+    "current_hash": "503ab3fb19c60fec5883fce9a921345a576b634fb7550678a5755d4a9aeb107b"
+  },
+  {
+    "id": 104,
+    "timestamp": "2026-02-27T04:40:58.573130+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C135 | purpose=kyc | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "503ab3fb19c60fec5883fce9a921345a576b634fb7550678a5755d4a9aeb107b",
+    "current_hash": "bd991b04b2c8a02853ff6890f3d9c79273d441cefc7d48b9bfd02a712c9f9647"
+  },
+  {
+    "id": 105,
+    "timestamp": "2026-02-27T04:41:36.013952+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C135 | purpose=kyc | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "bd991b04b2c8a02853ff6890f3d9c79273d441cefc7d48b9bfd02a712c9f9647",
+    "current_hash": "56060739d25612d2f9113744c7c3dcd664b2c1349566b2b85db80db5aff31710"
+  },
+  {
+    "id": 106,
+    "timestamp": "2026-02-27T04:41:39.864077+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C135 | purpose=kyc | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "56060739d25612d2f9113744c7c3dcd664b2c1349566b2b85db80db5aff31710",
+    "current_hash": "930d8436e30236d9732e7b4105e26a4fc53c319ade181a566656c81efb223275"
+  },
+  {
+    "id": 107,
+    "timestamp": "2026-02-27T04:41:41.510581+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C135 | purpose=kyc | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "930d8436e30236d9732e7b4105e26a4fc53c319ade181a566656c81efb223275",
+    "current_hash": "fa2e61eb248fb56eda612ddc396cee0061ae05c2e9be6441c0ac1b152beb6e84"
+  },
+  {
+    "id": 108,
+    "timestamp": "2026-02-27T04:41:45.569988+00:00",
+    "user": "system",
+    "action": "Consent Validation Failed | customer=C135 | purpose=kyc | reason=Consent has been revoked",
+    "metadata": {
+      "customer_id": "C135",
+      "purpose": "kyc",
+      "reason": "Consent has been revoked",
+      "valid": false
+    },
+    "previous_hash": "fa2e61eb248fb56eda612ddc396cee0061ae05c2e9be6441c0ac1b152beb6e84",
+    "current_hash": "4cd1bf01d79ec0aa1e08a3a4a85933dc284cb2ea123045d2c84cd8ad4a10bbf3"
+  },
+  {
+    "id": 109,
+    "timestamp": "2026-02-27T04:44:43.344030+00:00",
+    "user": "dpo_admin",
+    "action": "Rule Passed | event=dpia_initiate",
+    "metadata": {
+      "event": "dpia_initiate",
+      "user": "dpo_admin",
+      "project": "CUSTOMER BEHAVIOR ANALYTICS",
+      "risk_score": 50,
+      "risk_level": "Medium",
+      "role": "DPO"
+    },
+    "previous_hash": "4cd1bf01d79ec0aa1e08a3a4a85933dc284cb2ea123045d2c84cd8ad4a10bbf3",
+    "current_hash": "f8c9244398467ad9caf82b9647630b049528e1fa328993cf6ddd76221b2ef367"
+  },
+  {
+    "id": 110,
+    "timestamp": "2026-02-27T04:44:43.397318+00:00",
+    "user": "dpo_admin",
+    "action": "DPIA Initiated | ID=DPIA-003 | project=CUSTOMER BEHAVIOR ANALYTICS | risk_score=50 | risk_level=Medium",
+    "metadata": {
+      "dpia_id": "DPIA-003",
+      "project": "CUSTOMER BEHAVIOR ANALYTICS",
+      "risk_score": 50,
+      "risk_level": "Medium"
+    },
+    "previous_hash": "f8c9244398467ad9caf82b9647630b049528e1fa328993cf6ddd76221b2ef367",
+    "current_hash": "d3e67233a84e0d03eec83f6f8a376ec46951cbde2045492fa3d9d6e413a98855"
+  },
+  {
+    "id": 111,
+    "timestamp": "2026-02-27T04:54:55.910189+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "d3e67233a84e0d03eec83f6f8a376ec46951cbde2045492fa3d9d6e413a98855",
+    "current_hash": "c20705198da774a716f73c1935251fbce5a93be49be5d0b31daaa2aded7d3cb8"
+  },
+  {
+    "id": 112,
+    "timestamp": "2026-02-27T04:55:06.753636+00:00",
+    "user": "officer_01",
+    "action": "Login Successful | user=officer_01 | role=Officer",
+    "metadata": {
+      "department": "Retail Banking"
+    },
+    "previous_hash": "c20705198da774a716f73c1935251fbce5a93be49be5d0b31daaa2aded7d3cb8",
+    "current_hash": "c38de36a80ca3c11515fff9ac5e37b14dc145635b65cf74d22d4f8efa027c826"
+  },
+  {
+    "id": 113,
+    "timestamp": "2026-02-27T04:57:16.374894+00:00",
+    "user": "officer_01",
+    "action": "Logout | user=officer_01 | role=Officer",
+    "metadata": {},
+    "previous_hash": "c38de36a80ca3c11515fff9ac5e37b14dc145635b65cf74d22d4f8efa027c826",
+    "current_hash": "7bc4bc2cfb6bb302b4d3c2da545b4845904fc0839a8f3af73c5c58cfff88167a"
+  },
+  {
+    "id": 114,
+    "timestamp": "2026-02-27T04:57:28.655963+00:00",
+    "user": "customer_01",
+    "action": "Login Successful | user=customer_01 | role=Customer",
+    "metadata": {
+      "department": "-"
+    },
+    "previous_hash": "7bc4bc2cfb6bb302b4d3c2da545b4845904fc0839a8f3af73c5c58cfff88167a",
+    "current_hash": "0fd9603c4a67ac7b41cb76fce4857faa66f3b72c12f5d8054d3c23f511f590e4"
+  }
+]

@@ -1,0 +1,178 @@
+[
+  {
+    "consent_id": "CON-C001-kyc-001",
+    "customer_id": "C001",
+    "purpose": "kyc",
+    "status": "Revoked",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:37:57.132575+00:00",
+    "expires_at": "2027-02-26T07:37:57.132575+00:00",
+    "revoked_at": "2026-02-26T07:42:21.992553+00:00",
+    "renewed_at": null,
+    "revoke_reason": "Revoked by officer",
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C002-credit_scoring-001",
+    "customer_id": "C002",
+    "purpose": "credit_scoring",
+    "status": "Renewed",
+    "version": "v1.1",
+    "language": "English",
+    "created_at": "2026-02-26T07:38:29.100555+00:00",
+    "expires_at": "2026-08-25T07:43:01.365696+00:00",
+    "revoked_at": null,
+    "renewed_at": "2026-02-26T07:43:01.365656+00:00",
+    "revoke_reason": null,
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C005-authentication-001",
+    "customer_id": "C005",
+    "purpose": "authentication",
+    "status": "Revoked",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:38:50.693422+00:00",
+    "expires_at": "2027-02-26T07:38:50.693422+00:00",
+    "revoked_at": "2026-02-26T07:41:47.183585+00:00",
+    "renewed_at": null,
+    "revoke_reason": "Revoked by officer",
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C009-kyc-001",
+    "customer_id": "C009",
+    "purpose": "kyc",
+    "status": "Revoked",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:39:09.536444+00:00",
+    "expires_at": "2027-02-26T07:39:09.536444+00:00",
+    "revoked_at": "2026-02-26T07:39:09.580310+00:00",
+    "renewed_at": null,
+    "revoke_reason": "Consent denied at capture",
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C111-kyc-001",
+    "customer_id": "C111",
+    "purpose": "kyc",
+    "status": "Revoked",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:39:27.925796+00:00",
+    "expires_at": "2027-02-26T07:39:27.925796+00:00",
+    "revoked_at": "2026-02-26T07:39:27.967636+00:00",
+    "renewed_at": null,
+    "revoke_reason": "Consent denied at capture",
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C200-digital_lending-001",
+    "customer_id": "C200",
+    "purpose": "digital_lending",
+    "status": "Revoked",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:39:54.895169+00:00",
+    "expires_at": "2027-02-26T07:39:54.895169+00:00",
+    "revoked_at": "2026-02-26T07:39:54.934229+00:00",
+    "renewed_at": null,
+    "revoke_reason": "Consent denied at capture",
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C225-third_party_share-001",
+    "customer_id": "C225",
+    "purpose": "third_party_share",
+    "status": "Revoked",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:40:08.960724+00:00",
+    "expires_at": "2026-04-27T07:40:08.960724+00:00",
+    "revoked_at": "2026-02-26T07:40:09.003637+00:00",
+    "renewed_at": null,
+    "revoke_reason": "Consent denied at capture",
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C106-credit_scoring-001",
+    "customer_id": "C106",
+    "purpose": "credit_scoring",
+    "status": "Active",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:40:22.107885+00:00",
+    "expires_at": "2026-08-25T07:40:22.107885+00:00",
+    "revoked_at": null,
+    "renewed_at": null,
+    "revoke_reason": null,
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C103-kyc-001",
+    "customer_id": "C103",
+    "purpose": "kyc",
+    "status": "Active",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T07:43:37.575086+00:00",
+    "expires_at": "2027-02-26T07:43:37.575086+00:00",
+    "revoked_at": null,
+    "renewed_at": null,
+    "revoke_reason": null,
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C132-kyc-001",
+    "customer_id": "C132",
+    "purpose": "kyc",
+    "status": "Active",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-26T10:56:57.588852+00:00",
+    "expires_at": "2027-02-26T10:56:57.588852+00:00",
+    "revoked_at": null,
+    "renewed_at": null,
+    "revoke_reason": null,
+    "metadata": {
+      "notes": ""
+    }
+  },
+  {
+    "consent_id": "CON-C135-kyc-001",
+    "customer_id": "C135",
+    "purpose": "kyc",
+    "status": "Revoked",
+    "version": "v1.0",
+    "language": "English",
+    "created_at": "2026-02-27T04:38:36.291077+00:00",
+    "expires_at": "2027-02-27T04:38:36.291077+00:00",
+    "revoked_at": "2026-02-27T04:40:58.398673+00:00",
+    "renewed_at": null,
+    "revoke_reason": "Revoked by officer",
+    "metadata": {
+      "notes": ""
+    }
+  }
+]

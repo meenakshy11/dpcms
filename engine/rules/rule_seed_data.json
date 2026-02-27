@@ -1,0 +1,853 @@
+[
+  {
+    "section": "Section 1",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition_key": "data_principal_location",
+    "condition_value": "India",
+    "clause_reference": "Section 1",
+    "recommended_action": "Activate DPDP compliance controls",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+
+  {
+    "section": "Section 2",
+    "trigger_event": "CONSENT_CAPTURED",
+    "condition_key": "consent_valid",
+    "condition_value": false,
+    "clause_reference": "Section 2(f)",
+    "recommended_action": "Block processing until valid consent is obtained",
+    "severity": "MANDATORY",
+    "rfp_module": "Consent"
+  },
+
+  {
+    "section": "Section 2",
+    "trigger_event": "DATA_PROCESSING_OPERATION",
+    "condition_key": "data_type",
+    "condition_value": "digital_personal_data",
+    "clause_reference": "Section 2(n)",
+    "recommended_action": "Ensure DPDP compliance enforcement",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+
+  {
+    "section": "Section 2",
+    "trigger_event": "PERSONAL_DATA_BREACH_DETECTED",
+    "condition_key": "breach_type",
+    "condition_value": "confidentiality",
+    "clause_reference": "Section 2(u)",
+    "recommended_action": "Trigger breach notification workflow",
+    "severity": "MANDATORY",
+    "rfp_module": "Incident"
+  },
+  {
+    "section": "Section 2",
+    "trigger_event": "PERSONAL_DATA_BREACH_DETECTED",
+    "condition_key": "breach_type",
+    "condition_value": "integrity",
+    "clause_reference": "Section 2(u)",
+    "recommended_action": "Trigger breach notification workflow",
+    "severity": "MANDATORY",
+    "rfp_module": "Incident"
+  },
+  {
+    "section": "Section 2",
+    "trigger_event": "PERSONAL_DATA_BREACH_DETECTED",
+    "condition_key": "breach_type",
+    "condition_value": "availability",
+    "clause_reference": "Section 2(u)",
+    "recommended_action": "Trigger breach notification workflow",
+    "severity": "MANDATORY",
+    "rfp_module": "Incident"
+  },
+
+  {
+    "section": "Section 3",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition_key": "digital_personal_data",
+    "condition_value": true,
+    "clause_reference": "Section 3(1)",
+    "recommended_action": "Evaluate DPDP applicability",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+
+  {
+    "section": "Section 3",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition_key": "exemption_flag",
+    "condition_value": "personal_domestic",
+    "clause_reference": "Section 3(2)",
+    "recommended_action": "Bypass DPDP enforcement and log exemption",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+  {
+    "section": "Section 3",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition_key": "exemption_flag",
+    "condition_value": "publicly_available",
+    "clause_reference": "Section 3(2)",
+    "recommended_action": "Bypass DPDP enforcement and log exemption",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+  {
+    "section": "Section 3",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition_key": "exemption_flag",
+    "condition_value": "legal_enforcement",
+    "clause_reference": "Section 3(2)",
+    "recommended_action": "Bypass DPDP enforcement and log exemption",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+  {
+    "section": "Section 3",
+    "trigger_event": "DATA_PROCESSING_INITIATED",
+    "condition_key": "exemption_flag",
+    "condition_value": "journalistic",
+    "clause_reference": "Section 3(2)",
+    "recommended_action": "Bypass DPDP enforcement and log exemption",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+  {
+  "section": "Section 4",
+  "trigger_event": "DATA_PROCESSING_OPERATION",
+  "condition_key": "lawful_purpose",
+  "condition_value": false,
+  "clause_reference": "Section 4(1)",
+  "recommended_action": "Block processing – unlawful purpose",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 4",
+  "trigger_event": "DATA_PROCESSING_OPERATION",
+  "condition_key": "consent_valid",
+  "condition_value": false,
+  "clause_reference": "Section 4(1)(a)",
+  "recommended_action": "Check if legitimate use applies before blocking",
+  "severity": "MANDATORY",
+  "rfp_module": "Consent"
+},
+{
+  "section": "Section 4",
+  "trigger_event": "DATA_PROCESSING_OPERATION",
+  "condition_key": "legal_ground_missing",
+  "condition_value": true,
+  "clause_reference": "Section 4(1)",
+  "recommended_action": "Block processing and log compliance violation",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 5",
+  "trigger_event": "CONSENT_REQUEST_INITIATED",
+  "condition_key": "notice_present",
+  "condition_value": "true",
+  "clause_reference": "Section 5(1)",
+  "recommended_action": "Validate notice content before consent capture",
+  "severity": "MANDATORY",
+  "rfp_module": "Consent"
+},
+{
+  "section": "Section 5",
+  "trigger_event": "CONSENT_REQUEST_INITIATED",
+  "condition_key": "language_accessibility",
+  "condition_value": "english_or_eighth_schedule",
+  "clause_reference": "Section 5(3)",
+  "recommended_action": "Ensure notice available in approved languages",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 5",
+  "trigger_event": "CONSENT_REQUEST_INITIATED",
+  "condition_key": "board_complaint_info_present",
+  "condition_value": "true",
+  "clause_reference": "Section 5(1)(iii)",
+  "recommended_action": "Include complaint mechanism to Data Protection Board",
+  "severity": "MANDATORY",
+  "rfp_module": "Rights"
+},
+
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_CAPTURED",
+  "condition_key": "coercion_detected",
+  "condition_value": true,
+  "clause_reference": "Section 6(1)(a)",
+  "recommended_action": "Reject consent",
+  "severity": "CRITICAL",
+  "rfp_module": "Consent"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_CAPTURED",
+  "condition_key": "purpose_id_missing",
+  "condition_value": true,
+  "clause_reference": "Section 6(1)(b)",
+  "recommended_action": "Reject consent",
+  "severity": "MANDATORY",
+  "rfp_module": "Consent"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_CAPTURED",
+  "condition_key": "excess_data_requested",
+  "condition_value": true,
+  "clause_reference": "Section 6(1)",
+  "recommended_action": "Limit consent to necessary data",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_CAPTURED",
+  "condition_key": "illegal_waiver_detected",
+  "condition_value": true,
+  "clause_reference": "Section 6(1)(d)",
+  "recommended_action": "Invalidate unlawful clause",
+  "severity": "CRITICAL",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_CAPTURED",
+  "condition_key": "affirmative_action_missing",
+  "condition_value": true,
+  "clause_reference": "Section 6(1)(e)",
+  "recommended_action": "Reject consent",
+  "severity": "CRITICAL",
+  "rfp_module": "Consent"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_REQUEST_INITIATED",
+  "condition_key": "language_option_missing",
+  "condition_value": true,
+  "clause_reference": "Section 6(3)",
+  "recommended_action": "Block consent request",
+  "severity": "MANDATORY",
+  "rfp_module": "Consent"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_REQUEST_INITIATED",
+  "condition_key": "dpo_contact_missing",
+  "condition_value": true,
+  "clause_reference": "Section 6(3)",
+  "recommended_action": "Block consent request",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_WITHDRAWN",
+  "condition_key": "withdrawal_asymmetric",
+  "condition_value": true,
+  "clause_reference": "Section 6(4)",
+  "recommended_action": "Flag compliance violation",
+  "severity": "MANDATORY",
+  "rfp_module": "Consent"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_WITHDRAWN",
+  "condition_key": "processor_not_notified",
+  "condition_value": true,
+  "clause_reference": "Section 6(6)",
+  "recommended_action": "Trigger processor cessation",
+  "severity": "CRITICAL",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "CONSENT_CAPTURED",
+  "condition_key": "invalid_consent_manager",
+  "condition_value": true,
+  "clause_reference": "Section 6(7–9)",
+  "recommended_action": "Reject consent",
+  "severity": "CRITICAL",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 6",
+  "trigger_event": "LEGAL_PROCEEDING_INITIATED",
+  "condition_key": "consent_proof_missing",
+  "condition_value": true,
+  "clause_reference": "Section 6(10)",
+  "recommended_action": "Raise compliance risk flag",
+  "severity": "CRITICAL",
+  "rfp_module": "Audit"
+},
+
+{
+  "section": "Section 7",
+  "trigger_event": "DATA_PROCESSING_REQUEST",
+  "condition_key": "voluntary_provision",
+  "condition_value": true,
+  "clause_reference": "Section 7(a)",
+  "recommended_action": "Allow processing for specified purpose only",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 7",
+  "trigger_event": "DATA_DISCLOSURE_REQUEST",
+  "condition_key": "legal_disclosure_required",
+  "condition_value": true,
+  "clause_reference": "Section 7(d)",
+  "recommended_action": "Allow disclosure per statutory obligation",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 7",
+  "trigger_event": "COURT_ORDER_RECEIVED",
+  "condition_key": "valid_court_order",
+  "condition_value": true,
+  "clause_reference": "Section 7(e)",
+  "recommended_action": "Process data limited to order scope",
+  "severity": "CRITICAL",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 7",
+  "trigger_event": "EMERGENCY_PROCESSING_INITIATED",
+  "condition_key": "medical_emergency",
+  "condition_value": true,
+  "clause_reference": "Section 7(f)",
+  "recommended_action": "Allow emergency processing",
+  "severity": "CRITICAL",
+  "rfp_module": "Incident"
+},
+{
+  "section": "Section 7",
+  "trigger_event": "EMPLOYMENT_PROCESSING",
+  "condition_key": "employment_context_flag",
+  "condition_value": true,
+  "clause_reference": "Section 7(i)",
+  "recommended_action": "Allow employment-related processing",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+
+{
+  "section": "Section 8",
+  "trigger_event": "PROCESSOR_ENGAGED",
+  "condition_key": "processor_contract_missing",
+  "condition_value": true,
+  "clause_reference": "Section 8(2)",
+  "recommended_action": "Block processor engagement",
+  "severity": "CRITICAL",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 8",
+  "trigger_event": "DATA_USED_FOR_DECISION",
+  "condition_key": "accuracy_not_verified",
+  "condition_value": true,
+  "clause_reference": "Section 8(3)",
+  "recommended_action": "Block decision",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 8",
+  "trigger_event": "PERSONAL_DATA_BREACH_DETECTED",
+  "condition_key": "board_notified",
+  "condition_value": false,
+  "clause_reference": "Section 8(6)",
+  "recommended_action": "Trigger Board notification",
+  "severity": "CRITICAL",
+  "rfp_module": "Incident"
+},
+{
+  "section": "Section 8",
+  "trigger_event": "CONSENT_WITHDRAWN",
+  "condition_key": "legal_retention_required",
+  "condition_value": false,
+  "clause_reference": "Section 8(7)",
+  "recommended_action": "Erase personal data",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 8",
+  "trigger_event": "INACTIVITY_THRESHOLD_REACHED",
+  "condition_key": "inactivity_confirmed",
+  "condition_value": true,
+  "clause_reference": "Section 8(8)",
+  "recommended_action": "Trigger purpose completion workflow",
+  "severity": "MANDATORY",
+  "rfp_module": "Governance"
+},
+{
+  "section": "Section 8",
+  "trigger_event": "GRIEVANCE_RECEIVED",
+  "condition_key": "grievance_mechanism_inactive",
+  "condition_value": true,
+  "clause_reference": "Section 8(10)",
+  "recommended_action": "Activate grievance workflow",
+  "severity": "CRITICAL",
+  "rfp_module": "Rights"
+}, 
+
+  {
+    "section": "Section 9",
+    "trigger_event": "AGE_DECLARED",
+    "condition_key": "child_threshold_check",
+    "condition_value": "user_age < child_threshold_age",
+    "clause_reference": "Section 9 - Bright Line Rule",
+    "recommended_action": "Classify user as CHILD and trigger parental consent workflow",
+    "severity": "CRITICAL",
+    "rfp_module": "ChildConsent"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "CHILD_USER_DETECTED",
+    "condition_key": "verifiable_parent_consent_required",
+    "condition_value": "parent_consent_verified == TRUE",
+    "clause_reference": "Section 9(1)",
+    "recommended_action": "Block processing until verified",
+    "severity": "CRITICAL",
+    "rfp_module": "ChildConsent"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "GUARDIAN_CONSENT_REQUIRED",
+    "condition_key": "lawful_guardian_verification",
+    "condition_value": "guardian_verified == TRUE",
+    "clause_reference": "Section 9(1)",
+    "recommended_action": "Block processing until guardian verification complete",
+    "severity": "CRITICAL",
+    "rfp_module": "ChildConsent"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "CHILD_PROCESSING_ATTEMPT",
+    "condition_key": "child_wellbeing_risk_check",
+    "condition_value": "risk_score <= safe_threshold",
+    "clause_reference": "Section 9(2)",
+    "recommended_action": "Block processing if likely detrimental",
+    "severity": "CRITICAL",
+    "rfp_module": "RiskEngine"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "CHILD_TRACKING_ATTEMPT",
+    "condition_key": "tracking_prohibited_for_children",
+    "condition_value": "tracking_enabled == FALSE",
+    "clause_reference": "Section 9(3)",
+    "recommended_action": "Reject tracking request",
+    "severity": "CRITICAL",
+    "rfp_module": "BehaviorControl"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "CHILD_PROFILING_ATTEMPT",
+    "condition_key": "behavioral_monitoring_prohibited",
+    "condition_value": "behavioral_monitoring == FALSE",
+    "clause_reference": "Section 9(3)",
+    "recommended_action": "Reject profiling/behavioral monitoring",
+    "severity": "CRITICAL",
+    "rfp_module": "BehaviorControl"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "CHILD_TARGETED_AD_ATTEMPT",
+    "condition_key": "targeted_ads_prohibited_for_children",
+    "condition_value": "targeted_ads == FALSE",
+    "clause_reference": "Section 9(3)",
+    "recommended_action": "Reject targeted advertisement",
+    "severity": "CRITICAL",
+    "rfp_module": "BehaviorControl"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "CHILD_EXEMPTION_EVALUATION",
+    "condition_key": "rule11_exemption_validation",
+    "condition_value": "valid_exemption_category == TRUE && exemption_conditions_met == TRUE",
+    "clause_reference": "Section 9(4)",
+    "recommended_action": "Allow exemption only if compliant",
+    "severity": "MANDATORY",
+    "rfp_module": "ExemptionGovernance"
+  },
+  {
+    "section": "Section 9",
+    "trigger_event": "AGE_DECLARED",
+    "condition_key": "age_flexibility_notification_check",
+    "condition_value": "entity_specific_notification_valid == TRUE",
+    "clause_reference": "Section 9(5)",
+    "recommended_action": "Apply notified age threshold override",
+    "severity": "MANDATORY",
+    "rfp_module": "RegulatoryConfig"
+  },
+
+
+  {
+    "section": "Section 10",
+    "trigger_event": "SDF_NOTIFICATION_RECEIVED",
+    "condition_key": "dpo_appointment_required",
+    "condition_value": "dpo_appointed == TRUE",
+    "clause_reference": "Section 10(2)(a)",
+    "recommended_action": "Block SDF certification",
+    "severity": "CRITICAL",
+    "rfp_module": "Governance"
+  },
+  {
+    "section": "Section 10",
+    "trigger_event": "DPO_APPOINTED",
+    "condition_key": "dpo_india_residency_check",
+    "condition_value": "dpo_country == INDIA",
+    "clause_reference": "Section 10(2)(a)(ii)",
+    "recommended_action": "Reject DPO appointment",
+    "severity": "CRITICAL",
+    "rfp_module": "Governance"
+  },
+  {
+    "section": "Section 10",
+    "trigger_event": "DPO_APPOINTED",
+    "condition_key": "dpo_board_reporting_check",
+    "condition_value": "dpo_reports_to == BOARD",
+    "clause_reference": "Section 10(2)(a)(iii)",
+    "recommended_action": "Require governance restructuring",
+    "severity": "MANDATORY",
+    "rfp_module": "Governance"
+  },
+  {
+    "section": "Section 10",
+    "trigger_event": "AUDITOR_APPOINTED",
+    "condition_key": "auditor_independence_check",
+    "condition_value": "conflict_of_interest == FALSE",
+    "clause_reference": "Section 10(2)(b)",
+    "recommended_action": "Reject auditor",
+    "severity": "CRITICAL",
+    "rfp_module": "Audit"
+  },
+  {
+    "section": "Section 10",
+    "trigger_event": "HIGH_RISK_PROCESSING_INITIATED",
+    "condition_key": "dpia_completion_required",
+    "condition_value": "dpia_completed == TRUE",
+    "clause_reference": "Section 10(2)(c)(i)",
+    "recommended_action": "Block processing",
+    "severity": "CRITICAL",
+    "rfp_module": "DPIA"
+  },
+  {
+    "section": "Section 10",
+    "trigger_event": "PERIODIC_AUDIT_DUE",
+    "condition_key": "annual_audit_check",
+    "condition_value": "audit_completed_within_12_months == TRUE",
+    "clause_reference": "Section 10(2)(c)(ii)",
+    "recommended_action": "Flag non-compliance",
+    "severity": "MANDATORY",
+    "rfp_module": "Audit"
+  },
+  {
+    "section": "Section 10",
+    "trigger_event": "DPO_PUBLICATION_CHECK",
+    "condition_key": "dpo_contact_published",
+    "condition_value": "public_listing == TRUE",
+    "clause_reference": "Section 10(2)(e)",
+    "recommended_action": "Require immediate publication",
+    "severity": "MANDATORY",
+    "rfp_module": "Disclosure"
+  },
+
+  
+  {
+    "section": "Section 11",
+    "trigger_event": "PROCESSING_BASIS_VALIDATED",
+    "condition_key": "consent_scope_check",
+    "condition_value": "processing_basis in ['SECTION6','SECTION7A']",
+    "clause_reference": "Section 11(1)",
+    "recommended_action": "Reject access request",
+    "severity": "CRITICAL",
+    "rfp_module": "ConsentRegistry"
+  },
+  {
+    "section": "Section 11",
+    "trigger_event": "IDENTITY_VERIFIED",
+    "condition_key": "requester_identity_check",
+    "condition_value": "identity_verified == TRUE",
+    "clause_reference": "Rule 13",
+    "recommended_action": "Block disclosure",
+    "severity": "CRITICAL",
+    "rfp_module": "RightsWorkflow"
+  },
+  {
+    "section": "Section 11",
+    "trigger_event": "ACKNOWLEDGEMENT_TIMER_CHECK",
+    "condition_key": "ack_within_7_days",
+    "condition_value": "days_since_request <= 7",
+    "clause_reference": "Rule 13",
+    "recommended_action": "Log SLA violation",
+    "severity": "MANDATORY",
+    "rfp_module": "SLAEngine"
+  },
+  {
+    "section": "Section 11",
+    "trigger_event": "RESPONSE_TIMER_CHECK",
+    "condition_key": "response_within_limit",
+    "condition_value": "response_days <= 30",
+    "clause_reference": "Rule 13",
+    "recommended_action": "Log non-compliance",
+    "severity": "CRITICAL",
+    "rfp_module": "SLAEngine"
+  },
+  {
+    "section": "Section 11",
+    "trigger_event": "LAW_ENFORCEMENT_REQUEST_DETECTED",
+    "condition_key": "written_authorized_request",
+    "condition_value": "authorized_entity == TRUE AND written_request_exists == TRUE AND criminal_investigation == TRUE",
+    "clause_reference": "Section 11(2)",
+    "recommended_action": "Redact sharing disclosure",
+    "severity": "CRITICAL",
+    "rfp_module": "LegalFilter"
+  },
+  {
+    "section": "Section 11",
+    "trigger_event": "FEE_CALCULATION_EVENT",
+    "condition_key": "first_request_free_check",
+    "condition_value": "requests_last_12_months == 0",
+    "clause_reference": "Rule 13",
+    "recommended_action": "Set fee to zero",
+    "severity": "MANDATORY",
+    "rfp_module": "RightsWorkflow"
+  },
+  {
+    "section": "Section 11",
+    "trigger_event": "DISCLOSURE_GENERATED",
+    "condition_key": "structured_plain_language_check",
+    "condition_value": "plain_language == TRUE AND structured_format == TRUE",
+    "clause_reference": "Section 11(1)(a)",
+    "recommended_action": "Reformat response",
+    "severity": "MANDATORY",
+    "rfp_module": "DataInventory"
+  },
+
+  
+  {
+    "section": "Section 12",
+    "trigger_event": "PROCESSING_BASIS_VALIDATED",
+    "condition_key": "consent_scope_check",
+    "condition_value": "processing_basis in ['SECTION6','SECTION7A']",
+    "clause_reference": "Section 12(1)",
+    "recommended_action": "Reject request",
+    "severity": "CRITICAL",
+    "rfp_module": "ConsentRegistry"
+  },
+  {
+    "section": "Section 12",
+    "trigger_event": "EVIDENCE_VALIDATED",
+    "condition_key": "evidence_check",
+    "condition_value": "evidence_valid == TRUE",
+    "clause_reference": "Section 12(2)(a)",
+    "recommended_action": "Deny correction",
+    "severity": "MANDATORY",
+    "rfp_module": "DataIntegrity"
+  },
+  {
+    "section": "Section 12",
+    "trigger_event": "DOWNSTREAM_NOTIFICATION_SENT",
+    "condition_key": "notification_check",
+    "condition_value": "all_downstream_entities_notified == TRUE",
+    "clause_reference": "Section 12(3)",
+    "recommended_action": "Log violation",
+    "severity": "CRITICAL",
+    "rfp_module": "SharingRegistry"
+  },
+  {
+    "section": "Section 12",
+    "trigger_event": "RETENTION_CHECK",
+    "condition_key": "legal_retention_validation",
+    "condition_value": "retention_required == TRUE",
+    "clause_reference": "Section 12(5)(b)",
+    "recommended_action": "Allow partial erasure only",
+    "severity": "CRITICAL",
+    "rfp_module": "RetentionEngine"
+  },
+  {
+    "section": "Section 12",
+    "trigger_event": "PROPORTIONALITY_CHECK",
+    "condition_key": "disproportionate_effort",
+    "condition_value": "effort_level > threshold",
+    "clause_reference": "Section 12(5)(a)",
+    "recommended_action": "Escalate to legal review",
+    "severity": "MANDATORY",
+    "rfp_module": "ProportionalityEngine"
+  },
+  {
+    "section": "Section 12",
+    "trigger_event": "DELETION_EXECUTED",
+    "condition_key": "hard_delete_validation",
+    "condition_value": "record_exists == FALSE",
+    "clause_reference": "Section 12(4)",
+    "recommended_action": "Re-run deletion",
+    "severity": "CRITICAL",
+    "rfp_module": "DeletionEngine"
+  },
+
+  
+  {
+    "section": "Section 13",
+    "trigger_event": "GRIEVANCE_SUBMITTED",
+    "condition_key": "identity_verified",
+    "condition_value": "identity_verified == TRUE",
+    "clause_reference": "Section 13(1)",
+    "recommended_action": "Reject grievance",
+    "severity": "CRITICAL",
+    "rfp_module": "GrievanceEngine"
+  },
+  {
+    "section": "Section 13",
+    "trigger_event": "ACKNOWLEDGEMENT_TIMER_CHECK",
+    "condition_key": "ack_within_7_days",
+    "condition_value": "days_since_submission <= 7",
+    "clause_reference": "Rule 13",
+    "recommended_action": "Log SLA breach",
+    "severity": "MANDATORY",
+    "rfp_module": "SLAEngine"
+  },
+  {
+    "section": "Section 13",
+    "trigger_event": "RESPONSE_TIMER_CHECK",
+    "condition_key": "response_within_30_days",
+    "condition_value": "days_since_submission <= 30",
+    "clause_reference": "Section 13(2)",
+    "recommended_action": "Enable board escalation",
+    "severity": "CRITICAL",
+    "rfp_module": "EscalationControl"
+  },
+  {
+    "section": "Section 13",
+    "trigger_event": "ESCALATION_REQUESTED",
+    "condition_key": "internal_remedy_exhausted",
+    "condition_value": "grievance_previously_filed == TRUE AND (no_response == TRUE OR dissatisfied == TRUE)",
+    "clause_reference": "Section 13(3)",
+    "recommended_action": "Reject escalation",
+    "severity": "CRITICAL",
+    "rfp_module": "EscalationControl"
+  },
+  {
+    "section": "Section 13",
+    "trigger_event": "RETALIATION_DETECTED",
+    "condition_key": "adverse_action_after_grievance",
+    "condition_value": "account_status_changed == TRUE",
+    "clause_reference": "Principle of Non-Retaliation",
+    "recommended_action": "Escalate to compliance",
+    "severity": "CRITICAL",
+    "rfp_module": "MonitoringEngine"
+  },
+
+  
+  {
+    "section": "Section 14",
+    "trigger_event": "NOMINATION_REGISTERED",
+    "condition_key": "nominee_adult_check",
+    "condition_value": "nominee_age >= 18",
+    "clause_reference": "Section 14(1)",
+    "recommended_action": "Reject nomination",
+    "severity": "CRITICAL",
+    "rfp_module": "NominationRegistry"
+  },
+  {
+    "section": "Section 14",
+    "trigger_event": "DEATH_CERTIFICATE_SUBMITTED",
+    "condition_key": "death_certificate_valid",
+    "condition_value": "certificate_verified == TRUE",
+    "clause_reference": "Section 14(1)",
+    "recommended_action": "Reject activation",
+    "severity": "CRITICAL",
+    "rfp_module": "DelegationEngine"
+  },
+  {
+    "section": "Section 14",
+    "trigger_event": "INCAPACITY_EVIDENCE_SUBMITTED",
+    "condition_key": "incapacity_validation",
+    "condition_value": "evidence_type in ['medical_certificate','psychiatric_evaluation','court_order'] AND permanent_incapacity == TRUE",
+    "clause_reference": "Section 14(2)",
+    "recommended_action": "Reject activation",
+    "severity": "CRITICAL",
+    "rfp_module": "CapacityValidator"
+  },
+  {
+    "section": "Section 14",
+    "trigger_event": "NOMINEE_REQUEST_INITIATED",
+    "condition_key": "activation_flag_check",
+    "condition_value": "nominee_authority_flag == TRUE",
+    "clause_reference": "Section 14(1)",
+    "recommended_action": "Block nominee action",
+    "severity": "CRITICAL",
+    "rfp_module": "DelegationEngine"
+  },
+  {
+    "section": "Section 14",
+    "trigger_event": "NOMINEE_ACTION",
+    "condition_key": "prohibited_action_check",
+    "condition_value": "action_type in ['NEW_CONSENT','SUCCESSOR_NOMINATION','DATA_COMMERCIAL_USE']",
+    "clause_reference": "Fiduciary Principle",
+    "recommended_action": "Block action and log violation",
+    "severity": "CRITICAL",
+    "rfp_module": "RightsEngine"
+  },
+
+  
+  {
+    "section": "Section 15",
+    "trigger_event": "ERASURE_REQUEST_SUBMITTED",
+    "condition_key": "legal_conflict_check",
+    "condition_value": "litigation_hold == TRUE OR investigation_flag == TRUE OR statutory_retention_required == TRUE",
+    "clause_reference": "Section 15(a)",
+    "recommended_action": "Deny erasure and log legal override",
+    "severity": "CRITICAL",
+    "rfp_module": "LegalConflictEngine"
+  },
+  {
+    "section": "Section 15",
+    "trigger_event": "GRIEVANCE_SUBMITTED",
+    "condition_key": "frivolous_pattern_detection",
+    "condition_value": "duplicate_complaint_count > threshold AND no_new_evidence == TRUE",
+    "clause_reference": "Section 15(b)",
+    "recommended_action": "Flag for abuse review",
+    "severity": "HIGH",
+    "rfp_module": "GrievanceAbuseEngine"
+  },
+  {
+    "section": "Section 15",
+    "trigger_event": "IDENTITY_SUBMISSION",
+    "condition_key": "identity_mismatch_check",
+    "condition_value": "document_verified == FALSE",
+    "clause_reference": "Section 15(c)",
+    "recommended_action": "Block action and raise impersonation alert",
+    "severity": "CRITICAL",
+    "rfp_module": "IdentityValidationLayer"
+  },
+  {
+    "section": "Section 15",
+    "trigger_event": "CORRECTION_REQUEST_SUBMITTED",
+    "condition_key": "authenticity_verification",
+    "condition_value": "evidence_verified == FALSE",
+    "clause_reference": "Section 15(e)",
+    "recommended_action": "Reject correction request",
+    "severity": "HIGH",
+    "rfp_module": "EvidenceValidationEngine"
+  },
+  {
+    "section": "Section 15",
+    "trigger_event": "DATA_DISCLOSURE_SUBMISSION",
+    "condition_key": "mandatory_field_missing",
+    "condition_value": "required_disclosure_missing == TRUE",
+    "clause_reference": "Section 15(d)",
+    "recommended_action": "Reject submission and notify user",
+    "severity": "HIGH",
+    "rfp_module": "DisclosureValidationEngine"
+  }
+]
