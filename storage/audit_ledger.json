@@ -8,7 +8,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
-    "current_hash": "f02c0b6ebf994dd6c8a819e4138f5ff8f28acdfb1c3daf21a76a349f7b30d0ce"
+    "hash": "f02c0b6ebf994dd6c8a819e4138f5ff8f28acdfb1c3daf21a76a349f7b30d0ce"
   },
   {
     "id": 2,
@@ -22,7 +22,7 @@
       "valid": false
     },
     "previous_hash": "f02c0b6ebf994dd6c8a819e4138f5ff8f28acdfb1c3daf21a76a349f7b30d0ce",
-    "current_hash": "648b95d381759642e06e7f56cbdae41ec639e7fb1c897e674a797ad106bffad1"
+    "hash": "648b95d381759642e06e7f56cbdae41ec639e7fb1c897e674a797ad106bffad1"
   },
   {
     "id": 3,
@@ -36,7 +36,7 @@
       "valid": false
     },
     "previous_hash": "648b95d381759642e06e7f56cbdae41ec639e7fb1c897e674a797ad106bffad1",
-    "current_hash": "88ef29541c317c0e091965801c6b29b737f205ad01d92e66b4c6b09559f61801"
+    "hash": "88ef29541c317c0e091965801c6b29b737f205ad01d92e66b4c6b09559f61801"
   },
   {
     "id": 4,
@@ -50,7 +50,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "88ef29541c317c0e091965801c6b29b737f205ad01d92e66b4c6b09559f61801",
-    "current_hash": "d25d7195d8679f6b4e0ccd94f989620fc4bde4da9d5af65df4c047da422f1ee3"
+    "hash": "d25d7195d8679f6b4e0ccd94f989620fc4bde4da9d5af65df4c047da422f1ee3"
   },
   {
     "id": 5,
@@ -63,7 +63,7 @@
       "purpose": "kyc"
     },
     "previous_hash": "d25d7195d8679f6b4e0ccd94f989620fc4bde4da9d5af65df4c047da422f1ee3",
-    "current_hash": "7458733c70f2210847b8cc29dfef7bb70a0d30278598d7fedaf673dffce539f0"
+    "hash": "7458733c70f2210847b8cc29dfef7bb70a0d30278598d7fedaf673dffce539f0"
   },
   {
     "id": 6,
@@ -80,7 +80,7 @@
       "reason": null
     },
     "previous_hash": "7458733c70f2210847b8cc29dfef7bb70a0d30278598d7fedaf673dffce539f0",
-    "current_hash": "7f74dd5aa9ad56e7d077233ebd3b68b74153522351393f9853274d73ed837847"
+    "hash": "7f74dd5aa9ad56e7d077233ebd3b68b74153522351393f9853274d73ed837847"
   },
   {
     "id": 7,
@@ -94,7 +94,7 @@
       "valid": false
     },
     "previous_hash": "7f74dd5aa9ad56e7d077233ebd3b68b74153522351393f9853274d73ed837847",
-    "current_hash": "3ac2de6dbd3bb75c2bccebe59d6101c974b851e8cae98c89fdec264459272e8f"
+    "hash": "3ac2de6dbd3bb75c2bccebe59d6101c974b851e8cae98c89fdec264459272e8f"
   },
   {
     "id": 8,
@@ -108,7 +108,7 @@
       "valid": false
     },
     "previous_hash": "3ac2de6dbd3bb75c2bccebe59d6101c974b851e8cae98c89fdec264459272e8f",
-    "current_hash": "250733529b752555a97208954935370da03dd7ec3843e9d19cd83bd5626af665"
+    "hash": "250733529b752555a97208954935370da03dd7ec3843e9d19cd83bd5626af665"
   },
   {
     "id": 9,
@@ -122,7 +122,7 @@
       "valid": false
     },
     "previous_hash": "250733529b752555a97208954935370da03dd7ec3843e9d19cd83bd5626af665",
-    "current_hash": "55fbc38fdea09b16df30ff6617c17dec90fb443df63c8e069d6f0b740208d1fe"
+    "hash": "55fbc38fdea09b16df30ff6617c17dec90fb443df63c8e069d6f0b740208d1fe"
   },
   {
     "id": 10,
@@ -136,7 +136,7 @@
       "valid": false
     },
     "previous_hash": "55fbc38fdea09b16df30ff6617c17dec90fb443df63c8e069d6f0b740208d1fe",
-    "current_hash": "ed3a6a6830cb4db9239b3edff95d30b8f1c8ff6731baa535b63adddc58ee790a"
+    "hash": "ed3a6a6830cb4db9239b3edff95d30b8f1c8ff6731baa535b63adddc58ee790a"
   },
   {
     "id": 11,
@@ -150,7 +150,7 @@
       "valid": false
     },
     "previous_hash": "ed3a6a6830cb4db9239b3edff95d30b8f1c8ff6731baa535b63adddc58ee790a",
-    "current_hash": "f1036ff6d691d9597d2a094bbf76c2a8d6b91fbf75774c872d0a5db84327c445"
+    "hash": "f1036ff6d691d9597d2a094bbf76c2a8d6b91fbf75774c872d0a5db84327c445"
   },
   {
     "id": 12,
@@ -164,7 +164,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "f1036ff6d691d9597d2a094bbf76c2a8d6b91fbf75774c872d0a5db84327c445",
-    "current_hash": "084361878b29073f5f6af0880c77858cf2fcbffa815faec39787ea7266295a75"
+    "hash": "084361878b29073f5f6af0880c77858cf2fcbffa815faec39787ea7266295a75"
   },
   {
     "id": 13,
@@ -177,7 +177,7 @@
       "purpose": "credit_scoring"
     },
     "previous_hash": "084361878b29073f5f6af0880c77858cf2fcbffa815faec39787ea7266295a75",
-    "current_hash": "bc6fe797ec7e2add07e327ecdfd546d0057f8c0f166d2e599687f5ef8f2a20f2"
+    "hash": "bc6fe797ec7e2add07e327ecdfd546d0057f8c0f166d2e599687f5ef8f2a20f2"
   },
   {
     "id": 14,
@@ -194,7 +194,7 @@
       "reason": null
     },
     "previous_hash": "bc6fe797ec7e2add07e327ecdfd546d0057f8c0f166d2e599687f5ef8f2a20f2",
-    "current_hash": "8b80b31aa184582fbdb467db8f33a371955f73deb2991a5330beb412ee6225e4"
+    "hash": "8b80b31aa184582fbdb467db8f33a371955f73deb2991a5330beb412ee6225e4"
   },
   {
     "id": 15,
@@ -208,7 +208,7 @@
       "valid": false
     },
     "previous_hash": "8b80b31aa184582fbdb467db8f33a371955f73deb2991a5330beb412ee6225e4",
-    "current_hash": "cf5ad28b92ddc4b84f3a8a76aef9f2c0ab85e9accd821c796978b7d5506944a2"
+    "hash": "cf5ad28b92ddc4b84f3a8a76aef9f2c0ab85e9accd821c796978b7d5506944a2"
   },
   {
     "id": 16,
@@ -222,7 +222,7 @@
       "valid": false
     },
     "previous_hash": "cf5ad28b92ddc4b84f3a8a76aef9f2c0ab85e9accd821c796978b7d5506944a2",
-    "current_hash": "15cd38e226ee7f70163fc2ceffa7384fefa298c962260abf71522761d0e0145d"
+    "hash": "15cd38e226ee7f70163fc2ceffa7384fefa298c962260abf71522761d0e0145d"
   },
   {
     "id": 17,
@@ -236,7 +236,7 @@
       "valid": false
     },
     "previous_hash": "15cd38e226ee7f70163fc2ceffa7384fefa298c962260abf71522761d0e0145d",
-    "current_hash": "0aeda0c05e5078488c35b9babff5b4f48b64eb6eb937664c7525f0bbf84ca1d7"
+    "hash": "0aeda0c05e5078488c35b9babff5b4f48b64eb6eb937664c7525f0bbf84ca1d7"
   },
   {
     "id": 18,
@@ -250,7 +250,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "0aeda0c05e5078488c35b9babff5b4f48b64eb6eb937664c7525f0bbf84ca1d7",
-    "current_hash": "b1a5165020522abeaae5e58d3ed1e85ae3d7b16377b5bec0f5d31e255556315d"
+    "hash": "b1a5165020522abeaae5e58d3ed1e85ae3d7b16377b5bec0f5d31e255556315d"
   },
   {
     "id": 19,
@@ -263,7 +263,7 @@
       "purpose": "authentication"
     },
     "previous_hash": "b1a5165020522abeaae5e58d3ed1e85ae3d7b16377b5bec0f5d31e255556315d",
-    "current_hash": "7a9951dda00aa28c08f1bf05e5e7b079e529ef095526477a4a28618a1f6880c1"
+    "hash": "7a9951dda00aa28c08f1bf05e5e7b079e529ef095526477a4a28618a1f6880c1"
   },
   {
     "id": 20,
@@ -280,7 +280,7 @@
       "reason": null
     },
     "previous_hash": "7a9951dda00aa28c08f1bf05e5e7b079e529ef095526477a4a28618a1f6880c1",
-    "current_hash": "061ee6f2a4b77e862e252be9e6876c166de54c4288c3fdd66cd81844b2c67e64"
+    "hash": "061ee6f2a4b77e862e252be9e6876c166de54c4288c3fdd66cd81844b2c67e64"
   },
   {
     "id": 21,
@@ -294,7 +294,7 @@
       "valid": false
     },
     "previous_hash": "061ee6f2a4b77e862e252be9e6876c166de54c4288c3fdd66cd81844b2c67e64",
-    "current_hash": "6757198743f264ddaa8b4667efded826ec1422326de6a2ff53b6f4c459ea83ee"
+    "hash": "6757198743f264ddaa8b4667efded826ec1422326de6a2ff53b6f4c459ea83ee"
   },
   {
     "id": 22,
@@ -308,7 +308,7 @@
       "valid": false
     },
     "previous_hash": "6757198743f264ddaa8b4667efded826ec1422326de6a2ff53b6f4c459ea83ee",
-    "current_hash": "409e2e0a5614898bd05ebc6cdd0db702361c7efbc3cfc610ed0f27c17f06b889"
+    "hash": "409e2e0a5614898bd05ebc6cdd0db702361c7efbc3cfc610ed0f27c17f06b889"
   },
   {
     "id": 23,
@@ -322,7 +322,7 @@
       "valid": false
     },
     "previous_hash": "409e2e0a5614898bd05ebc6cdd0db702361c7efbc3cfc610ed0f27c17f06b889",
-    "current_hash": "1327c97a0173d3500e0a498e241d128c97a5f62fd1b4fe5e52019006c0bc6ac1"
+    "hash": "1327c97a0173d3500e0a498e241d128c97a5f62fd1b4fe5e52019006c0bc6ac1"
   },
   {
     "id": 24,
@@ -336,7 +336,7 @@
       "valid": false
     },
     "previous_hash": "1327c97a0173d3500e0a498e241d128c97a5f62fd1b4fe5e52019006c0bc6ac1",
-    "current_hash": "63d4477d1a0b0595fb3e51b0d6ab1d6fc0995c3aa7e6605511a111e10da21dc5"
+    "hash": "63d4477d1a0b0595fb3e51b0d6ab1d6fc0995c3aa7e6605511a111e10da21dc5"
   },
   {
     "id": 25,
@@ -350,7 +350,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "63d4477d1a0b0595fb3e51b0d6ab1d6fc0995c3aa7e6605511a111e10da21dc5",
-    "current_hash": "0c3609a6108990714988880d21b98592024c11a6f8dd5f629b591fa31119d155"
+    "hash": "0c3609a6108990714988880d21b98592024c11a6f8dd5f629b591fa31119d155"
   },
   {
     "id": 26,
@@ -363,7 +363,7 @@
       "purpose": "kyc"
     },
     "previous_hash": "0c3609a6108990714988880d21b98592024c11a6f8dd5f629b591fa31119d155",
-    "current_hash": "25d44938f9d7ed25c13730877ea3450c81a3be06ab2eef870e55248906f0e024"
+    "hash": "25d44938f9d7ed25c13730877ea3450c81a3be06ab2eef870e55248906f0e024"
   },
   {
     "id": 27,
@@ -380,7 +380,7 @@
       "reason": "Consent denied at capture"
     },
     "previous_hash": "25d44938f9d7ed25c13730877ea3450c81a3be06ab2eef870e55248906f0e024",
-    "current_hash": "fdd133509bb7bab32f2eaad13615ed9f34fccb7096d57b1b444c01281d5554cf"
+    "hash": "fdd133509bb7bab32f2eaad13615ed9f34fccb7096d57b1b444c01281d5554cf"
   },
   {
     "id": 28,
@@ -394,7 +394,7 @@
       "valid": false
     },
     "previous_hash": "fdd133509bb7bab32f2eaad13615ed9f34fccb7096d57b1b444c01281d5554cf",
-    "current_hash": "252a47ebdea6a78287c9df5b4c1e71107da763844f353df6ae5f3ea69c3af1f5"
+    "hash": "252a47ebdea6a78287c9df5b4c1e71107da763844f353df6ae5f3ea69c3af1f5"
   },
   {
     "id": 29,
@@ -408,7 +408,7 @@
       "valid": false
     },
     "previous_hash": "252a47ebdea6a78287c9df5b4c1e71107da763844f353df6ae5f3ea69c3af1f5",
-    "current_hash": "5dffbf3c72c338b6cb7b16990c95639be0b74c0ca72efc573f4aa044b55a151c"
+    "hash": "5dffbf3c72c338b6cb7b16990c95639be0b74c0ca72efc573f4aa044b55a151c"
   },
   {
     "id": 30,
@@ -422,7 +422,7 @@
       "valid": false
     },
     "previous_hash": "5dffbf3c72c338b6cb7b16990c95639be0b74c0ca72efc573f4aa044b55a151c",
-    "current_hash": "763cb068543bed1af9f74a97fffa77ab2b6b3e3169a0c62eaffc089fbadb9c92"
+    "hash": "763cb068543bed1af9f74a97fffa77ab2b6b3e3169a0c62eaffc089fbadb9c92"
   },
   {
     "id": 31,
@@ -436,7 +436,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "763cb068543bed1af9f74a97fffa77ab2b6b3e3169a0c62eaffc089fbadb9c92",
-    "current_hash": "1a2de9cefc16b35fa62d49fbf4122116711f8a336620687be35d3c9999562c70"
+    "hash": "1a2de9cefc16b35fa62d49fbf4122116711f8a336620687be35d3c9999562c70"
   },
   {
     "id": 32,
@@ -449,7 +449,7 @@
       "purpose": "kyc"
     },
     "previous_hash": "1a2de9cefc16b35fa62d49fbf4122116711f8a336620687be35d3c9999562c70",
-    "current_hash": "ab75692a559d8fe24169f8e68ee2595071dd1e842e620163598dbd086c0d1301"
+    "hash": "ab75692a559d8fe24169f8e68ee2595071dd1e842e620163598dbd086c0d1301"
   },
   {
     "id": 33,
@@ -466,7 +466,7 @@
       "reason": "Consent denied at capture"
     },
     "previous_hash": "ab75692a559d8fe24169f8e68ee2595071dd1e842e620163598dbd086c0d1301",
-    "current_hash": "3308fd8153f58c207db892b3f679529431d9b13dbfe7c0882bcb07291b580e28"
+    "hash": "3308fd8153f58c207db892b3f679529431d9b13dbfe7c0882bcb07291b580e28"
   },
   {
     "id": 34,
@@ -480,7 +480,7 @@
       "valid": false
     },
     "previous_hash": "3308fd8153f58c207db892b3f679529431d9b13dbfe7c0882bcb07291b580e28",
-    "current_hash": "e5de6bb9519d2ef376aa1823484e3fc403768f030e8f31dbdd2eb9940e0e9f8d"
+    "hash": "e5de6bb9519d2ef376aa1823484e3fc403768f030e8f31dbdd2eb9940e0e9f8d"
   },
   {
     "id": 35,
@@ -494,7 +494,7 @@
       "valid": false
     },
     "previous_hash": "e5de6bb9519d2ef376aa1823484e3fc403768f030e8f31dbdd2eb9940e0e9f8d",
-    "current_hash": "ae36cc561b2de1bbad8ecd0ee9f3b2c952f95cf81177e9d1ae8a66151f3039ec"
+    "hash": "ae36cc561b2de1bbad8ecd0ee9f3b2c952f95cf81177e9d1ae8a66151f3039ec"
   },
   {
     "id": 36,
@@ -508,7 +508,7 @@
       "valid": false
     },
     "previous_hash": "ae36cc561b2de1bbad8ecd0ee9f3b2c952f95cf81177e9d1ae8a66151f3039ec",
-    "current_hash": "9dee941223ea9f95249737cf9fb4c98239f43097a21744f160e28ee466cb8db7"
+    "hash": "9dee941223ea9f95249737cf9fb4c98239f43097a21744f160e28ee466cb8db7"
   },
   {
     "id": 37,
@@ -522,7 +522,7 @@
       "valid": false
     },
     "previous_hash": "9dee941223ea9f95249737cf9fb4c98239f43097a21744f160e28ee466cb8db7",
-    "current_hash": "6be8725b43bc7870fe8972748b1a3b1caa3b1c2e2f4b9aa0a6ae424e62bb7c2a"
+    "hash": "6be8725b43bc7870fe8972748b1a3b1caa3b1c2e2f4b9aa0a6ae424e62bb7c2a"
   },
   {
     "id": 38,
@@ -536,7 +536,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "6be8725b43bc7870fe8972748b1a3b1caa3b1c2e2f4b9aa0a6ae424e62bb7c2a",
-    "current_hash": "6e53b5652733fc5248e0a8bd688fe3a40a76e3bbe1ac248a8db051b30676deae"
+    "hash": "6e53b5652733fc5248e0a8bd688fe3a40a76e3bbe1ac248a8db051b30676deae"
   },
   {
     "id": 39,
@@ -549,7 +549,7 @@
       "purpose": "digital_lending"
     },
     "previous_hash": "6e53b5652733fc5248e0a8bd688fe3a40a76e3bbe1ac248a8db051b30676deae",
-    "current_hash": "cbc1de6814ff9aaa53fb04ffa046eb371c61e73051d8735b28bb19f9c3c07c02"
+    "hash": "cbc1de6814ff9aaa53fb04ffa046eb371c61e73051d8735b28bb19f9c3c07c02"
   },
   {
     "id": 40,
@@ -566,7 +566,7 @@
       "reason": "Consent denied at capture"
     },
     "previous_hash": "cbc1de6814ff9aaa53fb04ffa046eb371c61e73051d8735b28bb19f9c3c07c02",
-    "current_hash": "fdc8b133b8b9cde2770b5ada87afd1f8bba083e50a4eb137cc745a34b5135f0e"
+    "hash": "fdc8b133b8b9cde2770b5ada87afd1f8bba083e50a4eb137cc745a34b5135f0e"
   },
   {
     "id": 41,
@@ -580,7 +580,7 @@
       "valid": false
     },
     "previous_hash": "fdc8b133b8b9cde2770b5ada87afd1f8bba083e50a4eb137cc745a34b5135f0e",
-    "current_hash": "2040fd36fcb3992fbd5a71075df62de5f134625b6c17425ff5f2198ca3e6a393"
+    "hash": "2040fd36fcb3992fbd5a71075df62de5f134625b6c17425ff5f2198ca3e6a393"
   },
   {
     "id": 42,
@@ -594,7 +594,7 @@
       "valid": false
     },
     "previous_hash": "2040fd36fcb3992fbd5a71075df62de5f134625b6c17425ff5f2198ca3e6a393",
-    "current_hash": "d73b4bb17cd75af378a481c169d4ff9bf86ebb02284405fe7b4854a850aab2e9"
+    "hash": "d73b4bb17cd75af378a481c169d4ff9bf86ebb02284405fe7b4854a850aab2e9"
   },
   {
     "id": 43,
@@ -608,7 +608,7 @@
       "valid": false
     },
     "previous_hash": "d73b4bb17cd75af378a481c169d4ff9bf86ebb02284405fe7b4854a850aab2e9",
-    "current_hash": "8b487684f03655dfdec560d36998ea83a0579ccde2a67ea8460bd406aa90d861"
+    "hash": "8b487684f03655dfdec560d36998ea83a0579ccde2a67ea8460bd406aa90d861"
   },
   {
     "id": 44,
@@ -622,7 +622,7 @@
       "valid": false
     },
     "previous_hash": "8b487684f03655dfdec560d36998ea83a0579ccde2a67ea8460bd406aa90d861",
-    "current_hash": "aab220ebc0582af24c611b097e95a41e6efa13701d069f4500a557fc1179bae3"
+    "hash": "aab220ebc0582af24c611b097e95a41e6efa13701d069f4500a557fc1179bae3"
   },
   {
     "id": 45,
@@ -636,7 +636,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "aab220ebc0582af24c611b097e95a41e6efa13701d069f4500a557fc1179bae3",
-    "current_hash": "6ee44337b3abc1267ed061defcf5615dbec0071acc0f23859113db608c60922a"
+    "hash": "6ee44337b3abc1267ed061defcf5615dbec0071acc0f23859113db608c60922a"
   },
   {
     "id": 46,
@@ -649,7 +649,7 @@
       "purpose": "third_party_share"
     },
     "previous_hash": "6ee44337b3abc1267ed061defcf5615dbec0071acc0f23859113db608c60922a",
-    "current_hash": "f6c48e68cba0d7a4c9ae0262faea203d69e066a50b5ccba914becbecb49fe862"
+    "hash": "f6c48e68cba0d7a4c9ae0262faea203d69e066a50b5ccba914becbecb49fe862"
   },
   {
     "id": 47,
@@ -666,7 +666,7 @@
       "reason": "Consent denied at capture"
     },
     "previous_hash": "f6c48e68cba0d7a4c9ae0262faea203d69e066a50b5ccba914becbecb49fe862",
-    "current_hash": "64dc1a378c07543355f7933b6d62ec3bc0e96ac3ae5e5f8ef4ad175392d66381"
+    "hash": "64dc1a378c07543355f7933b6d62ec3bc0e96ac3ae5e5f8ef4ad175392d66381"
   },
   {
     "id": 48,
@@ -680,7 +680,7 @@
       "valid": false
     },
     "previous_hash": "64dc1a378c07543355f7933b6d62ec3bc0e96ac3ae5e5f8ef4ad175392d66381",
-    "current_hash": "1fa56cd7c2cdea1746ffc05278efd9a472ebe3c3d51d8f63f39fe1a13b8e8c69"
+    "hash": "1fa56cd7c2cdea1746ffc05278efd9a472ebe3c3d51d8f63f39fe1a13b8e8c69"
   },
   {
     "id": 49,
@@ -694,7 +694,7 @@
       "valid": false
     },
     "previous_hash": "1fa56cd7c2cdea1746ffc05278efd9a472ebe3c3d51d8f63f39fe1a13b8e8c69",
-    "current_hash": "08d94eb2ab47bcc0079698b99f4fa549cd60a3bcbc17e48f48a875da24ba0c40"
+    "hash": "08d94eb2ab47bcc0079698b99f4fa549cd60a3bcbc17e48f48a875da24ba0c40"
   },
   {
     "id": 50,
@@ -708,7 +708,7 @@
       "valid": false
     },
     "previous_hash": "08d94eb2ab47bcc0079698b99f4fa549cd60a3bcbc17e48f48a875da24ba0c40",
-    "current_hash": "ab3c8f2f64a5602e1b003d907c20827bacdef83cf1d13088ee0c9e11085f6116"
+    "hash": "ab3c8f2f64a5602e1b003d907c20827bacdef83cf1d13088ee0c9e11085f6116"
   },
   {
     "id": 51,
@@ -722,7 +722,7 @@
       "valid": false
     },
     "previous_hash": "ab3c8f2f64a5602e1b003d907c20827bacdef83cf1d13088ee0c9e11085f6116",
-    "current_hash": "c7505d56f9e665f1bc7f4634744b1cf7b747cee4ddf5d2d625e9d430eeafb1f9"
+    "hash": "c7505d56f9e665f1bc7f4634744b1cf7b747cee4ddf5d2d625e9d430eeafb1f9"
   },
   {
     "id": 52,
@@ -736,7 +736,7 @@
       "valid": false
     },
     "previous_hash": "c7505d56f9e665f1bc7f4634744b1cf7b747cee4ddf5d2d625e9d430eeafb1f9",
-    "current_hash": "1ac7731086b71647e600e7192e1e06e6f483ebbbcc66dd048f3fd115519a1017"
+    "hash": "1ac7731086b71647e600e7192e1e06e6f483ebbbcc66dd048f3fd115519a1017"
   },
   {
     "id": 53,
@@ -750,7 +750,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "1ac7731086b71647e600e7192e1e06e6f483ebbbcc66dd048f3fd115519a1017",
-    "current_hash": "6952ab8967a45d163874c4f6aab0a94dbe2b8e3122e2833bbd8273208385cb9f"
+    "hash": "6952ab8967a45d163874c4f6aab0a94dbe2b8e3122e2833bbd8273208385cb9f"
   },
   {
     "id": 54,
@@ -763,7 +763,7 @@
       "purpose": "credit_scoring"
     },
     "previous_hash": "6952ab8967a45d163874c4f6aab0a94dbe2b8e3122e2833bbd8273208385cb9f",
-    "current_hash": "8c55687abebb188370044991f8006d1bacaa893cb2ad5a0671a0057899b1c421"
+    "hash": "8c55687abebb188370044991f8006d1bacaa893cb2ad5a0671a0057899b1c421"
   },
   {
     "id": 55,
@@ -780,7 +780,7 @@
       "reason": null
     },
     "previous_hash": "8c55687abebb188370044991f8006d1bacaa893cb2ad5a0671a0057899b1c421",
-    "current_hash": "3ed651ea891522760e326899e29f2c5bf9cbed4128c467fc1ec928a1bbe36e40"
+    "hash": "3ed651ea891522760e326899e29f2c5bf9cbed4128c467fc1ec928a1bbe36e40"
   },
   {
     "id": 56,
@@ -797,7 +797,7 @@
       "reason": "Revoked by officer"
     },
     "previous_hash": "3ed651ea891522760e326899e29f2c5bf9cbed4128c467fc1ec928a1bbe36e40",
-    "current_hash": "d98c8dff495cf0a4ae738aad90ab71000183de2c4843cf2f76501cdb8993c09f"
+    "hash": "d98c8dff495cf0a4ae738aad90ab71000183de2c4843cf2f76501cdb8993c09f"
   },
   {
     "id": 57,
@@ -814,7 +814,7 @@
       "reason": "Revoked by officer"
     },
     "previous_hash": "d98c8dff495cf0a4ae738aad90ab71000183de2c4843cf2f76501cdb8993c09f",
-    "current_hash": "3c1e1bd04eccd9ba60ecd3f4dfbaa4918a48f59f48b83e8c6ff0920a8bf6d2eb"
+    "hash": "3c1e1bd04eccd9ba60ecd3f4dfbaa4918a48f59f48b83e8c6ff0920a8bf6d2eb"
   },
   {
     "id": 58,
@@ -831,7 +831,7 @@
       "reason": null
     },
     "previous_hash": "3c1e1bd04eccd9ba60ecd3f4dfbaa4918a48f59f48b83e8c6ff0920a8bf6d2eb",
-    "current_hash": "27c91a3fb8076af8c9b95c42eae0e8708e81508f626ae0481d6489a8c346bfe8"
+    "hash": "27c91a3fb8076af8c9b95c42eae0e8708e81508f626ae0481d6489a8c346bfe8"
   },
   {
     "id": 59,
@@ -845,7 +845,7 @@
       "valid": false
     },
     "previous_hash": "27c91a3fb8076af8c9b95c42eae0e8708e81508f626ae0481d6489a8c346bfe8",
-    "current_hash": "9bd85506f9c0e7cc93c34c8ba6b3f9574c2293f9ab99dd971482dbcebbbb5c09"
+    "hash": "9bd85506f9c0e7cc93c34c8ba6b3f9574c2293f9ab99dd971482dbcebbbb5c09"
   },
   {
     "id": 60,
@@ -859,7 +859,7 @@
       "valid": false
     },
     "previous_hash": "9bd85506f9c0e7cc93c34c8ba6b3f9574c2293f9ab99dd971482dbcebbbb5c09",
-    "current_hash": "3eb5c0472d522dd72152f10594b5c54f5ead5de543309cdb9acad2af9ddcedd8"
+    "hash": "3eb5c0472d522dd72152f10594b5c54f5ead5de543309cdb9acad2af9ddcedd8"
   },
   {
     "id": 61,
@@ -873,7 +873,7 @@
       "valid": false
     },
     "previous_hash": "3eb5c0472d522dd72152f10594b5c54f5ead5de543309cdb9acad2af9ddcedd8",
-    "current_hash": "a636ef1aed739a1a656188e69a186048dbdf24e560f2998f25afb5cd8ac397f7"
+    "hash": "a636ef1aed739a1a656188e69a186048dbdf24e560f2998f25afb5cd8ac397f7"
   },
   {
     "id": 62,
@@ -887,7 +887,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "a636ef1aed739a1a656188e69a186048dbdf24e560f2998f25afb5cd8ac397f7",
-    "current_hash": "8914be1ccbe16bfdc6d247ffe23530d28f9f8344fc3ef0c5701d9b2ef04e5acc"
+    "hash": "8914be1ccbe16bfdc6d247ffe23530d28f9f8344fc3ef0c5701d9b2ef04e5acc"
   },
   {
     "id": 63,
@@ -900,7 +900,7 @@
       "purpose": "kyc"
     },
     "previous_hash": "8914be1ccbe16bfdc6d247ffe23530d28f9f8344fc3ef0c5701d9b2ef04e5acc",
-    "current_hash": "0065963b9fb7971df7e17d35422c41f3e0f52c19838adf5aed6881e17e22acd9"
+    "hash": "0065963b9fb7971df7e17d35422c41f3e0f52c19838adf5aed6881e17e22acd9"
   },
   {
     "id": 64,
@@ -917,7 +917,7 @@
       "reason": null
     },
     "previous_hash": "0065963b9fb7971df7e17d35422c41f3e0f52c19838adf5aed6881e17e22acd9",
-    "current_hash": "e21df99c01ddd84dd114e13a12c49d3b77f2b2a9954229e5e06861ebf792b5e2"
+    "hash": "e21df99c01ddd84dd114e13a12c49d3b77f2b2a9954229e5e06861ebf792b5e2"
   },
   {
     "id": 65,
@@ -926,7 +926,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "e21df99c01ddd84dd114e13a12c49d3b77f2b2a9954229e5e06861ebf792b5e2",
-    "current_hash": "2913d73fbd44c4d4f66245c72f7739e39e1973640cc3fa796971be1f143e1573"
+    "hash": "2913d73fbd44c4d4f66245c72f7739e39e1973640cc3fa796971be1f143e1573"
   },
   {
     "id": 66,
@@ -937,7 +937,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "2913d73fbd44c4d4f66245c72f7739e39e1973640cc3fa796971be1f143e1573",
-    "current_hash": "2a3eaf52867a29afcf665507de73a9a658b45b2c6013092c3a4cd14943dad84a"
+    "hash": "2a3eaf52867a29afcf665507de73a9a658b45b2c6013092c3a4cd14943dad84a"
   },
   {
     "id": 67,
@@ -946,7 +946,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "2a3eaf52867a29afcf665507de73a9a658b45b2c6013092c3a4cd14943dad84a",
-    "current_hash": "73925a27ccf0c08c8672aff81c9e1f9eb90191dd3dc1a7a16b23ae6ab41163e9"
+    "hash": "73925a27ccf0c08c8672aff81c9e1f9eb90191dd3dc1a7a16b23ae6ab41163e9"
   },
   {
     "id": 68,
@@ -957,7 +957,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "73925a27ccf0c08c8672aff81c9e1f9eb90191dd3dc1a7a16b23ae6ab41163e9",
-    "current_hash": "f87f5ac5c3322d7fe62c7aa83216284774754260c287512cae64a102ebaaed53"
+    "hash": "f87f5ac5c3322d7fe62c7aa83216284774754260c287512cae64a102ebaaed53"
   },
   {
     "id": 69,
@@ -966,7 +966,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "f87f5ac5c3322d7fe62c7aa83216284774754260c287512cae64a102ebaaed53",
-    "current_hash": "f6523f096fab3bdbb77a73c0bab6c75576cf44a5ea1b633fede5b35c2cb7ea8b"
+    "hash": "f6523f096fab3bdbb77a73c0bab6c75576cf44a5ea1b633fede5b35c2cb7ea8b"
   },
   {
     "id": 70,
@@ -977,7 +977,7 @@
       "department": "—"
     },
     "previous_hash": "f6523f096fab3bdbb77a73c0bab6c75576cf44a5ea1b633fede5b35c2cb7ea8b",
-    "current_hash": "2ac98c0cf779f531a7ff892f0ee1e789351006d9d7f231db2d3b06c1d6b0c150"
+    "hash": "2ac98c0cf779f531a7ff892f0ee1e789351006d9d7f231db2d3b06c1d6b0c150"
   },
   {
     "id": 71,
@@ -986,7 +986,7 @@
     "action": "Logout | user=customer_01 | role=Customer",
     "metadata": {},
     "previous_hash": "2ac98c0cf779f531a7ff892f0ee1e789351006d9d7f231db2d3b06c1d6b0c150",
-    "current_hash": "3c24d476fafba5b910e77a1f1b3a0019158933b490f8148a10ed5d057e6a1552"
+    "hash": "3c24d476fafba5b910e77a1f1b3a0019158933b490f8148a10ed5d057e6a1552"
   },
   {
     "id": 72,
@@ -997,7 +997,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "3c24d476fafba5b910e77a1f1b3a0019158933b490f8148a10ed5d057e6a1552",
-    "current_hash": "076980bf385434b7be5a754c5505dc3956b51abbf171bd1a3b3ba265884e3628"
+    "hash": "076980bf385434b7be5a754c5505dc3956b51abbf171bd1a3b3ba265884e3628"
   },
   {
     "id": 73,
@@ -1006,7 +1006,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "076980bf385434b7be5a754c5505dc3956b51abbf171bd1a3b3ba265884e3628",
-    "current_hash": "1fb51a91c089dd72cfb9d61f7dd57ad49b895016ea27e63f65f35f407d5cec67"
+    "hash": "1fb51a91c089dd72cfb9d61f7dd57ad49b895016ea27e63f65f35f407d5cec67"
   },
   {
     "id": 74,
@@ -1017,7 +1017,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "1fb51a91c089dd72cfb9d61f7dd57ad49b895016ea27e63f65f35f407d5cec67",
-    "current_hash": "05823f9aa28e30c3051b5cac177f1c39da1a7dc73f439d2105180067f77ca664"
+    "hash": "05823f9aa28e30c3051b5cac177f1c39da1a7dc73f439d2105180067f77ca664"
   },
   {
     "id": 75,
@@ -1028,7 +1028,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "05823f9aa28e30c3051b5cac177f1c39da1a7dc73f439d2105180067f77ca664",
-    "current_hash": "6010287cb23003ea6d04aea94dbfb1d104c87abff99a0e76b2e1e79d786a7019"
+    "hash": "6010287cb23003ea6d04aea94dbfb1d104c87abff99a0e76b2e1e79d786a7019"
   },
   {
     "id": 76,
@@ -1039,7 +1039,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "6010287cb23003ea6d04aea94dbfb1d104c87abff99a0e76b2e1e79d786a7019",
-    "current_hash": "acc797c2b200528e5b3da0c19be2850eafb35d685372f32e3398b9be01855a40"
+    "hash": "acc797c2b200528e5b3da0c19be2850eafb35d685372f32e3398b9be01855a40"
   },
   {
     "id": 77,
@@ -1053,7 +1053,7 @@
       "valid": false
     },
     "previous_hash": "acc797c2b200528e5b3da0c19be2850eafb35d685372f32e3398b9be01855a40",
-    "current_hash": "f130259c80929b251b80af7e50321964f1b0f80b0916a1368d6bbb55ac6291f8"
+    "hash": "f130259c80929b251b80af7e50321964f1b0f80b0916a1368d6bbb55ac6291f8"
   },
   {
     "id": 78,
@@ -1067,7 +1067,7 @@
       "valid": false
     },
     "previous_hash": "f130259c80929b251b80af7e50321964f1b0f80b0916a1368d6bbb55ac6291f8",
-    "current_hash": "0d0fae7eac686296832cb7533b6c1ab81a7d71b99b2af6f435617dc2208c5a58"
+    "hash": "0d0fae7eac686296832cb7533b6c1ab81a7d71b99b2af6f435617dc2208c5a58"
   },
   {
     "id": 79,
@@ -1081,7 +1081,7 @@
       "valid": false
     },
     "previous_hash": "0d0fae7eac686296832cb7533b6c1ab81a7d71b99b2af6f435617dc2208c5a58",
-    "current_hash": "eb0e01b45061f0f8c3b27bb8a78cdfa77087f1757db8aba94c357b7ef3e0231c"
+    "hash": "eb0e01b45061f0f8c3b27bb8a78cdfa77087f1757db8aba94c357b7ef3e0231c"
   },
   {
     "id": 80,
@@ -1095,7 +1095,7 @@
       "valid": false
     },
     "previous_hash": "eb0e01b45061f0f8c3b27bb8a78cdfa77087f1757db8aba94c357b7ef3e0231c",
-    "current_hash": "c925391b39b54b1a91fd4585411d8e8e249336b03e18cf3c2384f64a5d57c0f8"
+    "hash": "c925391b39b54b1a91fd4585411d8e8e249336b03e18cf3c2384f64a5d57c0f8"
   },
   {
     "id": 81,
@@ -1109,7 +1109,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "c925391b39b54b1a91fd4585411d8e8e249336b03e18cf3c2384f64a5d57c0f8",
-    "current_hash": "2c38bf7eee860fed9b50f5dbc36c83e4bf350550bffa08598db39ac3c9095a85"
+    "hash": "2c38bf7eee860fed9b50f5dbc36c83e4bf350550bffa08598db39ac3c9095a85"
   },
   {
     "id": 82,
@@ -1122,7 +1122,7 @@
       "purpose": "kyc"
     },
     "previous_hash": "2c38bf7eee860fed9b50f5dbc36c83e4bf350550bffa08598db39ac3c9095a85",
-    "current_hash": "76c26e99168579526c4c6d72a94f72d88f84dff73d03e996b3fcbb1800b34d02"
+    "hash": "76c26e99168579526c4c6d72a94f72d88f84dff73d03e996b3fcbb1800b34d02"
   },
   {
     "id": 83,
@@ -1139,7 +1139,7 @@
       "reason": null
     },
     "previous_hash": "76c26e99168579526c4c6d72a94f72d88f84dff73d03e996b3fcbb1800b34d02",
-    "current_hash": "37fd0703ce7f8fa0f14c20d25b24e995fc908a4295e63c0ab1201c4b4ca7bc15"
+    "hash": "37fd0703ce7f8fa0f14c20d25b24e995fc908a4295e63c0ab1201c4b4ca7bc15"
   },
   {
     "id": 84,
@@ -1148,7 +1148,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "37fd0703ce7f8fa0f14c20d25b24e995fc908a4295e63c0ab1201c4b4ca7bc15",
-    "current_hash": "490df1d2dfaac786340c6f2f5beb25273d1b46714fc05152f5e2d7cf8aefb69c"
+    "hash": "490df1d2dfaac786340c6f2f5beb25273d1b46714fc05152f5e2d7cf8aefb69c"
   },
   {
     "id": 85,
@@ -1159,7 +1159,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "490df1d2dfaac786340c6f2f5beb25273d1b46714fc05152f5e2d7cf8aefb69c",
-    "current_hash": "28e345bb7a472ca5d464a976d5a77b41c12cb01235da15f7233900d4c546fbef"
+    "hash": "28e345bb7a472ca5d464a976d5a77b41c12cb01235da15f7233900d4c546fbef"
   },
   {
     "id": 86,
@@ -1170,7 +1170,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "28e345bb7a472ca5d464a976d5a77b41c12cb01235da15f7233900d4c546fbef",
-    "current_hash": "cb0440b3eb7f040e8393343539bd2a23e3028f84ce12d82fcaf642f10657fff8"
+    "hash": "cb0440b3eb7f040e8393343539bd2a23e3028f84ce12d82fcaf642f10657fff8"
   },
   {
     "id": 87,
@@ -1181,7 +1181,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "cb0440b3eb7f040e8393343539bd2a23e3028f84ce12d82fcaf642f10657fff8",
-    "current_hash": "8f87de09fac8cdf4ef9094677e1c576cee2959934841b1f4e0711720907ddfc0"
+    "hash": "8f87de09fac8cdf4ef9094677e1c576cee2959934841b1f4e0711720907ddfc0"
   },
   {
     "id": 88,
@@ -1190,7 +1190,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "8f87de09fac8cdf4ef9094677e1c576cee2959934841b1f4e0711720907ddfc0",
-    "current_hash": "b88bc29dd140ab0f98e3a4b51f4c441c818b79d908de4284448ac0659138d7b8"
+    "hash": "b88bc29dd140ab0f98e3a4b51f4c441c818b79d908de4284448ac0659138d7b8"
   },
   {
     "id": 89,
@@ -1201,7 +1201,7 @@
       "department": "Retail Banking"
     },
     "previous_hash": "b88bc29dd140ab0f98e3a4b51f4c441c818b79d908de4284448ac0659138d7b8",
-    "current_hash": "56ead66fb1be46fdd91eb84804ae87a32eea1040b60825e62046133639695631"
+    "hash": "56ead66fb1be46fdd91eb84804ae87a32eea1040b60825e62046133639695631"
   },
   {
     "id": 90,
@@ -1210,7 +1210,7 @@
     "action": "Logout | user=officer_01 | role=Officer",
     "metadata": {},
     "previous_hash": "56ead66fb1be46fdd91eb84804ae87a32eea1040b60825e62046133639695631",
-    "current_hash": "fb7c2d1a6f5c587caf6d555b05af25868a6acec2518e5a612ea3ae81adc43864"
+    "hash": "fb7c2d1a6f5c587caf6d555b05af25868a6acec2518e5a612ea3ae81adc43864"
   },
   {
     "id": 91,
@@ -1221,7 +1221,7 @@
       "department": "Internal Audit"
     },
     "previous_hash": "fb7c2d1a6f5c587caf6d555b05af25868a6acec2518e5a612ea3ae81adc43864",
-    "current_hash": "172556d1072ab4206f41cb592b97c8b39f06868292416d9752769b9af709efe7"
+    "hash": "172556d1072ab4206f41cb592b97c8b39f06868292416d9752769b9af709efe7"
   },
   {
     "id": 92,
@@ -1230,7 +1230,7 @@
     "action": "Logout | user=auditor_01 | role=Auditor",
     "metadata": {},
     "previous_hash": "172556d1072ab4206f41cb592b97c8b39f06868292416d9752769b9af709efe7",
-    "current_hash": "192e85ae8786a51a7ac3aea4b3e9dbf052bb65a021e11ded1a4fd0038f23cd86"
+    "hash": "192e85ae8786a51a7ac3aea4b3e9dbf052bb65a021e11ded1a4fd0038f23cd86"
   },
   {
     "id": 93,
@@ -1241,7 +1241,7 @@
       "department": "Board of Directors"
     },
     "previous_hash": "192e85ae8786a51a7ac3aea4b3e9dbf052bb65a021e11ded1a4fd0038f23cd86",
-    "current_hash": "c4f6bbb0607325942f17de9eef4a663f6fef842665e0264681fdba721f9e90de"
+    "hash": "c4f6bbb0607325942f17de9eef4a663f6fef842665e0264681fdba721f9e90de"
   },
   {
     "id": 94,
@@ -1250,7 +1250,7 @@
     "action": "Logout | user=board_01 | role=Board",
     "metadata": {},
     "previous_hash": "c4f6bbb0607325942f17de9eef4a663f6fef842665e0264681fdba721f9e90de",
-    "current_hash": "2ffd9c2a61955c60bc2563ebc30eac40728a97ed751b781941daef59ef037e93"
+    "hash": "2ffd9c2a61955c60bc2563ebc30eac40728a97ed751b781941daef59ef037e93"
   },
   {
     "id": 95,
@@ -1261,7 +1261,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "2ffd9c2a61955c60bc2563ebc30eac40728a97ed751b781941daef59ef037e93",
-    "current_hash": "782fe32dd1815a0a9153b3d00135a3c03026e2da2c13c1d8992720e6a740f059"
+    "hash": "782fe32dd1815a0a9153b3d00135a3c03026e2da2c13c1d8992720e6a740f059"
   },
   {
     "id": 96,
@@ -1270,7 +1270,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "782fe32dd1815a0a9153b3d00135a3c03026e2da2c13c1d8992720e6a740f059",
-    "current_hash": "c9b73e800038093abcf7890426334a7952b515042d7969c3779ef45327caf448"
+    "hash": "c9b73e800038093abcf7890426334a7952b515042d7969c3779ef45327caf448"
   },
   {
     "id": 97,
@@ -1281,7 +1281,7 @@
       "department": "Data Protection Office"
     },
     "previous_hash": "c9b73e800038093abcf7890426334a7952b515042d7969c3779ef45327caf448",
-    "current_hash": "359cb40c570668e9ab0c744dd40cb104ce85934cbaf164da9c224c5ecebfd9a6"
+    "hash": "359cb40c570668e9ab0c744dd40cb104ce85934cbaf164da9c224c5ecebfd9a6"
   },
   {
     "id": 98,
@@ -1295,7 +1295,7 @@
       "valid": false
     },
     "previous_hash": "359cb40c570668e9ab0c744dd40cb104ce85934cbaf164da9c224c5ecebfd9a6",
-    "current_hash": "66bcb6a97a59ca31ab62419acf7e33bf9c65d1f85d2264c339f34b94888ec222"
+    "hash": "66bcb6a97a59ca31ab62419acf7e33bf9c65d1f85d2264c339f34b94888ec222"
   },
   {
     "id": 99,
@@ -1309,7 +1309,7 @@
       "valid": false
     },
     "previous_hash": "66bcb6a97a59ca31ab62419acf7e33bf9c65d1f85d2264c339f34b94888ec222",
-    "current_hash": "a692fbd25d11b04f1174ff90c05f28a91c085105ffb7ccb224c523a48c34106c"
+    "hash": "a692fbd25d11b04f1174ff90c05f28a91c085105ffb7ccb224c523a48c34106c"
   },
   {
     "id": 100,
@@ -1323,7 +1323,7 @@
       "user": "dpo_admin"
     },
     "previous_hash": "a692fbd25d11b04f1174ff90c05f28a91c085105ffb7ccb224c523a48c34106c",
-    "current_hash": "3d8904317fc5779a136c2b7e9fe3d070d75e4767601a51393a6aa63e2852f561"
+    "hash": "3d8904317fc5779a136c2b7e9fe3d070d75e4767601a51393a6aa63e2852f561"
   },
   {
     "id": 101,
@@ -1336,7 +1336,7 @@
       "purpose": "kyc"
     },
     "previous_hash": "3d8904317fc5779a136c2b7e9fe3d070d75e4767601a51393a6aa63e2852f561",
-    "current_hash": "8f110feb63bc7e92f0a379b45c1b3f4dd1c61cf5e08cc8e906b4bc08fbfdeb52"
+    "hash": "8f110feb63bc7e92f0a379b45c1b3f4dd1c61cf5e08cc8e906b4bc08fbfdeb52"
   },
   {
     "id": 102,
@@ -1353,7 +1353,7 @@
       "reason": null
     },
     "previous_hash": "8f110feb63bc7e92f0a379b45c1b3f4dd1c61cf5e08cc8e906b4bc08fbfdeb52",
-    "current_hash": "7ff809c105f1c0f2d9f9ed982ac91ade341a96492ef0993c3f4b94cb30e2c30c"
+    "hash": "7ff809c105f1c0f2d9f9ed982ac91ade341a96492ef0993c3f4b94cb30e2c30c"
   },
   {
     "id": 103,
@@ -1370,7 +1370,7 @@
       "reason": "Revoked by officer"
     },
     "previous_hash": "7ff809c105f1c0f2d9f9ed982ac91ade341a96492ef0993c3f4b94cb30e2c30c",
-    "current_hash": "503ab3fb19c60fec5883fce9a921345a576b634fb7550678a5755d4a9aeb107b"
+    "hash": "503ab3fb19c60fec5883fce9a921345a576b634fb7550678a5755d4a9aeb107b"
   },
   {
     "id": 104,
@@ -1384,7 +1384,7 @@
       "valid": false
     },
     "previous_hash": "503ab3fb19c60fec5883fce9a921345a576b634fb7550678a5755d4a9aeb107b",
-    "current_hash": "bd991b04b2c8a02853ff6890f3d9c79273d441cefc7d48b9bfd02a712c9f9647"
+    "hash": "bd991b04b2c8a02853ff6890f3d9c79273d441cefc7d48b9bfd02a712c9f9647"
   },
   {
     "id": 105,
@@ -1398,7 +1398,7 @@
       "valid": false
     },
     "previous_hash": "bd991b04b2c8a02853ff6890f3d9c79273d441cefc7d48b9bfd02a712c9f9647",
-    "current_hash": "56060739d25612d2f9113744c7c3dcd664b2c1349566b2b85db80db5aff31710"
+    "hash": "56060739d25612d2f9113744c7c3dcd664b2c1349566b2b85db80db5aff31710"
   },
   {
     "id": 106,
@@ -1412,7 +1412,7 @@
       "valid": false
     },
     "previous_hash": "56060739d25612d2f9113744c7c3dcd664b2c1349566b2b85db80db5aff31710",
-    "current_hash": "930d8436e30236d9732e7b4105e26a4fc53c319ade181a566656c81efb223275"
+    "hash": "930d8436e30236d9732e7b4105e26a4fc53c319ade181a566656c81efb223275"
   },
   {
     "id": 107,
@@ -1426,7 +1426,7 @@
       "valid": false
     },
     "previous_hash": "930d8436e30236d9732e7b4105e26a4fc53c319ade181a566656c81efb223275",
-    "current_hash": "fa2e61eb248fb56eda612ddc396cee0061ae05c2e9be6441c0ac1b152beb6e84"
+    "hash": "fa2e61eb248fb56eda612ddc396cee0061ae05c2e9be6441c0ac1b152beb6e84"
   },
   {
     "id": 108,
@@ -1440,7 +1440,7 @@
       "valid": false
     },
     "previous_hash": "fa2e61eb248fb56eda612ddc396cee0061ae05c2e9be6441c0ac1b152beb6e84",
-    "current_hash": "4cd1bf01d79ec0aa1e08a3a4a85933dc284cb2ea123045d2c84cd8ad4a10bbf3"
+    "hash": "4cd1bf01d79ec0aa1e08a3a4a85933dc284cb2ea123045d2c84cd8ad4a10bbf3"
   },
   {
     "id": 109,
@@ -1456,7 +1456,7 @@
       "role": "DPO"
     },
     "previous_hash": "4cd1bf01d79ec0aa1e08a3a4a85933dc284cb2ea123045d2c84cd8ad4a10bbf3",
-    "current_hash": "f8c9244398467ad9caf82b9647630b049528e1fa328993cf6ddd76221b2ef367"
+    "hash": "f8c9244398467ad9caf82b9647630b049528e1fa328993cf6ddd76221b2ef367"
   },
   {
     "id": 110,
@@ -1470,7 +1470,7 @@
       "risk_level": "Medium"
     },
     "previous_hash": "f8c9244398467ad9caf82b9647630b049528e1fa328993cf6ddd76221b2ef367",
-    "current_hash": "d3e67233a84e0d03eec83f6f8a376ec46951cbde2045492fa3d9d6e413a98855"
+    "hash": "d3e67233a84e0d03eec83f6f8a376ec46951cbde2045492fa3d9d6e413a98855"
   },
   {
     "id": 111,
@@ -1479,7 +1479,7 @@
     "action": "Logout | user=dpo_admin | role=DPO",
     "metadata": {},
     "previous_hash": "d3e67233a84e0d03eec83f6f8a376ec46951cbde2045492fa3d9d6e413a98855",
-    "current_hash": "c20705198da774a716f73c1935251fbce5a93be49be5d0b31daaa2aded7d3cb8"
+    "hash": "c20705198da774a716f73c1935251fbce5a93be49be5d0b31daaa2aded7d3cb8"
   },
   {
     "id": 112,
@@ -1490,7 +1490,7 @@
       "department": "Retail Banking"
     },
     "previous_hash": "c20705198da774a716f73c1935251fbce5a93be49be5d0b31daaa2aded7d3cb8",
-    "current_hash": "c38de36a80ca3c11515fff9ac5e37b14dc145635b65cf74d22d4f8efa027c826"
+    "hash": "c38de36a80ca3c11515fff9ac5e37b14dc145635b65cf74d22d4f8efa027c826"
   },
   {
     "id": 113,
@@ -1499,7 +1499,7 @@
     "action": "Logout | user=officer_01 | role=Officer",
     "metadata": {},
     "previous_hash": "c38de36a80ca3c11515fff9ac5e37b14dc145635b65cf74d22d4f8efa027c826",
-    "current_hash": "7bc4bc2cfb6bb302b4d3c2da545b4845904fc0839a8f3af73c5c58cfff88167a"
+    "hash": "7bc4bc2cfb6bb302b4d3c2da545b4845904fc0839a8f3af73c5c58cfff88167a"
   },
   {
     "id": 114,
@@ -1510,6 +1510,995 @@
       "department": "-"
     },
     "previous_hash": "7bc4bc2cfb6bb302b4d3c2da545b4845904fc0839a8f3af73c5c58cfff88167a",
-    "current_hash": "0fd9603c4a67ac7b41cb76fce4857faa66f3b72c12f5d8054d3c23f511f590e4"
+    "hash": "0fd9603c4a67ac7b41cb76fce4857faa66f3b72c12f5d8054d3c23f511f590e4"
+  },
+  {
+    "id": 115,
+    "timestamp": "2026-02-27T07:26:33.155224+00:00",
+    "user": "customer_01",
+    "action": "Logout | user=customer_01 | role=Customer",
+    "metadata": {},
+    "previous_hash": "0fd9603c4a67ac7b41cb76fce4857faa66f3b72c12f5d8054d3c23f511f590e4",
+    "hash": "df0f51350afb25014a426bee295407d8024304b74a6e60b20e95574bf7ea2940"
+  },
+  {
+    "id": 116,
+    "timestamp": "2026-02-27T07:46:51.051082+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO | branch=All",
+    "metadata": {
+      "department": "Data Protection Office",
+      "branch": "All"
+    },
+    "previous_hash": "df0f51350afb25014a426bee295407d8024304b74a6e60b20e95574bf7ea2940",
+    "hash": "e7a939fbaf584e47928b06df2a6762b31038b6ee0678126d7a9d244efb0508d9"
+  },
+  {
+    "id": 117,
+    "timestamp": "2026-02-27T07:49:26.651571+00:00",
+    "user": "dpo_admin",
+    "action": "Breach Status Updated | id=INC-002 | status=Under Investigation",
+    "metadata": {
+      "incident_id": "INC-002",
+      "new_status": "Under Investigation"
+    },
+    "previous_hash": "e7a939fbaf584e47928b06df2a6762b31038b6ee0678126d7a9d244efb0508d9",
+    "hash": "2fc0d63d56e8486b1aabae29a8d4277a34499aa812bafd5a0ac73e5f8a09782d"
+  },
+  {
+    "id": 118,
+    "timestamp": "2026-02-27T07:50:37.726687+00:00",
+    "user": "dpo_admin",
+    "action": "Compliance Feature Remediated | feature=breach_management",
+    "metadata": {},
+    "previous_hash": "2fc0d63d56e8486b1aabae29a8d4277a34499aa812bafd5a0ac73e5f8a09782d",
+    "hash": "935675fb8810f90c4ff258cf3c75a40781ed2d43561cefec603b08079ad422a0"
+  },
+  {
+    "id": 119,
+    "timestamp": "2026-02-27T07:50:43.360132+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "935675fb8810f90c4ff258cf3c75a40781ed2d43561cefec603b08079ad422a0",
+    "hash": "5e637c60e078fbc990bf592a81a0c8b1f2ad0d9ff0b4334fd004b206061fc680"
+  },
+  {
+    "id": 120,
+    "timestamp": "2026-02-27T07:50:59.447872+00:00",
+    "user": "admin_01",
+    "action": "Login Successful | user=admin_01 | role=SystemAdmin | branch=All",
+    "metadata": {
+      "department": "IT Operations",
+      "branch": "All"
+    },
+    "previous_hash": "5e637c60e078fbc990bf592a81a0c8b1f2ad0d9ff0b4334fd004b206061fc680",
+    "hash": "6594f393983c672924159d74c3a41b9a54da3ca1a2ee2be83249d6ec9c5668e9"
+  },
+  {
+    "id": 121,
+    "timestamp": "2026-02-27T07:52:36.570451+00:00",
+    "user": "admin_01",
+    "action": "Logout | user=admin_01 | role=SystemAdmin",
+    "metadata": {},
+    "previous_hash": "6594f393983c672924159d74c3a41b9a54da3ca1a2ee2be83249d6ec9c5668e9",
+    "hash": "c3992062872a0ed9798fd6b2926b9fbb3436538785e7d207cf792cdfb8fb9e9c"
+  },
+  {
+    "id": 122,
+    "timestamp": "2026-02-27T07:52:47.036405+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO | branch=All",
+    "metadata": {
+      "department": "Data Protection Office",
+      "branch": "All"
+    },
+    "previous_hash": "c3992062872a0ed9798fd6b2926b9fbb3436538785e7d207cf792cdfb8fb9e9c",
+    "hash": "72c565a10f244a74818abb44768ee65a94fdb4dab2958f49b24fe1a48bd735b7"
+  },
+  {
+    "id": 123,
+    "timestamp": "2026-02-27T07:53:40.296570+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "72c565a10f244a74818abb44768ee65a94fdb4dab2958f49b24fe1a48bd735b7",
+    "hash": "7fdafbfc0111223a5b734bd6e6aa3730bb1d929449504054d2ea9d04be4058c4"
+  },
+  {
+    "id": 124,
+    "timestamp": "2026-02-27T08:13:28.312549+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO | branch=All",
+    "metadata": {
+      "department": "Data Protection Office",
+      "branch": "All"
+    },
+    "previous_hash": "7fdafbfc0111223a5b734bd6e6aa3730bb1d929449504054d2ea9d04be4058c4",
+    "hash": "88c612f5f14868b31cc69f043f7e7fab5c6a13b3b542bbf60244204b4aaec694"
+  },
+  {
+    "id": 125,
+    "timestamp": "2026-02-27T08:28:09.485352+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "88c612f5f14868b31cc69f043f7e7fab5c6a13b3b542bbf60244204b4aaec694",
+    "hash": "2cdbff3e411a412f69ecf194567d0044d67b68a8cac749084dec1899b3f3c47c"
+  },
+  {
+    "id": 126,
+    "timestamp": "2026-02-27T11:15:17.762800+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO | branch=All",
+    "metadata": {
+      "department": "Data Protection Office",
+      "branch": "All"
+    },
+    "previous_hash": "2cdbff3e411a412f69ecf194567d0044d67b68a8cac749084dec1899b3f3c47c",
+    "hash": "54dc9f5f32c81143f7e4d0094f22de44fa0b167d5d8b1af7d6fffb69c5c16674"
+  },
+  {
+    "id": 127,
+    "timestamp": "2026-02-27T11:19:40.144422+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "54dc9f5f32c81143f7e4d0094f22de44fa0b167d5d8b1af7d6fffb69c5c16674",
+    "hash": "14a9724546c052b1db930468ad4fd68cad3e932bc1f71bd4e971483938ac5afb"
+  },
+  {
+    "id": 128,
+    "timestamp": "2026-02-27T11:19:50.312151+00:00",
+    "user": "customer_01",
+    "action": "Login Successful | user=customer_01 | role=Customer | branch=-",
+    "metadata": {
+      "department": "-",
+      "branch": "-"
+    },
+    "previous_hash": "14a9724546c052b1db930468ad4fd68cad3e932bc1f71bd4e971483938ac5afb",
+    "hash": "103da3bb7cb42b32fe3455693233c70207d7ed489b94260a2ad34b10b197526e"
+  },
+  {
+    "id": 129,
+    "timestamp": "2026-02-27T11:22:56.344915+00:00",
+    "user": "customer_01",
+    "action": "Logout | user=customer_01 | role=Customer",
+    "metadata": {},
+    "previous_hash": "103da3bb7cb42b32fe3455693233c70207d7ed489b94260a2ad34b10b197526e",
+    "hash": "99a08cb697b16355440dd9c21207b3af0c6172c58d9d404d4b6b5b1771fa84c2"
+  },
+  {
+    "id": 130,
+    "timestamp": "2026-02-27T11:23:52.980467+00:00",
+    "user": "officer_01",
+    "action": "Login Successful | user=officer_01 | role=Officer | branch=Thiruvananthapuram Main",
+    "metadata": {
+      "department": "Retail Banking",
+      "branch": "Thiruvananthapuram Main"
+    },
+    "previous_hash": "99a08cb697b16355440dd9c21207b3af0c6172c58d9d404d4b6b5b1771fa84c2",
+    "hash": "834900eb94dd2f6b3a524b4256dacc58aff324633507ce80de673c5c43d8448e"
+  },
+  {
+    "id": 131,
+    "timestamp": "2026-02-27T11:33:14.604866+00:00",
+    "user": "officer_01",
+    "action": "Logout | user=officer_01 | role=Officer",
+    "metadata": {},
+    "previous_hash": "834900eb94dd2f6b3a524b4256dacc58aff324633507ce80de673c5c43d8448e",
+    "hash": "d2b8bd47f1a5403935f6a50fa7411de850320ab3273d2c63d4117bf906808db1"
+  },
+  {
+    "id": 132,
+    "timestamp": "2026-02-28T06:54:09.415285+00:00",
+    "user": "dpo_admin",
+    "action": "Login Successful | user=dpo_admin | role=DPO | branch=All",
+    "metadata": {
+      "department": "Data Protection Office",
+      "branch": "All"
+    },
+    "previous_hash": "d2b8bd47f1a5403935f6a50fa7411de850320ab3273d2c63d4117bf906808db1",
+    "hash": "54fcff646a64a48981cab7ffec8b43e0044f151d3feb877015041576fd409936"
+  },
+  {
+    "id": 133,
+    "timestamp": "2026-02-28T06:57:07.324144+00:00",
+    "user": "dpo_admin",
+    "action": "Logout | user=dpo_admin | role=DPO",
+    "metadata": {},
+    "previous_hash": "54fcff646a64a48981cab7ffec8b43e0044f151d3feb877015041576fd409936",
+    "hash": "cecaae9e8d6545b0d07e6c885675d7509f88c0a2534b0455b607b9fb8dcda3e0"
+  },
+  {
+    "id": 134,
+    "timestamp": "2026-02-28T06:57:16.389312+00:00",
+    "user": "admin_01",
+    "action": "Login Successful | user=admin_01 | role=SystemAdmin | branch=All",
+    "metadata": {
+      "department": "IT Operations",
+      "branch": "All"
+    },
+    "previous_hash": "cecaae9e8d6545b0d07e6c885675d7509f88c0a2534b0455b607b9fb8dcda3e0",
+    "hash": "fabc6299ee9aa82a1354a151ea54e840cffc3b287a89a9985ff186d7062f8ad0"
+  },
+  {
+    "id": 135,
+    "timestamp": "2026-02-28T06:57:42.762007+00:00",
+    "user": "admin_01",
+    "action": "Logout | user=admin_01 | role=SystemAdmin",
+    "metadata": {},
+    "previous_hash": "fabc6299ee9aa82a1354a151ea54e840cffc3b287a89a9985ff186d7062f8ad0",
+    "hash": "37ccefa2c9b48ac1b3363ccb277cceb79b4730f44650d12527b5468119f2f2e3"
+  },
+  {
+    "id": 136,
+    "timestamp": "2026-02-28T06:57:57.752191+00:00",
+    "user": "officer_02",
+    "action": "Login Successful | user=officer_02 | role=Officer | branch=Kochi Fort",
+    "metadata": {
+      "department": "Retail Banking",
+      "branch": "Kochi Fort"
+    },
+    "previous_hash": "37ccefa2c9b48ac1b3363ccb277cceb79b4730f44650d12527b5468119f2f2e3",
+    "hash": "a6bc0431d67741dac438550cbdd683a2c8c2c98919a8da0f5f9d372c4e64bfd5"
+  },
+  {
+    "block_id": "BLK-D4FEDACEAD9A",
+    "index": 136,
+    "timestamp": "2026-02-28T10:44:49.859951+00:00",
+    "previous_hash": "a6bc0431d67741dac438550cbdd683a2c8c2c98919a8da0f5f9d372c4e64bfd5",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "59cc7b2ccfd954869d5112dfc35dea4f485b8a8a09bfde50ad61f35dd64ee1e1",
+    "signature": "72d9000811986e0dfe5c996ab7faa12a9a216b0e82353f96919feec7101f957c"
+  },
+  {
+    "block_id": "BLK-71314D45E7E4",
+    "index": 137,
+    "timestamp": "2026-02-28T10:47:00.460820+00:00",
+    "previous_hash": "59cc7b2ccfd954869d5112dfc35dea4f485b8a8a09bfde50ad61f35dd64ee1e1",
+    "data": {
+      "action": "Rule Passed | event=rights_request_submit",
+      "user": "customer_01",
+      "metadata": {
+        "event": "rights_request_submit",
+        "user": "customer_01",
+        "customer_id": "customer_01",
+        "request_type": "Raise Grievance",
+        "sla_key": "grievance_redressal"
+      }
+    },
+    "hash": "f5cfc0eb7585cbb37d125b08d88a7657115c6a6766af45b9f164d5700a4f8cbd",
+    "signature": "08f2bde89bc3acb1e815357974275da27b6571b98abcc87157dccb8edab5ade1"
+  },
+  {
+    "block_id": "BLK-E4045BA8F753",
+    "index": 138,
+    "timestamp": "2026-02-28T10:49:03.205716+00:00",
+    "previous_hash": "f5cfc0eb7585cbb37d125b08d88a7657115c6a6766af45b9f164d5700a4f8cbd",
+    "data": {
+      "action": "Logout | user=customer_01 | role=customer",
+      "user": "customer_01",
+      "metadata": {}
+    },
+    "hash": "1891594f244d36b00a041b182f5cd263e08128b2d8f8cd9d82f0f7189cf19d6f",
+    "signature": "fa5c51832c7a3decd0b758aed34f11051269a4c6e1678a955187f5e78f1ddb7b"
+  },
+  {
+    "block_id": "BLK-54664C4C7F64",
+    "index": 139,
+    "timestamp": "2026-02-28T10:49:16.762486+00:00",
+    "previous_hash": "1891594f244d36b00a041b182f5cd263e08128b2d8f8cd9d82f0f7189cf19d6f",
+    "data": {
+      "action": "Login Successful | user=admin_01 | role=system_admin | branch=All",
+      "user": "admin_01",
+      "metadata": {
+        "department": "IT Operations",
+        "branch": "All",
+        "canonical_role": "system_admin"
+      }
+    },
+    "hash": "738be190404395f3bb0f5bc10d57b61d82b8086e4da865eec9fd3a2155d1410e",
+    "signature": "a4b1b48dcc5064e88683a3220fd8757712181623dfc2c8aec37054f5a4276f0a"
+  },
+  {
+    "block_id": "BLK-1521D0ABBD1C",
+    "index": 140,
+    "timestamp": "2026-02-28T10:55:34.241743+00:00",
+    "previous_hash": "738be190404395f3bb0f5bc10d57b61d82b8086e4da865eec9fd3a2155d1410e",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "afc02f0732dee151433d156caccb1d31726f6c68ca6f6dc9974072c18b22d1d8",
+    "signature": "50678eb79ec669a5a19081288245c439c547b93b798087157354182feb7b3dc2"
+  },
+  {
+    "block_id": "BLK-345CF3125608",
+    "index": 141,
+    "timestamp": "2026-02-28T10:57:01.446531+00:00",
+    "previous_hash": "afc02f0732dee151433d156caccb1d31726f6c68ca6f6dc9974072c18b22d1d8",
+    "data": {
+      "action": "Rule Passed | event=rights_request_submit",
+      "user": "customer_01",
+      "metadata": {
+        "event": "rights_request_submit",
+        "user": "customer_01",
+        "customer_id": "customer_01",
+        "request_type": "Correct My Data",
+        "sla_key": "data_correction_request"
+      }
+    },
+    "hash": "99f1e1836c8d11a58b1402c5a4f39fa04290f61e9f962249a97279aab3736b59",
+    "signature": "d3c68da2903e3e912be809b104b9b4023076927d39ea84db7596c7515ecf4dfc"
+  },
+  {
+    "block_id": "BLK-4E2EE674E72E",
+    "index": 142,
+    "timestamp": "2026-02-28T10:57:01.502045+00:00",
+    "previous_hash": "99f1e1836c8d11a58b1402c5a4f39fa04290f61e9f962249a97279aab3736b59",
+    "data": {
+      "action": "Consent Validation Failed | customer=customer_01 | purpose=kyc | reason=No consent record found",
+      "user": "customer_01",
+      "metadata": {
+        "customer_id": "customer_01",
+        "purpose": "kyc",
+        "reason": "No consent record found",
+        "valid": false
+      }
+    },
+    "hash": "8efad2d3d67c037bff762ec27cb62d24532a81f16a1bdda191ba86ef63c1428b",
+    "signature": "7f74d6cd995feda9878b2637298e8e44070d95412c10e7d2c3e4dceb656f4a49"
+  },
+  {
+    "block_id": "BLK-0B170A50807C",
+    "index": 143,
+    "timestamp": "2026-02-28T10:57:01.537878+00:00",
+    "previous_hash": "8efad2d3d67c037bff762ec27cb62d24532a81f16a1bdda191ba86ef63c1428b",
+    "data": {
+      "action": "Access Blocked | customer=customer_01 | purpose=kyc | reason=No consent record found",
+      "user": "customer_01",
+      "metadata": {
+        "customer_id": "customer_01",
+        "purpose": "kyc",
+        "reason": "No consent record found",
+        "allowed": false,
+        "rights_type": "correction",
+        "request_type": "Correct My Data",
+        "sla_key": "data_correction_request"
+      }
+    },
+    "hash": "81aaa3a9fadf0ecd3d6245b2682e2f6c0496ef1ca1b65e1085465ce32d52b69c",
+    "signature": "ea886a5a8341db3452de9ac9e0e0098c3037619d76fad956d687afbbd69cf72e"
+  },
+  {
+    "block_id": "BLK-D20216C8C67A",
+    "index": 144,
+    "timestamp": "2026-02-28T10:57:01.572558+00:00",
+    "previous_hash": "81aaa3a9fadf0ecd3d6245b2682e2f6c0496ef1ca1b65e1085465ce32d52b69c",
+    "data": {
+      "action": "Rights Request Blocked | type=correction | customer=customer_01 | purpose=kyc | reason=Rights request (correction) blocked — No consent record found",
+      "user": "customer_01",
+      "metadata": {
+        "customer_id": "customer_01",
+        "purpose": "kyc",
+        "rights_type": "correction",
+        "allowed": false,
+        "request_type": "Correct My Data",
+        "sla_key": "data_correction_request"
+      }
+    },
+    "hash": "23175c1881f905c7a43d2477c37edf9a62522f7a80e6390b21e60494a3e32a78",
+    "signature": "116dccbaad79e6776fe8ecd004c26c072c5702f450177ccc950337cb180a4419"
+  },
+  {
+    "block_id": "BLK-93E5BC0CDD7E",
+    "index": 145,
+    "timestamp": "2026-02-28T10:57:52.304388+00:00",
+    "previous_hash": "23175c1881f905c7a43d2477c37edf9a62522f7a80e6390b21e60494a3e32a78",
+    "data": {
+      "action": "Rule Passed | event=rights_request_submit",
+      "user": "customer_01",
+      "metadata": {
+        "event": "rights_request_submit",
+        "user": "customer_01",
+        "customer_id": "customer_01",
+        "request_type": "Access My Data",
+        "sla_key": "data_access_request"
+      }
+    },
+    "hash": "a50a99851c30199699e50403b441457e93362adead4fcbe04b538ec94aadae3c",
+    "signature": "1bdc3e9143488558680ab4d18eba1e3b3a96557c35b5221470505f8b6d6ac783"
+  },
+  {
+    "block_id": "BLK-1C64DFF28798",
+    "index": 146,
+    "timestamp": "2026-02-28T10:57:52.348486+00:00",
+    "previous_hash": "a50a99851c30199699e50403b441457e93362adead4fcbe04b538ec94aadae3c",
+    "data": {
+      "action": "Consent Validation Failed | customer=customer_01 | purpose=kyc | reason=No consent record found",
+      "user": "customer_01",
+      "metadata": {
+        "customer_id": "customer_01",
+        "purpose": "kyc",
+        "reason": "No consent record found",
+        "valid": false
+      }
+    },
+    "hash": "234edc01fd4420fb8c48b452630336aad39759d5ea3e62b39b7801d51493564a",
+    "signature": "babda21dd38503bc11957bbf2048d8b90607b2633f5948f330c5bfadd9c81193"
+  },
+  {
+    "block_id": "BLK-5A4CF2786BC4",
+    "index": 147,
+    "timestamp": "2026-02-28T10:57:52.386133+00:00",
+    "previous_hash": "234edc01fd4420fb8c48b452630336aad39759d5ea3e62b39b7801d51493564a",
+    "data": {
+      "action": "Access Blocked | customer=customer_01 | purpose=kyc | reason=No consent record found",
+      "user": "customer_01",
+      "metadata": {
+        "customer_id": "customer_01",
+        "purpose": "kyc",
+        "reason": "No consent record found",
+        "allowed": false,
+        "rights_type": "access",
+        "request_type": "Access My Data",
+        "sla_key": "data_access_request"
+      }
+    },
+    "hash": "701846cde2ec2b4f5f6a59ecb529259a6e3f993d3faa26422d26bac18411151c",
+    "signature": "a99876c6b4575045cafd774e56412500e51bfd4a9be79c13bb12ee11988f39c3"
+  },
+  {
+    "block_id": "BLK-8BC0AC27CBE2",
+    "index": 148,
+    "timestamp": "2026-02-28T10:57:52.422831+00:00",
+    "previous_hash": "701846cde2ec2b4f5f6a59ecb529259a6e3f993d3faa26422d26bac18411151c",
+    "data": {
+      "action": "Rights Request Blocked | type=access | customer=customer_01 | purpose=kyc | reason=Rights request (access) blocked — No consent record found",
+      "user": "customer_01",
+      "metadata": {
+        "customer_id": "customer_01",
+        "purpose": "kyc",
+        "rights_type": "access",
+        "allowed": false,
+        "request_type": "Access My Data",
+        "sla_key": "data_access_request"
+      }
+    },
+    "hash": "04dfb8c99f7d88a653854ae1eb8abd4186b799334bf8925eabff68dc70ec9de5",
+    "signature": "b95107602742ed8540adebfaec7540fd8fb6f7c19cca386c0f418f63a22e9d0f"
+  },
+  {
+    "block_id": "BLK-1D4B347A7C07",
+    "index": 149,
+    "timestamp": "2026-02-28T10:58:12.111615+00:00",
+    "previous_hash": "04dfb8c99f7d88a653854ae1eb8abd4186b799334bf8925eabff68dc70ec9de5",
+    "data": {
+      "action": "Logout | user=customer_01 | role=customer",
+      "user": "customer_01",
+      "metadata": {}
+    },
+    "hash": "2121c9f93119deb3c04a1a4bdf6b17030c88cd10cf61b9686563c8f876fb9dd7",
+    "signature": "45e98db4d12bd41a3d215c598a43b3285cdbf706a18818e7d5d7fe776c023789"
+  },
+  {
+    "block_id": "BLK-A543306A433F",
+    "index": 150,
+    "timestamp": "2026-02-28T11:00:24.254849+00:00",
+    "previous_hash": "2121c9f93119deb3c04a1a4bdf6b17030c88cd10cf61b9686563c8f876fb9dd7",
+    "data": {
+      "action": "Login Successful | user=admin_01 | role=system_admin | branch=All",
+      "user": "admin_01",
+      "metadata": {
+        "department": "IT Operations",
+        "branch": "All",
+        "canonical_role": "system_admin"
+      }
+    },
+    "hash": "912cb691701cb0aeaea7b69b1c0715a154abd80be0fc4973e233662b06489624",
+    "signature": "9202c2b1bbe3fe9f506306f3c80b05bce5a79149b6b218e0897524cfa8d66c79"
+  },
+  {
+    "block_id": "BLK-9092D47C8729",
+    "index": 151,
+    "timestamp": "2026-02-28T11:04:41.900365+00:00",
+    "previous_hash": "912cb691701cb0aeaea7b69b1c0715a154abd80be0fc4973e233662b06489624",
+    "data": {
+      "action": "Logout | user=admin_01 | role=system_admin",
+      "user": "admin_01",
+      "metadata": {}
+    },
+    "hash": "f31b65f813aaef3e8932cc63b0372ec2234a88fa4bb648028036d1a6e1e05ec8",
+    "signature": "aa996532826a19a5192d17fd6eadc5ba25df8705dae836308fbe15b4c9b02f06"
+  },
+  {
+    "block_id": "BLK-75F0DDB8350C",
+    "index": 152,
+    "timestamp": "2026-02-28T11:04:53.767328+00:00",
+    "previous_hash": "f31b65f813aaef3e8932cc63b0372ec2234a88fa4bb648028036d1a6e1e05ec8",
+    "data": {
+      "action": "Login Successful | user=board_01 | role=board_member | branch=All",
+      "user": "board_01",
+      "metadata": {
+        "department": "Board of Directors",
+        "branch": "All",
+        "canonical_role": "board_member"
+      }
+    },
+    "hash": "c601f8ec8a81f4800829bf06eeffc25cb37b744cbd7161e5619801f2ac5815c5",
+    "signature": "ed6d166bb1b73d359abbb525c4ed9a3415b179f686146dc6095b79a2bf45b1e1"
+  },
+  {
+    "block_id": "BLK-728A11BBE881",
+    "index": 153,
+    "timestamp": "2026-02-28T11:06:38.012047+00:00",
+    "previous_hash": "c601f8ec8a81f4800829bf06eeffc25cb37b744cbd7161e5619801f2ac5815c5",
+    "data": {
+      "action": "Logout | user=board_01 | role=board_member",
+      "user": "board_01",
+      "metadata": {}
+    },
+    "hash": "4be886d8108199cf0cdeef81836a67466ee24395a78aca7067aeb3f3e2c7d495",
+    "signature": "25249709f390c144fb6bd41703929d7cb8057fadee699b273b4904f9606e38d4"
+  },
+  {
+    "block_id": "BLK-40A7E094FE89",
+    "index": 154,
+    "timestamp": "2026-02-28T11:06:48.621179+00:00",
+    "previous_hash": "4be886d8108199cf0cdeef81836a67466ee24395a78aca7067aeb3f3e2c7d495",
+    "data": {
+      "action": "Login Successful | user=auditor_01 | role=auditor | branch=All",
+      "user": "auditor_01",
+      "metadata": {
+        "department": "Internal Audit",
+        "branch": "All",
+        "canonical_role": "auditor"
+      }
+    },
+    "hash": "807c50ee130a24e983464731d27db8eb00c24bb25b64001fffd103f088fea4d8",
+    "signature": "f0c1f6efa704df40653efb01c98340c207affb375242851838696efa050234ea"
+  },
+  {
+    "block_id": "BLK-4F8F704AF944",
+    "index": 155,
+    "timestamp": "2026-02-28T11:12:00.368223+00:00",
+    "previous_hash": "807c50ee130a24e983464731d27db8eb00c24bb25b64001fffd103f088fea4d8",
+    "data": {
+      "action": "Logout | user=auditor_01 | role=auditor",
+      "user": "auditor_01",
+      "metadata": {}
+    },
+    "hash": "0d335eb9e554b6a0c978a199b500a0d6b3d0b102f8cc99ebec52bd59ef050b52",
+    "signature": "7499795dee96965e0f76281dcbc89138d7247faa3175a541a347c1985563dcdb"
+  },
+  {
+    "block_id": "BLK-C413664AD8B7",
+    "index": 156,
+    "timestamp": "2026-02-28T11:12:16.807136+00:00",
+    "previous_hash": "0d335eb9e554b6a0c978a199b500a0d6b3d0b102f8cc99ebec52bd59ef050b52",
+    "data": {
+      "action": "Login Successful | user=officer_03 | role=branch_officer | branch=Kozhikode North",
+      "user": "officer_03",
+      "metadata": {
+        "department": "Retail Banking",
+        "branch": "Kozhikode North",
+        "canonical_role": "branch_officer"
+      }
+    },
+    "hash": "de45f8ee484b14c7e91c5a5d47bb4dce4072e43d8d02d9a438b88c5936dfe3e9",
+    "signature": "bb706fc0a20896f8147e3f6b7d92c298e39f5bb35b2668f90375998fd9369121"
+  },
+  {
+    "block_id": "BLK-47472E7DBAE5",
+    "index": 157,
+    "timestamp": "2026-02-28T11:14:47.981327+00:00",
+    "previous_hash": "de45f8ee484b14c7e91c5a5d47bb4dce4072e43d8d02d9a438b88c5936dfe3e9",
+    "data": {
+      "action": "Rule Passed | event=CONSENT_ACTIVATION",
+      "user": "officer_03",
+      "metadata": {
+        "event": "CONSENT_ACTIVATION",
+        "customer_id": "C145",
+        "purpose": "kyc",
+        "user": "officer_03"
+      }
+    },
+    "hash": "71f10b3c1609974c8e10eddf1592d0e0bfc67fa9de40a52dbc2e4d11fdc24fbe",
+    "signature": "7c9aaf6825b3dc16e6c5757375137dc84d75f226f3c4d956c63f9d79ae4cffa7"
+  },
+  {
+    "block_id": "BLK-73D1DADD10C8",
+    "index": 158,
+    "timestamp": "2026-02-28T11:16:35.861728+00:00",
+    "previous_hash": "71f10b3c1609974c8e10eddf1592d0e0bfc67fa9de40a52dbc2e4d11fdc24fbe",
+    "data": {
+      "action": "Logout | user=officer_03 | role=branch_officer",
+      "user": "officer_03",
+      "metadata": {}
+    },
+    "hash": "8fe6f900affa94ecfbc104c26b07d74a5bde4ff36737651bf4fed9245e2fafa6",
+    "signature": "3d1d37d0fd2bcc898f670680755128665e50e043299fbfa714cf14b0e6b0c02c"
+  },
+  {
+    "block_id": "BLK-5883FAC71A9F",
+    "index": 159,
+    "timestamp": "2026-02-28T11:16:48.996083+00:00",
+    "previous_hash": "8fe6f900affa94ecfbc104c26b07d74a5bde4ff36737651bf4fed9245e2fafa6",
+    "data": {
+      "action": "Login Successful | user=dpo_admin | role=dpo | branch=All",
+      "user": "dpo_admin",
+      "metadata": {
+        "department": "Data Protection Office",
+        "branch": "All",
+        "canonical_role": "dpo"
+      }
+    },
+    "hash": "3bdfaa5bca6d40b9993e9b3367c367ebb93b53104dc179cf24922d21cbff7bf5",
+    "signature": "48cb33bf341b14bb721b4e94f62f5a0f7192807b5377d1d03e41ffcc7015d92c"
+  },
+  {
+    "block_id": "BLK-86EDA7AE3328",
+    "index": 160,
+    "timestamp": "2026-02-28T11:20:10.432107+00:00",
+    "previous_hash": "3bdfaa5bca6d40b9993e9b3367c367ebb93b53104dc179cf24922d21cbff7bf5",
+    "data": {
+      "action": "Logout | user=dpo_admin | role=dpo",
+      "user": "dpo_admin",
+      "metadata": {}
+    },
+    "hash": "20184a6662f60f199def57a07cfc8e9d534f6fd5a98bf1eb40180928511d1d2c",
+    "signature": "c56f5082d95af7977fa29346dad5d4502ed8101acf039de998e1616eeaa66a3e"
+  },
+  {
+    "block_id": "BLK-72C11D34D9F9",
+    "index": 161,
+    "timestamp": "2026-03-01T12:25:26.912023+00:00",
+    "previous_hash": "20184a6662f60f199def57a07cfc8e9d534f6fd5a98bf1eb40180928511d1d2c",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "cd29cd0fc21580155d9804e3fe1415937f021cbeb575f7084ccfbc5e1ec15630",
+    "signature": "db04545c1fad4ad4e29a66127d71c6044d2827d60e0c176fb2b3758cef6544e9"
+  },
+  {
+    "block_id": "BLK-91A309B4B0B5",
+    "index": 162,
+    "timestamp": "2026-03-01T12:26:22.979466+00:00",
+    "previous_hash": "cd29cd0fc21580155d9804e3fe1415937f021cbeb575f7084ccfbc5e1ec15630",
+    "data": {
+      "action": "Logout | user=customer_01 | role=customer",
+      "user": "customer_01",
+      "metadata": {}
+    },
+    "hash": "fd397ea835124bbcb68de47d42b9e4153fbcc51044cdc4c391db4626e0738f2b",
+    "signature": "d7106d29adae76a3e2506ce00d4b25e70b641cd3177c4d425ed8ccad8647023f"
+  },
+  {
+    "block_id": "BLK-EF041A120377",
+    "index": 163,
+    "timestamp": "2026-03-01T12:27:08.691798+00:00",
+    "previous_hash": "fd397ea835124bbcb68de47d42b9e4153fbcc51044cdc4c391db4626e0738f2b",
+    "data": {
+      "action": "Login Successful | user=dpo_admin | role=dpo | branch=All",
+      "user": "dpo_admin",
+      "metadata": {
+        "department": "Data Protection Office",
+        "branch": "All",
+        "canonical_role": "dpo"
+      }
+    },
+    "hash": "557369816b9d3b684220a6f80d9927718593d8406347e37ca9723ce68383ac97",
+    "signature": "a226904fce1f31ff6e09c2255d3c443fd80b36cf83d6bbaff9b4a05eeb2c656c"
+  },
+  {
+    "block_id": "BLK-B9BCA6910876",
+    "index": 164,
+    "timestamp": "2026-03-01T12:44:12.473754+00:00",
+    "previous_hash": "557369816b9d3b684220a6f80d9927718593d8406347e37ca9723ce68383ac97",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "40a4a680adebba2c8554a300ba8e912e0b9505ba8e70bcf681c6237be31fbfb6",
+    "signature": "42ed1d938ed364c64523562af0073970a2df4d80c9afac563b23346b1a3ea912"
+  },
+  {
+    "block_id": "BLK-ACD0A1898C9E",
+    "index": 165,
+    "timestamp": "2026-03-01T12:47:22.985499+00:00",
+    "previous_hash": "40a4a680adebba2c8554a300ba8e912e0b9505ba8e70bcf681c6237be31fbfb6",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "6f456775063e7abdc160379faf3ffdcfa06b6016b948e7f9622d426e6a7d0382",
+    "signature": "5ac56bf9420addf8070c73418a4c76cb7d60866dad02bd751c0dd856c3a6899c"
+  },
+  {
+    "block_id": "BLK-DA95B06EA589",
+    "index": 166,
+    "timestamp": "2026-03-01T12:48:02.623979+00:00",
+    "previous_hash": "6f456775063e7abdc160379faf3ffdcfa06b6016b948e7f9622d426e6a7d0382",
+    "data": {
+      "action": "Logout | user=customer_01 | role=customer",
+      "user": "customer_01",
+      "metadata": {}
+    },
+    "hash": "491579938f892e0f50b9166452b3fd53e588a9c639bcdaa0678ebfb1477279d9",
+    "signature": "52781fc87544936125454088b216142a0980e65b1790ad3dc7bc89a5f0f27a1c"
+  },
+  {
+    "block_id": "BLK-35483F16D930",
+    "index": 167,
+    "timestamp": "2026-03-01T12:48:08.661950+00:00",
+    "previous_hash": "491579938f892e0f50b9166452b3fd53e588a9c639bcdaa0678ebfb1477279d9",
+    "data": {
+      "action": "Login Successful | user=officer_01 | role=branch_officer | branch=Thiruvananthapuram Main",
+      "user": "officer_01",
+      "metadata": {
+        "department": "Retail Banking",
+        "branch": "Thiruvananthapuram Main",
+        "canonical_role": "branch_officer"
+      }
+    },
+    "hash": "c2b72c5fec894ee8ac74d4ffdadb1324261e924d36f17452b72538913761e8f9",
+    "signature": "e3517472f98934bcd6ee28a71cc8b45119d7ababa3ad6d519bb53427d970f7aa"
+  },
+  {
+    "block_id": "BLK-0640AF5C3264",
+    "index": 168,
+    "timestamp": "2026-03-01T12:48:52.642222+00:00",
+    "previous_hash": "c2b72c5fec894ee8ac74d4ffdadb1324261e924d36f17452b72538913761e8f9",
+    "data": {
+      "action": "Logout | user=officer_01 | role=branch_officer",
+      "user": "officer_01",
+      "metadata": {}
+    },
+    "hash": "551ae8731aec5a48cf3b67c91aebac194a3327c8c187b5e39eae11b6d48faf8e",
+    "signature": "83c359aafa813a9dbeebf6b9239c22a4252d537ef69ce13478a5c83ddf9ed78b"
+  },
+  {
+    "block_id": "BLK-4D92F227157E",
+    "index": 169,
+    "timestamp": "2026-03-01T13:01:49.394355+00:00",
+    "previous_hash": "551ae8731aec5a48cf3b67c91aebac194a3327c8c187b5e39eae11b6d48faf8e",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "be8a9b269d6cd95448523fd0ff65b5eff3a1db94a979e42a1eb8375b60c4f77b",
+    "signature": "82a0fffca27804a9f3ad9bb7df8ecd419de529502f41aead8dabcd654c294cc2"
+  },
+  {
+    "block_id": "BLK-8ED16A5D7388",
+    "index": 170,
+    "timestamp": "2026-03-01T13:03:12.830611+00:00",
+    "previous_hash": "be8a9b269d6cd95448523fd0ff65b5eff3a1db94a979e42a1eb8375b60c4f77b",
+    "data": {
+      "action": "Logout | user=customer_01 | role=customer",
+      "user": "customer_01",
+      "metadata": {}
+    },
+    "hash": "b228e0a391baed90e94c54de39393ec41a00b6145d52eff0d3354ff346b87c63",
+    "signature": "10785db6c33584b5a3b86936842eab00a328d2df34184ebbeb540c678d6cb4de"
+  },
+  {
+    "block_id": "BLK-EE33E85141DB",
+    "index": 171,
+    "timestamp": "2026-03-01T13:03:27.266734+00:00",
+    "previous_hash": "b228e0a391baed90e94c54de39393ec41a00b6145d52eff0d3354ff346b87c63",
+    "data": {
+      "action": "Login Successful | user=board_01 | role=board_member | branch=All",
+      "user": "board_01",
+      "metadata": {
+        "department": "Board of Directors",
+        "branch": "All",
+        "canonical_role": "board_member"
+      }
+    },
+    "hash": "8d2b3cc4e2442b66a54755d3f382aad69ceedc9017e88b82cc61e2c56e27993f",
+    "signature": "7362ee1ca74fec048dc3ea985231b193b528c14670496d2d273919bf4331a2d7"
+  },
+  {
+    "block_id": "BLK-B756300BD065",
+    "index": 172,
+    "timestamp": "2026-03-01T13:04:09.980223+00:00",
+    "previous_hash": "8d2b3cc4e2442b66a54755d3f382aad69ceedc9017e88b82cc61e2c56e27993f",
+    "data": {
+      "action": "Logout | user=board_01 | role=board_member",
+      "user": "board_01",
+      "metadata": {}
+    },
+    "hash": "0ffcc038b15d55e69f6d870a9dec3a93064bcfa9812adc973a30ddad0f0bfb3b",
+    "signature": "4b19bb14b42aa1158cd567f626773b19b69d64062aa1463b12f7fd02f818cc5a"
+  },
+  {
+    "block_id": "BLK-C5821FA1C824",
+    "index": 173,
+    "timestamp": "2026-03-01T13:04:20.080086+00:00",
+    "previous_hash": "0ffcc038b15d55e69f6d870a9dec3a93064bcfa9812adc973a30ddad0f0bfb3b",
+    "data": {
+      "action": "Login Successful | user=admin_01 | role=system_admin | branch=All",
+      "user": "admin_01",
+      "metadata": {
+        "department": "IT Operations",
+        "branch": "All",
+        "canonical_role": "system_admin"
+      }
+    },
+    "hash": "1497b3ef6ba7d57f4b37e1de57445072fc09b9c22a47e1539d0d5ea8c4112a0f",
+    "signature": "2aef32d8ca0c50ab2c651484f41fcdcfc45e964ff3eca306e28e3f749c938dc8"
+  },
+  {
+    "block_id": "BLK-94F6D2D0865D",
+    "index": 174,
+    "timestamp": "2026-03-01T13:05:54.925884+00:00",
+    "previous_hash": "1497b3ef6ba7d57f4b37e1de57445072fc09b9c22a47e1539d0d5ea8c4112a0f",
+    "data": {
+      "action": "Logout | user=admin_01 | role=system_admin",
+      "user": "admin_01",
+      "metadata": {}
+    },
+    "hash": "8ea0290a4131701b57d6110c0897565ca971935d7994290971cde1525f102313",
+    "signature": "6727c2777945bfec7e37f9a7c9b62b022f0ff9f969d26fb244b96c610f153414"
+  },
+  {
+    "block_id": "BLK-4F42359A7D58",
+    "index": 175,
+    "timestamp": "2026-03-01T13:06:12.636863+00:00",
+    "previous_hash": "8ea0290a4131701b57d6110c0897565ca971935d7994290971cde1525f102313",
+    "data": {
+      "action": "Login Successful | user=dpo_admin | role=dpo | branch=All",
+      "user": "dpo_admin",
+      "metadata": {
+        "department": "Data Protection Office",
+        "branch": "All",
+        "canonical_role": "dpo"
+      }
+    },
+    "hash": "330bd7ee26041d281f41869593d9038d681f4faa4cc08ea9b6c16a9a19717f59",
+    "signature": "b49734a442dd3e534f12e0537b30edd7017f080682aaea2135bec20623b1c2df"
+  },
+  {
+    "block_id": "BLK-E40064F29859",
+    "index": 176,
+    "timestamp": "2026-03-01T13:13:29.669921+00:00",
+    "previous_hash": "330bd7ee26041d281f41869593d9038d681f4faa4cc08ea9b6c16a9a19717f59",
+    "data": {
+      "action": "Compliance Export Tab Accessed",
+      "user": "dpo_admin",
+      "metadata": {}
+    },
+    "hash": "5fbd401dae0cc5830c03f06789b835144a5744f7c59ef51f41e065bc99934d87",
+    "signature": "140a8f4a88be153dc47f019011976cc6189a62a6b498fc9628eac5620ab92997"
+  },
+  {
+    "block_id": "BLK-D089571E81D2",
+    "index": 177,
+    "timestamp": "2026-03-01T13:17:31.050059+00:00",
+    "previous_hash": "5fbd401dae0cc5830c03f06789b835144a5744f7c59ef51f41e065bc99934d87",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "65b7126319ce4ac4f9c5e8eb81b3a0acb7d42032def994fc796d5df69693b5d2",
+    "signature": "f5d3d912108d264e0ae57103ff0bdaabb7419fe62ebb431a52806fba1ba6929c"
+  },
+  {
+    "block_id": "BLK-2D49D6656A24",
+    "index": 178,
+    "timestamp": "2026-03-01T13:18:38.830162+00:00",
+    "previous_hash": "65b7126319ce4ac4f9c5e8eb81b3a0acb7d42032def994fc796d5df69693b5d2",
+    "data": {
+      "action": "Logout | user=customer_01 | role=customer",
+      "user": "customer_01",
+      "metadata": {}
+    },
+    "hash": "97eb55797e26ceacd488996796548f8996b8d72f6f08f68a00160184647b04e0",
+    "signature": "84b8714fdc989ecfd26ca5ce4d8b7d564268ca2d921f62afeb5154d6d5b2df06"
+  },
+  {
+    "block_id": "BLK-627E557DD38A",
+    "index": 179,
+    "timestamp": "2026-03-01T13:18:44.053033+00:00",
+    "previous_hash": "97eb55797e26ceacd488996796548f8996b8d72f6f08f68a00160184647b04e0",
+    "data": {
+      "action": "Login Successful | user=dpo_admin | role=dpo | branch=All",
+      "user": "dpo_admin",
+      "metadata": {
+        "department": "Data Protection Office",
+        "branch": "All",
+        "canonical_role": "dpo"
+      }
+    },
+    "hash": "273267be030e03e91a569c56ee7e803f3ad81161555d94a14ccaf9ddf3fe5739",
+    "signature": "d25b41da60f9b62fdaf2bee48d58d7eb0aa7c2b5fd0b0c100098b17f55c63c9d"
+  },
+  {
+    "block_id": "BLK-114300BB94E8",
+    "index": 180,
+    "timestamp": "2026-03-01T15:29:58.986425+00:00",
+    "previous_hash": "273267be030e03e91a569c56ee7e803f3ad81161555d94a14ccaf9ddf3fe5739",
+    "data": {
+      "action": "Logout | user=dpo_admin | role=dpo",
+      "user": "dpo_admin",
+      "metadata": {}
+    },
+    "hash": "8a1e2fc6612e3e57b0bf6573d75db4589532ac3d3984fda52b8176958c34d253",
+    "signature": "fcb3ff24d6f047030c15c7bd2608ac630a00a73de2aa8a0a738d72e98ed30f40"
+  },
+  {
+    "block_id": "BLK-C064EF0E039A",
+    "index": 181,
+    "timestamp": "2026-03-01T15:35:06.123916+00:00",
+    "previous_hash": "8a1e2fc6612e3e57b0bf6573d75db4589532ac3d3984fda52b8176958c34d253",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "d5d7f2c5439cf3d2cab2cc70890361dfa76430427a55b1452a7fe0771b1cef12",
+    "signature": "47b562638581ab90bc57416a7ee8ff5482007fd89a899fd7612c41733388f867"
+  },
+  {
+    "block_id": "BLK-9B64AA5C1901",
+    "index": 182,
+    "timestamp": "2026-03-01T15:56:57.444956+00:00",
+    "previous_hash": "d5d7f2c5439cf3d2cab2cc70890361dfa76430427a55b1452a7fe0771b1cef12",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=-",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "canonical_role": "customer"
+      }
+    },
+    "hash": "24d992f72d9b55743e758f2ae7b9c03ced87c3fb625d948d349b8f90c9e8094a",
+    "signature": "8d5b625dda2e44d411c70799241192a7f240d5f2325c8f40c8082294db06f123"
   }
 ]

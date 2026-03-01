@@ -1,13 +1,13 @@
 """
 app.py
 ------
-Kerala Bank - Consent Management System (DPCMS)
+Kerala Bank - Consent Privacy Management System (DPCMS)
 Entry point. Handles auth gate, role-based navigation, and module routing.
 
 Architecture:
   1. auth.init()      - initialise session, handle timeout
   2. Gate on role     - if "role" not in session -> show_login()
-  3. Role routing     - Board -> dashboard only, Customer -> rights only, etc.
+  3. Role routing     - Board/Customer/SystemAdmin fast paths, else nav menu
   4. Sidebar nav      - filtered to permitted modules per role
   5. require_access() - double-checks before every module render
 """
@@ -26,17 +26,82 @@ from modules import audit
 from modules import compliance
 
 # ---------------------------------------------------------------------------
-# Page config + global styles
+# Utility hooks — registered globally for use across modules
+# ---------------------------------------------------------------------------
+
+from utils.i18n import t, get_language_options, get_language_code
+
+# from utils.ui_helpers     import more_info
+# from utils.explainability import explain
+# from utils.export_utils   import export_data
+
+# ---------------------------------------------------------------------------
+# Language state initialisation  (must precede all UI calls)
+# ---------------------------------------------------------------------------
+
+if "lang" not in st.session_state:
+    st.session_state["lang"] = "en"
+
+# ---------------------------------------------------------------------------
+# Page config
 # ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Consent Management - Kerala Bank",
+    page_title="Consent Privacy Management - Kerala Bank",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
+# ---------------------------------------------------------------------------
+# Global styles
+# ---------------------------------------------------------------------------
+
+# ── 1. Base font size & heading scale (BFSI accessibility) ──────────────────
 st.markdown("""
 <style>
+html, body, [class*="css"] {
+    font-size: 18px !important;
+}
+
+h1 {
+    font-size: 36px !important;
+    font-weight: 700 !important;
+}
+
+h2 {
+    font-size: 28px !important;
+    font-weight: 600 !important;
+}
+
+h3 {
+    font-size: 22px !important;
+}
+
+.kpi-card h2 {
+    font-size: 26px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ── 2. Gradient headings synced to Kerala Bank palette ──────────────────────
+st.markdown("""
+<style>
+h1, h2 {
+    background: linear-gradient(90deg, #0A3D91, #1a9e5c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ── 3. Button accessibility + layout + sidebar + KPI cards + tables ─────────
+st.markdown("""
+<style>
+
+/* Accessibility */
+button {
+    font-size: 16px !important;
+}
 
 /* -------- GLOBAL BACKGROUND -------- */
 .main {
@@ -63,12 +128,6 @@ section[data-testid="stSidebar"] .stButton > button {
 
 section[data-testid="stSidebar"] .stButton > button:hover {
     background-color: #0a1e40;
-}
-
-/* -------- HEADINGS -------- */
-h1, h2, h3 {
-    color: #0A3D91;
-    font-weight: 600;
 }
 
 /* -------- KPI CARD STYLE -------- */
@@ -133,36 +192,75 @@ if "role" not in st.session_state or not st.session_state["role"]:
 role = st.session_state["role"]
 
 # ---------------------------------------------------------------------------
-# STEP 3 - Role-restricted fast paths
-#
-#   Board    -> Executive Dashboard ONLY  (no nav menu)
-#   Customer -> Data Principal Rights ONLY (no nav menu)
+# STEP 3 - Page header with language switch + sidebar user panel
 # ---------------------------------------------------------------------------
 
-st.title("Consent Management - Kerala Bank")
-st.caption("Digital Personal Data Protection Act, 2023 Compliance Framework")
+col_main, col_lang = st.columns([8, 1])
+
+with col_main:
+    st.title(t("app_title"))
+    st.caption(t("app_subtitle"))
+
+with col_lang:
+    lang_options = get_language_options()
+    # Determine current index based on stored language code
+    current_lang_code = st.session_state.get("lang", "en")
+    # Map code -> display name for default index lookup
+    _code_to_display = {get_language_code(opt): opt for opt in lang_options}
+    _current_display = _code_to_display.get(current_lang_code, lang_options[0])
+    _default_index = list(lang_options).index(_current_display) if _current_display in lang_options else 0
+
+    selected_lang_display = st.selectbox(
+        t("language"),
+        lang_options,
+        index=_default_index,
+        key="language_selector",
+        label_visibility="collapsed",
+    )
+    st.session_state["lang"] = get_language_code(selected_lang_display)
 
 auth.show_sidebar_user_panel()
 
-if role == "Board":
+# ---------------------------------------------------------------------------
+# STEP 4 - Role-restricted fast paths  (single-module roles, no nav menu)
+#
+#   Board    -> Executive Dashboard only
+#   Customer -> Data Principal Rights only
+# ---------------------------------------------------------------------------
+
+if role == "board_member":
     with st.sidebar:
-        st.info("Board View: Executive Dashboard Access Only.")
+        st.info(t("board_view_info"))
     if auth.require_access("Executive Dashboard"):
         dashboard.show()
     st.stop()
 
-if role == "Customer":
+if role == "customer":
     with st.sidebar:
-        st.info("Customer Access: Data Principal Rights Module")
+        st.info(t("customer_access_info"))
     if auth.require_access("Data Principal Rights"):
         rights_portal.show()
     st.stop()
 
 # ---------------------------------------------------------------------------
-# STEP 4 - All other roles: filtered sidebar navigation
+# STEP 5 - All other roles: filtered sidebar navigation
+#           (DPO, Officer, Auditor, SystemAdmin)
 # ---------------------------------------------------------------------------
 
-ALL_MODULES = [
+# Internal keys for module routing (never displayed directly)
+ALL_MODULE_KEYS = [
+    "executive_dashboard",
+    "consent_management",
+    "data_principal_rights",
+    "dpia_privacy_assessments",
+    "data_breach_management",
+    "privacy_notices",
+    "audit_logs",
+    "compliance_sla_monitoring",
+]
+
+# Canonical English names used by auth.permitted_modules() and require_access()
+ALL_MODULE_AUTH_NAMES = [
     "Executive Dashboard",
     "Consent Management",
     "Data Principal Rights",
@@ -186,18 +284,34 @@ ALL_ICONS = [
 
 # Filter to modules permitted for this role
 allowed = auth.permitted_modules()
-visible_modules = [(m, i) for m, i in zip(ALL_MODULES, ALL_ICONS) if m in allowed]
-visible_names   = [m for m, _ in visible_modules]
-visible_icons   = [i for _, i in visible_modules]
+
+visible_modules = [
+    (i18n_key, auth_name, icon)
+    for i18n_key, auth_name, icon in zip(ALL_MODULE_KEYS, ALL_MODULE_AUTH_NAMES, ALL_ICONS)
+    if auth_name in allowed
+]
+
+# Build translated display labels (used in the nav menu)
+visible_labels = [t(key) for key, _, _ in visible_modules]
+visible_icons  = [icon for _, _, icon in visible_modules]
+visible_auth   = [auth_name for _, auth_name, _ in visible_modules]
 
 with st.sidebar:
-    if not visible_names:
-        st.warning("No modules available for your role.")
+    if not visible_labels:
+        st.warning(t("no_modules_available"))
         st.stop()
 
-    selected = option_menu(
-        menu_title="DPCMS Modules",
-        options=visible_names,
+    # Role-specific sidebar annotation
+    if role == "system_admin":
+        st.info(t("sysadmin_info"))
+    elif role == "branch_officer":
+        branch = st.session_state.get("branch", "")
+        region = st.session_state.get("region", "")
+        st.info(f"{t('branch_label')}: {branch}\n{t('region_label')}: {region}")
+
+    selected_label = option_menu(
+        menu_title=t("dpcms_modules"),
+        options=visible_labels,
         icons=visible_icons,
         default_index=0,
         styles={
@@ -214,22 +328,30 @@ with st.sidebar:
     )
 
 # ---------------------------------------------------------------------------
-# STEP 5 - Module routing
+# STEP 6 - Module routing
 #           require_access() is the final security check before each render
+#           Map the selected translated label back to its auth name + module
 # ---------------------------------------------------------------------------
 
-MODULE_MAP: dict[str, tuple] = {
-    "Executive Dashboard":         (dashboard,          "Executive Dashboard"),
-    "Consent Management":          (consent_management, "Consent Management"),
-    "Data Principal Rights":       (rights_portal,      "Data Principal Rights"),
-    "DPIA & Privacy Assessments":  (dpia,               "DPIA & Privacy Assessments"),
-    "Data Breach Management":      (breach,             "Data Breach Management"),
-    "Privacy Notices":             (notices,            "Privacy Notices"),
-    "Audit Logs":                  (audit,              "Audit Logs"),
-    "Compliance & SLA Monitoring": (compliance,         "Compliance & SLA Monitoring"),
+# Build label -> (module, auth_name) mapping dynamically
+MODULE_OBJECTS = {
+    "Executive Dashboard":         dashboard,
+    "Consent Management":          consent_management,
+    "Data Principal Rights":       rights_portal,
+    "DPIA & Privacy Assessments":  dpia,
+    "Data Breach Management":      breach,
+    "Privacy Notices":             notices,
+    "Audit Logs":                  audit,
+    "Compliance & SLA Monitoring": compliance,
 }
 
-if selected in MODULE_MAP:
-    module, module_name = MODULE_MAP[selected]
-    if auth.require_access(module_name):
-        module.show()
+LABEL_TO_AUTH: dict[str, str] = {
+    label: auth_name
+    for label, auth_name in zip(visible_labels, visible_auth)
+}
+
+if selected_label in LABEL_TO_AUTH:
+    auth_name  = LABEL_TO_AUTH[selected_label]
+    module_obj = MODULE_OBJECTS[auth_name]
+    if auth.require_access(auth_name):
+        module_obj.show()

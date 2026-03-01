@@ -1,0 +1,65 @@
+[
+  {
+    "notice_id": "NTC-C8DF67ADA3",
+    "title": "Savings Account Privacy Notice",
+    "product": "Savings Account",
+    "content_en": "This notice explains how Kerala Bank processes your personal data for Savings Account services under DPDP Act 2023 Section 5. Data is collected for account management, KYC, and regulatory compliance. Retention period: 10 years. You may exercise your rights via our Rights Portal.",
+    "content_ml": "This notice explains how Kerala Bank processes your personal data for Savings Account services under DPDP Act 2023 Section 5. Data is collected for account management, KYC, and regulatory compliance. Retention period: 10 years. You may exercise your rights via our Rights Portal.",
+    "linked_clauses": [
+      "consent_lifecycle",
+      "rights_management"
+    ],
+    "version": 1,
+    "version_note": "Initial publication.",
+    "previous_version_id": null,
+    "created_by": "dpo_admin",
+    "created_at": "2026-02-28T10:53:43.254264+00:00",
+    "published_on": "2026-01-10",
+    "published_by": "dpo_admin",
+    "status": "published",
+    "requires_reconsent": false,
+    "affected_users": []
+  },
+  {
+    "notice_id": "NTC-0DEF079A18",
+    "title": "Digital Lending Privacy Notice",
+    "product": "Digital Lending",
+    "content_en": "Kerala Bank processes your personal and financial data to evaluate your creditworthiness and disburse loans under DPDP Act 2023. Third-party credit bureaus may receive your data. Retention: 7 years post-loan closure.",
+    "content_ml": "Kerala Bank processes your personal and financial data to evaluate your creditworthiness and disburse loans under DPDP Act 2023. Third-party credit bureaus may receive your data. Retention: 7 years post-loan closure.",
+    "linked_clauses": [
+      "consent_lifecycle",
+      "breach_reporting",
+      "data_minimisation"
+    ],
+    "version": 1,
+    "version_note": "Updated data sharing clause for CIBIL integration.",
+    "previous_version_id": null,
+    "created_by": "dpo_admin",
+    "created_at": "2026-02-28T10:53:43.255925+00:00",
+    "published_on": "2026-02-05",
+    "published_by": "dpo_admin",
+    "status": "published",
+    "requires_reconsent": false,
+    "affected_users": []
+  },
+  {
+    "notice_id": "NTC-E5EE0E7B7F",
+    "title": "UPI Services Privacy Notice",
+    "product": "UPI Services",
+    "content_en": "Your transaction data processed under UPI services is governed by DPDP Act 2023 and NPCI guidelines. Data is used solely for payment processing and fraud prevention. Retention: 5 years.",
+    "content_ml": "Your transaction data processed under UPI services is governed by DPDP Act 2023 and NPCI guidelines. Data is used solely for payment processing and fraud prevention. Retention: 5 years.",
+    "linked_clauses": [
+      "consent_lifecycle"
+    ],
+    "version": 1,
+    "version_note": "Pending DPO review.",
+    "previous_version_id": null,
+    "created_by": "officer_01",
+    "created_at": "2026-02-28T10:53:43.257993+00:00",
+    "published_on": null,
+    "published_by": null,
+    "status": "draft",
+    "requires_reconsent": false,
+    "affected_users": []
+  }
+]

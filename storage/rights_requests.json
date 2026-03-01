@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "R001",
+    "customer_id": "customer_01",
+    "type": "Raise Grievance",
+    "sla_key": "grievance_redressal",
+    "branch": "-",
+    "initiator_role": "customer",
+    "submitted_by": "customer",
+    "assisted": false,
+    "verification_mode": null,
+    "identity_verified": false,
+    "identity_verified_by": null,
+    "identity_verified_at": null,
+    "decision_explainability": null,
+    "submitted_at": "2026-02-28T10:47:00.482360",
+    "deadline": "2026-03-30",
+    "status": "Open",
+    "sla_status": "Green",
+    "escalated": false,
+    "notes": "transaction failing"
+  }
+]

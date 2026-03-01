@@ -1,43 +1,81 @@
 """
 engine/orchestration.py
 -----------------------
-Consent-Gated Request Orchestration Layer for DPCMS.
+Unified Governance + Notification Orchestration Layer — Step 13 Refactor.
 
-Every data access, processing action, or rights operation in the system
-must pass through this layer. It enforces the consent gate, logs every
-decision (grant or block), and returns a structured result object.
+This module serves two integrated roles:
 
-Public API:
-    process_event()             → central policy gate for all business events
-    process_data_request()      → gate any data access or processing action
-    process_rights_request()    → gate DSR (Data Subject Rights) actions
-    process_bulk_requests()     → gate a batch of requests atomically
-    get_request_summary()       → statistics on recent decisions
+  1. CONSENT-GATED POLICY ENGINE (retained from original)
+     Every data access, processing action, or rights operation passes
+     through here. It enforces the consent gate, evaluates governance
+     rules, logs every decision, and returns a structured result object.
 
+  2. EVENT-DRIVEN NOTIFICATION DISPATCHER (Step 13 additions)
+     Centralises all cross-module notifications (SMS, Email, WhatsApp,
+     in-app). No module may call a notification API directly — all
+     notifications flow through dispatch_event().
+
+     Supported channels: sms | email | whatsapp | in_app
+     Supported modules : consent | rights | breach | dpia | sla |
+                         compliance | notice | orchestration
+
+─────────────────────────────────────────────────────────────────────
+POLICY ENGINE — Public API (unchanged)
+─────────────────────────────────────────────────────────────────────
+  process_event()             → central policy gate for all business events
+  process_data_request()      → gate any data access or processing action
+  process_rights_request()    → gate DSR (Data Subject Rights) actions
+  process_bulk_requests()     → gate a batch of requests atomically
+  get_request_summary()       → statistics on recent decisions
+
+─────────────────────────────────────────────────────────────────────
+NOTIFICATION DISPATCHER — Public API (Step 13 additions)
+─────────────────────────────────────────────────────────────────────
+  build_event()               → construct a validated event dict (Step 13A)
+  validate_event_structure()  → assert all required keys present (Step 13L)
+  dispatch_event()            → validate → route → log (Step 13B)
+  route_event()               → channel-level router (Step 13C)
+  send_sms()                  → SMS gateway stub (Step 13D)
+  send_email()                → Email gateway stub (Step 13E)
+  send_whatsapp()             → WhatsApp gateway stub
+  create_in_app_notification()→ persist to storage/notifications.json (Step 13F)
+  log_event()                 → write event to audit ledger (Step 13G)
+  trigger_notification()      → legacy shim → dispatch_event() (Step 13H)
+  get_in_app_notifications()  → retrieve unread in-app alerts
+  mark_notification_read()    → mark a stored notification as read
+
+─────────────────────────────────────────────────────────────────────
 Decision flow (process_event):
-    1. Evaluate context via DecisionEngine
-    2. If BLOCK    → audit_log("Rule Blocked")     + return (False, decision)
-    3. If ESCALATE → audit_log("Rule Escalation")  + return (True,  decision)
-    4. If PASS     → audit_log("Rule Passed")      + return (True,  decision)
+  1. Evaluate context via DecisionEngine
+  2. BLOCK    → audit_log("Rule Blocked")    + return (False, decision)
+  3. ESCALATE → audit_log("Rule Escalation") + return (True,  decision)
+  4. PASS     → audit_log("Rule Passed")     + return (True,  decision)
 
 Decision flow (process_data_request):
-    1. Auto-expire stale consents (passive sweep)
-    2. Validate consent via validate_consent()
-    3. If blocked → audit_log("Access Blocked") + return result(allowed=False)
-    4. If allowed → audit_log("Access Granted") + return result(allowed=True)
+  1. Auto-expire stale consents (passive sweep)
+  2. Validate consent via validate_consent()
+  3. Blocked → audit_log("Access Blocked") + return result(allowed=False)
+  4. Allowed → audit_log("Access Granted") + return result(allowed=True)
 """
 
 from __future__ import annotations
 
+import json
+import logging
+import os
+import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
-from engine.audit_ledger import audit_log
+from engine.audit_ledger import audit_log, append_audit_log
 from engine.consent_validator import (
     auto_expire_all,
     validate_consent,
 )
 from engine.rules.decision_engine import DecisionEngine
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Module-level engine instance — shared across all orchestration calls
@@ -46,19 +84,566 @@ from engine.rules.decision_engine import DecisionEngine
 engine = DecisionEngine()
 
 # ---------------------------------------------------------------------------
+# Storage paths
+# ---------------------------------------------------------------------------
+
+_NOTIFICATIONS_PATH = Path(
+    os.getenv("NOTIFICATIONS_PATH", "storage/notifications.json")
+)
+
+# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 # Rights request types recognised by process_rights_request()
 VALID_RIGHTS = {
-    "access",           # Section 11 DPDP — right to access data
-    "correction",       # Section 12 DPDP — right to correct data
-    "erasure",          # Section 13 DPDP — right to erase data
-    "portability",      # Section 13 DPDP — right to data portability
-    "grievance",        # Section 13 DPDP — right to raise grievance
-    "nomination",       # Section 14 DPDP — right to nominate
+    "access",       # Section 11 DPDP — right to access data
+    "correction",   # Section 12 DPDP — right to correct data
+    "erasure",      # Section 13 DPDP — right to erase data
+    "portability",  # Section 13 DPDP — right to data portability
+    "grievance",    # Section 13 DPDP — right to raise grievance
+    "nomination",   # Section 14 DPDP — right to nominate
 }
 
+# Valid event modules and channels (Step 13A)
+VALID_MODULES = {
+    "consent", "rights", "breach", "dpia", "sla",
+    "compliance", "notice", "orchestration",
+}
+VALID_CHANNELS = {"sms", "email", "whatsapp", "in_app"}
+
+# Required keys for every dispatched event (Step 13L)
+_REQUIRED_EVENT_KEYS = [
+    "event_id", "module", "event_type",
+    "entity_id", "recipient_id",
+    "channel", "payload", "timestamp",
+]
+
+
+# ===========================================================================
+# ─── SECTION 1: NOTIFICATION DISPATCHER (Step 13) ──────────────────────────
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Step 13A — Standardised event builder
+# ---------------------------------------------------------------------------
+
+def build_event(
+    module: str,
+    event_type: str,
+    entity_id: str,
+    recipient_id: str,
+    channel: str,
+    payload: dict[str, Any],
+    recipient_role: str = "",
+) -> dict[str, Any]:
+    """
+    Construct a validated, standardised event dict. (Step 13A)
+
+    Parameters
+    ----------
+    module         : Source module — one of VALID_MODULES
+    event_type     : e.g. "created", "approved", "sla_breach", "expiry_warning"
+    entity_id      : ID of the entity that triggered the event
+    recipient_id   : Customer ID, phone number, or email address
+    channel        : One of VALID_CHANNELS
+    payload        : Dict with at minimum {"message": str}
+    recipient_role : Optional — "customer", "dpo", "officer", etc.
+
+    Returns
+    -------
+    Validated event dict ready for dispatch_event().
+
+    Example
+    -------
+    >>> event = build_event(
+    ...     module="rights",
+    ...     event_type="request_created",
+    ...     entity_id="RQ-001",
+    ...     recipient_id="CUST001",
+    ...     channel="sms",
+    ...     payload={"message": "Your rights request has been received."},
+    ... )
+    >>> dispatch_event(event)
+    """
+    event: dict[str, Any] = {
+        "event_id":      f"EVT-{uuid.uuid4().hex[:10].upper()}",
+        "module":        module,
+        "event_type":    event_type,
+        "entity_id":     entity_id,
+        "recipient_role": recipient_role,
+        "recipient_id":  recipient_id,
+        "channel":       channel,
+        "payload":       payload,
+        "timestamp":     datetime.now(timezone.utc).isoformat(),
+    }
+    validate_event_structure(event)
+    return event
+
+
+# ---------------------------------------------------------------------------
+# Step 13L — Event structure validation
+# ---------------------------------------------------------------------------
+
+def validate_event_structure(event: dict[str, Any]) -> None:
+    """
+    Assert all required keys are present. Raise ValueError on first missing.
+    Call this before dispatch. (Step 13L)
+    """
+    for key in _REQUIRED_EVENT_KEYS:
+        if key not in event:
+            raise ValueError(
+                f"Malformed event — missing required field: '{key}'. "
+                f"Present keys: {list(event.keys())}"
+            )
+    if event.get("channel") not in VALID_CHANNELS:
+        raise ValueError(
+            f"Invalid channel '{event.get('channel')}'. "
+            f"Must be one of: {VALID_CHANNELS}"
+        )
+    if event.get("module") not in VALID_MODULES:
+        raise ValueError(
+            f"Invalid module '{event.get('module')}'. "
+            f"Must be one of: {VALID_MODULES}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Step 13B — Central dispatcher
+# ---------------------------------------------------------------------------
+
+def dispatch_event(event: dict[str, Any]) -> None:
+    """
+    Central notification dispatcher. (Step 13B)
+
+    Flow: validate → route to channel → log to audit ledger.
+
+    Parameters
+    ----------
+    event : Standardised event dict. Use build_event() to construct.
+            dispatch_event() can also accept raw dicts — it will
+            validate structure before routing.
+
+    Raises
+    ------
+    ValueError if event structure is invalid.
+    """
+    validate_event_structure(event)
+    route_event(event)
+    log_event(event)
+
+
+# ---------------------------------------------------------------------------
+# Step 13C — Channel router
+# ---------------------------------------------------------------------------
+
+def route_event(event: dict[str, Any]) -> None:
+    """
+    Route a validated event to the appropriate channel handler. (Step 13C)
+    """
+    channel = event["channel"]
+
+    if channel == "sms":
+        send_sms(event)
+    elif channel == "email":
+        send_email(event)
+    elif channel == "whatsapp":
+        send_whatsapp(event)
+    elif channel == "in_app":
+        create_in_app_notification(event)
+    else:
+        logger.warning(f"route_event: unknown channel '{channel}' — event dropped.")
+
+
+# ---------------------------------------------------------------------------
+# Step 13D — SMS stub
+# ---------------------------------------------------------------------------
+
+def send_sms(event: dict[str, Any]) -> None:
+    """
+    Dispatch an SMS notification. (Step 13D)
+
+    Current implementation: structured log stub.
+    Replace the body with your gateway integration:
+      - NIC SMS Gateway
+      - Bank SMS API
+      - Twilio / MSG91
+
+    Parameters
+    ----------
+    event : Standard event dict with payload["message"] populated.
+    """
+    message     = event["payload"].get("message", "")
+    recipient   = event["recipient_id"]
+    event_type  = event["event_type"]
+    module      = event["module"]
+
+    # ── Gateway integration point ─────────────────────────────────────────────
+    # import requests
+    # requests.post(SMS_GATEWAY_URL, json={
+    #     "to": recipient, "message": message, "sender": "KERALABK"
+    # })
+    # ─────────────────────────────────────────────────────────────────────────
+
+    logger.info(
+        f"[SMS] module={module} event={event_type} "
+        f"to={recipient} msg={message[:80]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Step 13E — Email stub
+# ---------------------------------------------------------------------------
+
+def send_email(event: dict[str, Any]) -> None:
+    """
+    Dispatch an email notification. (Step 13E)
+
+    Replace the body with:
+      - SMTP / smtplib
+      - AWS SES
+      - SendGrid
+
+    Payload keys: subject, body (optional: cc, bcc, attachments)
+    """
+    subject    = event["payload"].get("subject", f"[Kerala Bank] {event['event_type']}")
+    body       = event["payload"].get("body", event["payload"].get("message", ""))
+    recipient  = event["recipient_id"]
+    module     = event["module"]
+    event_type = event["event_type"]
+
+    # ── Gateway integration point ─────────────────────────────────────────────
+    # import smtplib
+    # from email.message import EmailMessage
+    # msg = EmailMessage()
+    # msg["Subject"] = subject; msg["To"] = recipient; msg.set_content(body)
+    # smtplib.SMTP("smtp.keralabank.in").send_message(msg)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    logger.info(
+        f"[EMAIL] module={module} event={event_type} "
+        f"to={recipient} subject={subject[:60]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# WhatsApp stub
+# ---------------------------------------------------------------------------
+
+def send_whatsapp(event: dict[str, Any]) -> None:
+    """
+    Dispatch a WhatsApp Business notification.
+
+    Replace with:
+      - WhatsApp Business API (Meta Cloud API)
+      - Twilio WhatsApp
+      - Gupshup
+
+    Payload keys: message, template_name (optional), template_params (optional)
+    """
+    message    = event["payload"].get("message", "")
+    recipient  = event["recipient_id"]
+    module     = event["module"]
+    event_type = event["event_type"]
+
+    # ── Gateway integration point ─────────────────────────────────────────────
+    # import requests
+    # requests.post(WA_API_URL, headers={"Authorization": f"Bearer {WA_TOKEN}"},
+    #     json={"messaging_product": "whatsapp",
+    #           "to": recipient, "type": "text",
+    #           "text": {"body": message}})
+    # ─────────────────────────────────────────────────────────────────────────
+
+    logger.info(
+        f"[WHATSAPP] module={module} event={event_type} "
+        f"to={recipient} msg={message[:80]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Step 13F — In-app notification store
+# ---------------------------------------------------------------------------
+
+def _ensure_notifications_store() -> None:
+    _NOTIFICATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not _NOTIFICATIONS_PATH.exists():
+        _NOTIFICATIONS_PATH.write_text("[]", encoding="utf-8")
+
+
+def _load_notifications() -> list[dict]:
+    _ensure_notifications_store()
+    raw = _NOTIFICATIONS_PATH.read_text(encoding="utf-8").strip()
+    data = json.loads(raw) if raw else []
+    return data if isinstance(data, list) else []
+
+
+def _save_notifications(items: list[dict]) -> None:
+    _NOTIFICATIONS_PATH.write_text(
+        json.dumps(items, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def create_in_app_notification(event: dict[str, Any]) -> None:
+    """
+    Persist an in-app notification to storage/notifications.json. (Step 13F)
+    """
+    notifications = _load_notifications()
+
+    notifications.append({
+        "notification_id": f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+        "event_id":        event.get("event_id"),
+        "module":          event.get("module"),
+        "event_type":      event.get("event_type"),
+        "entity_id":       event.get("entity_id"),
+        "recipient_id":    event["recipient_id"],
+        "recipient_role":  event.get("recipient_role", ""),
+        "message":         event["payload"].get("message", ""),
+        "timestamp":       event["timestamp"],
+        "read":            False,
+    })
+
+    _save_notifications(notifications)
+    logger.info(
+        f"[IN_APP] module={event.get('module')} event={event.get('event_type')} "
+        f"to={event['recipient_id']}"
+    )
+
+
+def get_in_app_notifications(
+    recipient_id: str,
+    unread_only: bool = False,
+) -> list[dict]:
+    """
+    Retrieve in-app notifications for a given recipient.
+
+    Parameters
+    ----------
+    recipient_id : Customer or user ID to filter by.
+    unread_only  : If True, return only unread items.
+    """
+    items = _load_notifications()
+    items = [n for n in items if n.get("recipient_id") == recipient_id]
+    if unread_only:
+        items = [n for n in items if not n.get("read")]
+    return sorted(items, key=lambda x: x.get("timestamp", ""), reverse=True)
+
+
+def mark_notification_read(notification_id: str) -> bool:
+    """
+    Mark a specific in-app notification as read.
+
+    Returns True if found and updated, False if not found.
+    """
+    items   = _load_notifications()
+    updated = False
+    for n in items:
+        if n.get("notification_id") == notification_id:
+            n["read"] = True
+            updated = True
+            break
+    if updated:
+        _save_notifications(items)
+    return updated
+
+
+# ---------------------------------------------------------------------------
+# Step 13G — Audit log for every dispatched event
+# ---------------------------------------------------------------------------
+
+def log_event(event: dict[str, Any]) -> None:
+    """
+    Write a structured audit entry for every dispatched notification. (Step 13G)
+    This ensures all outbound communications are traceable.
+    """
+    append_audit_log(
+        action=(
+            f"Notification Dispatched"
+            f" | module={event.get('module')}"
+            f" | event={event.get('event_type')}"
+            f" | channel={event.get('channel')}"
+        ),
+        user="orchestration",
+        metadata={
+            "event_id":     event.get("event_id"),
+            "module":       event.get("module"),
+            "action":       event.get("event_type"),
+            "entity_id":    event.get("entity_id"),
+            "recipient":    event.get("recipient_id"),
+            "channel":      event.get("channel"),
+            "timestamp":    event.get("timestamp"),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Step 13H — Legacy shim: trigger_notification() → dispatch_event()
+# ---------------------------------------------------------------------------
+
+def trigger_notification(
+    channel: str,
+    recipient: str,
+    message: str,
+    module: str = "orchestration",
+    event_type: str = "notification",
+    entity_id: str = "",
+) -> None:
+    """
+    Backward-compatible shim. Converts legacy direct notification calls
+    into structured dispatch_event() calls. (Step 13H)
+
+    Existing callers (notices.py, consent_management.py, breach.py, etc.)
+    that still use trigger_notification() are automatically upgraded.
+
+    Preferred pattern going forward:
+        dispatch_event(build_event(...))
+    """
+    try:
+        event = build_event(
+            module=module if module in VALID_MODULES else "orchestration",
+            event_type=event_type,
+            entity_id=entity_id or f"legacy-{uuid.uuid4().hex[:6]}",
+            recipient_id=recipient,
+            channel=channel if channel in VALID_CHANNELS else "sms",
+            payload={"message": message},
+        )
+        dispatch_event(event)
+    except Exception as exc:
+        logger.error(f"trigger_notification shim failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Step 13I — SLA escalation event builder
+# ---------------------------------------------------------------------------
+
+def dispatch_sla_breach(
+    entity_id: str,
+    escalation_role: str,
+    escalation_contact: str,
+    channel: str = "sms",
+    extra_payload: Optional[dict] = None,
+) -> None:
+    """
+    Route an SLA breach notification. (Step 13I)
+    Called by sla_engine.py instead of any direct SMS call.
+
+    Parameters
+    ----------
+    entity_id          : The SLA record / request ID that was breached.
+    escalation_role    : e.g. "dpo", "officer", "board"
+    escalation_contact : Phone / email of the escalation target.
+    channel            : Notification channel (default: sms).
+    extra_payload      : Optional additional payload keys.
+    """
+    payload = {"message": f"SLA breached for {entity_id}. Immediate action required."}
+    if extra_payload:
+        payload.update(extra_payload)
+
+    event = build_event(
+        module="sla",
+        event_type="sla_breach",
+        entity_id=entity_id,
+        recipient_id=escalation_contact,
+        channel=channel,
+        payload=payload,
+        recipient_role=escalation_role,
+    )
+    dispatch_event(event)
+
+
+# ---------------------------------------------------------------------------
+# Step 13J — Consent expiry reminder
+# ---------------------------------------------------------------------------
+
+def dispatch_consent_expiry_reminder(
+    customer_id: str,
+    consent_id: str,
+    channel: str = "sms",
+    contact: str = "",
+) -> None:
+    """
+    Notify a data principal that their consent is approaching expiry. (Step 13J)
+    Called by consent_management.py — replaces any direct notification call.
+    """
+    event = build_event(
+        module="consent",
+        event_type="expiry_warning",
+        entity_id=consent_id,
+        recipient_id=contact or customer_id,
+        channel=channel,
+        payload={
+            "message": (
+                "Your consent for data processing is expiring soon. "
+                "Please review and renew your consent to continue services."
+            )
+        },
+        recipient_role="customer",
+    )
+    dispatch_event(event)
+
+
+# ---------------------------------------------------------------------------
+# Step 13K — Breach cohort notification
+# ---------------------------------------------------------------------------
+
+def dispatch_breach_cohort_notifications(
+    breach_id: str,
+    impacted_customers: list[dict[str, Any]],
+    channel: str = "sms",
+) -> int:
+    """
+    Send a notification to every data principal in the impacted cohort. (Step 13K)
+    Called by breach.py instead of any direct loop.
+
+    Parameters
+    ----------
+    breach_id           : Unique breach identifier.
+    impacted_customers  : List of dicts with at minimum {"id": str, "contact": str}.
+    channel             : Notification channel for all cohort members.
+
+    Returns
+    -------
+    int — number of notifications dispatched.
+    """
+    count = 0
+    for customer in impacted_customers:
+        contact = customer.get("contact") or customer.get("phone") or customer.get("email", "")
+        if not contact:
+            logger.warning(
+                f"dispatch_breach_cohort_notifications: "
+                f"no contact for customer {customer.get('id')} — skipped."
+            )
+            continue
+
+        event = build_event(
+            module="breach",
+            event_type="cohort_notification",
+            entity_id=breach_id,
+            recipient_id=contact,
+            channel=channel,
+            payload={
+                "message": (
+                    "A personal data security incident has been detected that "
+                    "may affect your data. Kerala Bank is taking immediate action. "
+                    "Please contact us if you notice any suspicious activity."
+                ),
+                "breach_id": breach_id,
+            },
+            recipient_role="customer",
+        )
+        dispatch_event(event)
+        count += 1
+
+    logger.info(
+        f"dispatch_breach_cohort_notifications: {count} notification(s) "
+        f"sent for breach {breach_id}."
+    )
+    return count
+
+
+# ===========================================================================
+# ─── SECTION 2: CONSENT-GATED POLICY ENGINE (unchanged from original) ──────
+# ===========================================================================
 
 # ---------------------------------------------------------------------------
 # Result object
@@ -97,7 +682,7 @@ def _result(
 
 
 # ---------------------------------------------------------------------------
-# Generic event gate  (Module → Orchestration → Rule Engine → Audit)
+# Generic event gate (Module → Orchestration → Rule Engine → Audit)
 # ---------------------------------------------------------------------------
 
 def process_event(context: dict) -> tuple[bool, dict]:
@@ -163,7 +748,7 @@ def process_event(context: dict) -> tuple[bool, dict]:
 
 
 # ---------------------------------------------------------------------------
-# Core gate
+# Core consent gate
 # ---------------------------------------------------------------------------
 
 def process_data_request(
@@ -194,12 +779,6 @@ def process_data_request(
     Returns
     -------
     dict — standardised result envelope (see _result()).
-
-    Example
-    -------
-    >>> result = process_data_request("CUST001", "kyc", actor="loan_officer_01")
-    >>> if result["allowed"]:
-    ...     # proceed with data access
     """
     purpose_key = purpose.lower().replace(" ", "_")
     meta        = metadata or {}
@@ -335,7 +914,6 @@ def process_rights_request(
     )
 
     if not result["allowed"]:
-        # Overwrite reason to be rights-specific
         result["reason"] = (
             f"Rights request ({rights_lower}) blocked — {result['reason']}"
         )
@@ -438,10 +1016,10 @@ def get_request_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     Returns
     -------
     dict:
-        total    : int
-        allowed  : int
-        blocked  : int
-        rate     : float  — % allowed
+        total           : int
+        allowed         : int
+        blocked         : int
+        rate            : float  — % allowed
         blocked_reasons : dict[reason, count]
     """
     total   = len(results)
@@ -462,10 +1040,11 @@ def get_request_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
+# ===========================================================================
 # Smoke test — run directly: python engine/orchestration.py
-# ---------------------------------------------------------------------------
+# ===========================================================================
 if __name__ == "__main__":
+    import pprint
     from engine.audit_ledger import clear_ledger
     from engine.consent_validator import create_consent, STORAGE_PATH
 
@@ -473,16 +1052,79 @@ if __name__ == "__main__":
     clear_ledger(confirm=True)
     STORAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
     STORAGE_PATH.write_text("[]", encoding="utf-8")
+    _NOTIFICATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _NOTIFICATIONS_PATH.write_text("[]", encoding="utf-8")
     print("Storage cleared.\n")
 
     # Seed consents
     create_consent("CUST001", "kyc",       granted=True,  actor="setup")
-    create_consent("CUST001", "marketing", granted=False, actor="setup")  # revoked
+    create_consent("CUST001", "marketing", granted=False, actor="setup")
     create_consent("CUST002", "kyc",       granted=True,  actor="setup")
     print("Consents seeded.\n")
 
-    # Single request tests
-    print("── process_data_request ────────────────────────────────")
+    # ── Notification dispatcher tests ─────────────────────────────────────────
+    print("── dispatch_event (sms) ───────────────────────────────────")
+    sms_event = build_event(
+        module="rights",
+        event_type="request_created",
+        entity_id="RQ-001",
+        recipient_id="9876543210",
+        channel="sms",
+        payload={"message": "Your rights request RQ-001 has been received."},
+        recipient_role="customer",
+    )
+    dispatch_event(sms_event)
+    print(f"  Dispatched: {sms_event['event_id']}")
+
+    print("\n── dispatch_event (in_app) ────────────────────────────────")
+    inapp_event = build_event(
+        module="consent",
+        event_type="expiry_warning",
+        entity_id="CON-042",
+        recipient_id="CUST001",
+        channel="in_app",
+        payload={"message": "Your consent expires in 7 days. Please renew."},
+        recipient_role="customer",
+    )
+    dispatch_event(inapp_event)
+    notifs = get_in_app_notifications("CUST001", unread_only=True)
+    print(f"  In-app notifications for CUST001: {len(notifs)}")
+    pprint.pprint(notifs[0])
+
+    print("\n── trigger_notification (legacy shim) ─────────────────────")
+    trigger_notification(
+        channel="sms",
+        recipient="9999900000",
+        message="Legacy notification test.",
+    )
+    print("  Legacy shim dispatched without error.")
+
+    print("\n── dispatch_sla_breach ────────────────────────────────────")
+    dispatch_sla_breach(
+        entity_id="SLA-007",
+        escalation_role="dpo",
+        escalation_contact="dpo@keralabank.in",
+        channel="email",
+    )
+    print("  SLA breach email dispatched.")
+
+    print("\n── dispatch_breach_cohort_notifications ───────────────────")
+    cohort = [
+        {"id": "CUST001", "contact": "9876543210"},
+        {"id": "CUST002", "contact": "9876543211"},
+        {"id": "CUST003"},   # missing contact — should be skipped
+    ]
+    count = dispatch_breach_cohort_notifications("BR-001", cohort, channel="sms")
+    print(f"  {count} cohort SMS(es) sent.")
+
+    print("\n── validate_event_structure (bad event) ───────────────────")
+    try:
+        validate_event_structure({"module": "consent"})
+    except ValueError as e:
+        print(f"  Caught expected error: {e}")
+
+    # ── Policy engine tests ───────────────────────────────────────────────────
+    print("\n── process_data_request ───────────────────────────────────")
     cases = [
         ("CUST001", "kyc",       "CUST001 has active KYC consent"),
         ("CUST001", "marketing", "CUST001 revoked marketing consent"),
@@ -491,34 +1133,32 @@ if __name__ == "__main__":
     ]
     for cid, purpose, label in cases:
         r = process_data_request(cid, purpose, actor="smoke_test")
-        icon = "✅" if r["allowed"] else "❌"
-        print(f"  {icon} {label}")
+        icon = "OK" if r["allowed"] else "BLOCKED"
+        print(f"  [{icon}] {label}")
         print(f"     reason: {r['reason']}")
 
-    # Rights request tests
-    print("\n── process_rights_request ──────────────────────────────")
+    print("\n── process_rights_request ─────────────────────────────────")
     rights_cases = [
-        ("CUST001", "access",    "kyc",  "Should be allowed"),
-        ("CUST001", "erasure",   "kyc",  "Erasure bypasses consent check"),
-        ("CUST001", "correction","marketing", "Blocked — consent revoked"),
-        ("CUST001", "unknown",   "kyc",  "Invalid rights type"),
+        ("CUST001", "access",     "kyc",       "Should be allowed"),
+        ("CUST001", "erasure",    "kyc",       "Erasure bypasses consent"),
+        ("CUST001", "correction", "marketing", "Blocked — consent revoked"),
+        ("CUST001", "unknown",    "kyc",       "Invalid rights type"),
     ]
     for cid, rtype, purpose, label in rights_cases:
         r = process_rights_request(cid, rtype, purpose, actor="rights_portal")
-        icon = "✅" if r["allowed"] else "❌"
-        print(f"  {icon} {label}")
+        icon = "OK" if r["allowed"] else "BLOCKED"
+        print(f"  [{icon}] {label}")
         print(f"     reason: {r['reason']}")
 
-    # Bulk test
-    print("\n── process_bulk_requests ───────────────────────────────")
+    print("\n── process_bulk_requests ──────────────────────────────────")
     batch = [
         {"customer_id": "CUST001", "purpose": "kyc"},
         {"customer_id": "CUST001", "purpose": "marketing"},
         {"customer_id": "CUST002", "purpose": "kyc"},
         {"customer_id": "CUST999", "purpose": "kyc"},
     ]
-    results = process_bulk_requests(batch, actor="batch_processor")
-    summary = get_request_summary(results)
+    results  = process_bulk_requests(batch, actor="batch_processor")
+    summary  = get_request_summary(results)
     print(f"  Total: {summary['total']} | Allowed: {summary['allowed']} | Blocked: {summary['blocked']}")
     print(f"  Allow rate: {summary['rate']}%")
     print(f"  Blocked reasons: {summary['blocked_reasons']}")

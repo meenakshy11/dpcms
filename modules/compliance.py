@@ -1,14 +1,24 @@
 """
 modules/compliance.py
 ---------------------
-Compliance & SLA Monitoring dashboard.
-Pulls live scores from compliance_engine and renders:
-  - Overall score banner
-  - Per-regulation metric cards
-  - Compliance bar chart + 2-D feature heatmap
-  - Per-regulation clause breakdown with donut chart
-  - Pending action items with impact chart
-  - Feature implementation toggle (DPO only)
+Compliance & SLA Monitoring dashboard — Regulatory Grade (Step 10 Refactor).
+
+Role-access model:
+  DPO         Full access (all tabs)
+  Auditor     Full read access (all tabs, no feature toggle)
+  Board       Read-only (simplified KPI + export)
+  SystemAdmin Access restricted
+  Officer     Access restricted
+  Customer    Access restricted
+
+Compliance is DERIVED from live system state via evaluate_compliance().
+No manual toggles. No free-text overrides.
+
+Frameworks covered:
+  DPDP Act 2023 + DPDP Rules 2025
+  RBI Cyber Security Framework
+  NABARD IT Guidelines
+  CERT-IN Directions 2022
 """
 
 import streamlit as st
@@ -16,21 +26,31 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-from auth import require_access, get_role
-from engine.compliance_engine import (
-    get_compliance_scores,
-    get_summary_matrix,
-    get_overall_score,
-    get_pending_actions,
-    mark_feature_implemented,
-    FEATURES,
-)
+from auth import require_access, get_role_display as get_role
+from engine.compliance_engine import evaluate_compliance
 from engine.audit_ledger import audit_log
+from utils.i18n import t
+from utils.export_utils import render_export_buttons
+from utils.ui_helpers import more_info
+from utils.dpdp_clauses import get_clause
 
 
 # ---------------------------------------------------------------------------
-# Colour / label helpers
+# Colour helpers
 # ---------------------------------------------------------------------------
+
+_STATUS_HEX = {
+    "compliant":     "#2e7d32",
+    "partial":       "#f9a825",
+    "non_compliant": "#c62828",
+}
+
+_STATUS_SCORE_COLOUR = {
+    "compliant":     "#1a9e5c",
+    "partial":       "#f0a500",
+    "non_compliant": "#d93025",
+}
+
 
 def _score_colour(score: float) -> str:
     if score >= 90:
@@ -42,10 +62,50 @@ def _score_colour(score: float) -> str:
 
 def _score_label(score: float) -> str:
     if score >= 90:
-        return "Compliant"
+        return t("compliant")
     elif score >= 75:
-        return "Partial"
-    return "Non-Compliant"
+        return t("partial")
+    return t("non_compliant")
+
+
+# ---------------------------------------------------------------------------
+# Heatmap cell renderer — colour blocks only, NO text labels (Step 10E)
+# ---------------------------------------------------------------------------
+
+def render_heatmap_cell(status: str) -> str:
+    color = _STATUS_HEX.get(status, "#e0e0e0")
+    return (
+        f'<div style="'
+        f'width:20px;height:20px;'
+        f'background-color:{color};'
+        f'border-radius:4px;'
+        f'display:inline-block;'
+        f'"></div>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Clause info hover — minimal ℹ only (Step 10F)
+# ---------------------------------------------------------------------------
+
+def _clause_hover(clause: dict) -> str:
+    desc  = clause.get("description", "")
+    amend = clause.get("amendment_reference", "")
+    title = f"{desc} — {amend}" if amend else desc
+    return f'<span title="{title}" style="cursor:help;font-size:0.9rem;">ℹ</span>'
+
+
+# ---------------------------------------------------------------------------
+# Overall score calculation (Step 10G)
+# ---------------------------------------------------------------------------
+
+def calculate_overall_score(clauses: list) -> int:
+    total     = len(clauses)
+    if total == 0:
+        return 0
+    compliant = sum(1 for c in clauses if c["status"] == "compliant")
+    partial   = sum(1 for c in clauses if c["status"] == "partial")
+    return round((compliant + partial * 0.5) / total * 100)
 
 
 # ---------------------------------------------------------------------------
@@ -56,321 +116,275 @@ def show():
     if not require_access("Compliance & SLA Monitoring"):
         return
 
-    st.header("Compliance & SLA Monitoring")
-    st.caption(
-        "Real-time regulatory compliance scoring - "
-        "DPDP Act 2023 · RBI Cyber Security Framework · NABARD IT Guidelines · CERT-IN Directions 2022"
-    )
+    role = get_role()
+    ALLOWED_ROLES = ("DPO", "Auditor", "Board")
 
-    role        = get_role()
-    scores_data = get_compliance_scores()
-    summary     = get_summary_matrix()
-    overall     = get_overall_score()
-    pending     = get_pending_actions()
+    if role not in ALLOWED_ROLES:
+        st.warning(t("compliance_access_restricted").format(role=role))
+        if role == "SystemAdmin":
+            st.info(t("compliance_sysadmin_hint"))
+        elif role == "Officer":
+            st.info(t("compliance_officer_hint"))
+        return
 
-    # ── Overall Score Banner ─────────────────────────────────────────────────
-    colour    = _score_colour(overall)
-    compliant = sum(1 for s in summary.values() if s >= 90)
+    st.header(t("compliance"))
+    st.caption(t("compliance_caption"))
+
+    more_info(t("compliance_more_info"))
+
+    # ── Fetch live compliance state ──────────────────────────────────────────
+    result  = evaluate_compliance()           # → {"overall_score": int, "clauses": [...]}
+    clauses = result.get("clauses", [])
+    overall = result.get("overall_score", calculate_overall_score(clauses))
+
+    compliant_count     = sum(1 for c in clauses if c["status"] == "compliant")
+    partial_count       = sum(1 for c in clauses if c["status"] == "partial")
+    non_compliant_count = sum(1 for c in clauses if c["status"] == "non_compliant")
+
+    # ── Overall Score Banner (KPI — simplified, Step 10H) ───────────────────
+    colour = _score_colour(overall)
 
     st.markdown(f"""
     <div style="
-        background: #F0F4FF;
-        border-left: 6px solid {colour};
-        border-radius: 8px;
-        padding: 24px 32px;
-        margin-bottom: 24px;
+        background:#F0F4FF;
+        border-left:6px solid {colour};
+        border-radius:8px;
+        padding:24px 32px;
+        margin-bottom:24px;
     ">
         <div style="font-size:2rem;font-weight:800;color:{colour}">{overall}%</div>
-        <div style="font-size:1rem;color:#444;font-weight:600">Overall Compliance Score</div>
+        <div style="font-size:1rem;color:#444;font-weight:600">{t("overall_compliance_score")}</div>
         <div style="font-size:0.82rem;color:#666">
-            Across {len(summary)} frameworks &nbsp;·&nbsp;
-            {compliant} fully compliant &nbsp;·&nbsp;
-            {len(pending)} action items pending
+            {len(clauses)} {t("clauses_evaluated")} &nbsp;·&nbsp;
+            {compliant_count} {t("compliant")} &nbsp;·&nbsp;
+            {partial_count} {t("partial")} &nbsp;·&nbsp;
+            {non_compliant_count} {t("non_compliant")}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Per-regulation KPI cards ─────────────────────────────────────────────
-    cols = st.columns(len(summary))
-    for col, (reg_name, reg_data) in zip(cols, scores_data.items()):
-        score       = reg_data["score"]
-        card_colour = _score_colour(score)
-        card_label  = _score_label(score)
+    if role == "Auditor":
+        st.info(t("auditor_read_only"))
+
+    # ── Per-status KPI summary cards ─────────────────────────────────────────
+    kpi_cols = st.columns(3)
+    for col, (label_key, count, hex_col) in zip(kpi_cols, [
+        ("compliant",     compliant_count,     "#2e7d32"),
+        ("partial",       partial_count,       "#f9a825"),
+        ("non_compliant", non_compliant_count, "#c62828"),
+    ]):
         with col:
-            st.markdown(f'''<div class="kpi-card" style="border-top-color:{card_colour};">
-                <h4>{reg_data["short"]}</h4>
-                <h2 style="color:{card_colour};">{score}%</h2>
-                <p style="color:{card_colour};">{card_label}</p>
-            </div>''', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="border-top:4px solid {hex_col};border-radius:8px;'
+                f'padding:14px 18px;background:#fafafa;">'
+                f'<div style="font-size:1.6rem;font-weight:800;color:{hex_col}">{count}</div>'
+                f'<div style="font-size:0.9rem;color:#444">{t(label_key)}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     st.divider()
 
     # ── Tabs ─────────────────────────────────────────────────────────────────
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "Compliance Heatmap",
-        "Clause Breakdown",
-        "Action Items",
-        "Feature Controls",
+    tab1, tab2, tab3 = st.tabs([
+        t("clause_heatmap"),
+        t("clause_detail"),
+        t("export"),
     ])
 
     # =========================================================================
-    # TAB 1 - Heatmap
+    # TAB 1 — Clause Heatmap (colour-only, Step 10E)
     # =========================================================================
     with tab1:
-        st.subheader("Regulation Compliance Scores")
+        st.subheader(t("clause_compliance_heatmap"))
+        st.caption(t("heatmap_caption"))
 
-        reg_names  = list(summary.keys())
-        reg_shorts = [scores_data[r]["short"] for r in reg_names]
-        score_vals = [summary[r] for r in reg_names]
+        if not clauses:
+            st.info(t("no_compliance_data"))
+        else:
+            # Build a simple colour-block grid
+            header_cols = st.columns([3, 1, 1, 4])
+            header_cols[0].markdown(f"**{t('clause')}**")
+            header_cols[1].markdown(f"**{t('risk_score')}**")
+            header_cols[2].markdown(f"**{t('status')}**")
+            header_cols[3].markdown(f"**{t('evidence')}**")
 
-        fig_bar = go.Figure()
-        for name, short, score in zip(reg_names, reg_shorts, score_vals):
-            fig_bar.add_trace(go.Bar(
-                x=[short],
-                y=[score],
-                name=short,
-                marker_color=_score_colour(score),
-                text=[f"{score}%"],
-                textposition="outside",
+            for clause in clauses:
+                status    = clause.get("status", "non_compliant")
+                hex_col   = _STATUS_HEX.get(status, "#e0e0e0")
+                score_val = clause.get("score", 0)
+                evidence  = clause.get("evidence", [])
+                amend_ref = clause.get("amendment_reference", "")
+                desc      = clause.get("description", "")
+                clause_id = clause.get("clause_id", "")
+
+                hover_title = f"{clause_id}: {desc}"
+                if amend_ref:
+                    hover_title += f" — {amend_ref}"
+
+                row = st.columns([3, 1, 1, 4])
+
+                # Clause ID + ℹ hover (Step 10F + 10J)
+                row[0].markdown(
+                    f'{clause_id} '
+                    f'<span title="{hover_title}" style="cursor:help;font-size:0.85rem;">ℹ</span>',
+                    unsafe_allow_html=True,
+                )
+
+                # Score
+                row[1].markdown(f"**{score_val}**")
+
+                # Colour block only — no text label (Step 10E)
+                row[2].markdown(
+                    f'<div style="width:20px;height:20px;background-color:{hex_col};'
+                    f'border-radius:4px;" title="{t(status)}"></div>',
+                    unsafe_allow_html=True,
+                )
+
+                # Evidence summary
+                evidence_text = ", ".join(evidence[:3]) if evidence else "—"
+                row[3].caption(evidence_text)
+
+            # Plotly heatmap for visual overview
+            st.divider()
+            st.subheader(t("visual_heatmap_overview"))
+
+            status_num = {"compliant": 1.0, "partial": 0.5, "non_compliant": 0.0}
+            clause_ids = [c.get("clause_id", f"C{i}") for i, c in enumerate(clauses)]
+            z_row      = [[status_num.get(c.get("status", "non_compliant"), 0.0)] for c in clauses]
+
+            fig_heat = go.Figure(data=go.Heatmap(
+                z=[[status_num.get(c.get("status", "non_compliant"), 0.0) for c in clauses]],
+                x=clause_ids,
+                y=["Status"],
+                colorscale=[
+                    [0.00, _STATUS_HEX["non_compliant"]],
+                    [0.49, _STATUS_HEX["non_compliant"]],
+                    [0.50, _STATUS_HEX["partial"]],
+                    [0.74, _STATUS_HEX["partial"]],
+                    [0.75, _STATUS_HEX["compliant"]],
+                    [1.00, _STATUS_HEX["compliant"]],
+                ],
+                showscale=False,
                 hovertemplate=(
-                    f"<b>{name}</b><br>"
-                    f"Score: {score}%<br>"
-                    f"Status: {_score_label(score)}<extra></extra>"
+                    "<b>%{x}</b><br>"
+                    "Score: %{z:.1f}<extra></extra>"
                 ),
             ))
-
-        fig_bar.update_layout(
-            yaxis=dict(range=[0, 115], title="Score (%)"),
-            xaxis_title="Regulation",
-            showlegend=False,
-            plot_bgcolor="#ffffff",
-            paper_bgcolor="#ffffff",
-            font=dict(color="#0A3D91"),
-            shapes=[
-                dict(type="line", x0=-0.5, x1=len(reg_names) - 0.5,
-                     y0=90, y1=90,
-                     line=dict(color="#1a9e5c", width=2, dash="dot")),
-                dict(type="line", x0=-0.5, x1=len(reg_names) - 0.5,
-                     y0=75, y1=75,
-                     line=dict(color="#f0a500", width=2, dash="dot")),
-            ],
-            annotations=[
-                dict(x=len(reg_names) - 0.45, y=92,
-                     text="Compliant threshold (90%)",
-                     showarrow=False, font=dict(color="#1a9e5c", size=11)),
-                dict(x=len(reg_names) - 0.45, y=77,
-                     text="Partial threshold (75%)",
-                     showarrow=False, font=dict(color="#f0a500", size=11)),
-            ],
-            height=420,
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        # 2-D Feature Coverage Heatmap
-        st.subheader("Feature Coverage Heatmap")
-        st.caption("Green = Implemented   |   Red = Required but missing   |   Grey = Not required")
-
-        all_feature_keys = sorted({
-            key
-            for reg_data in scores_data.values()
-            for key in reg_data["clauses"].keys()
-        })
-        feature_labels = [FEATURES.get(k, {}).get("name", k)[:30] for k in all_feature_keys]
-
-        z_vals, hover = [], []
-        for reg_name in reg_names:
-            reg_clauses = scores_data[reg_name]["clauses"]
-            row_z, row_h = [], []
-            for key in all_feature_keys:
-                feat = FEATURES.get(key, {})
-                if key in reg_clauses:
-                    if feat.get("implemented"):
-                        row_z.append(1.0)
-                        row_h.append(f"Implemented<br>Clause: {reg_clauses[key]}")
-                    else:
-                        row_z.append(0.4)
-                        row_h.append(f"Missing<br>Clause: {reg_clauses[key]}")
-                else:
-                    row_z.append(0.0)
-                    row_h.append("Not required")
-            z_vals.append(row_z)
-            hover.append(row_h)
-
-        fig_heat = go.Figure(data=go.Heatmap(
-            z=z_vals,
-            x=feature_labels,
-            y=[scores_data[r]["short"] for r in reg_names],
-            colorscale=[
-                [0.00, "#f0f4ff"],
-                [0.39, "#f0f4ff"],
-                [0.40, "#ffcccc"],
-                [0.69, "#ffcccc"],
-                [0.70, "#c8f7dc"],
-                [1.00, "#1a9e5c"],
-            ],
-            text=hover,
-            hovertemplate="<b>%{y}</b> x <b>%{x}</b><br>%{text}<extra></extra>",
-            showscale=False,
-        ))
-        fig_heat.update_layout(
-            height=300,
-            margin=dict(l=0, r=0, t=10, b=0),
-            xaxis=dict(tickangle=-40, tickfont=dict(size=10)),
-            yaxis=dict(tickfont=dict(size=11)),
-            plot_bgcolor="#ffffff",
-            paper_bgcolor="#ffffff",
-        )
-        st.plotly_chart(fig_heat, use_container_width=True)
-
-    # =========================================================================
-    # TAB 2 - Clause Breakdown
-    # =========================================================================
-    with tab2:
-        st.subheader("Clause-by-Clause Breakdown")
-
-        selected_reg = st.selectbox("Select Regulation", list(scores_data.keys()))
-        reg          = scores_data[selected_reg]
-        score        = reg["score"]
-        colour       = _score_colour(score)
-
-        st.markdown(f"""
-        <div style="background:#f0f4ff;border-radius:10px;padding:16px 20px;margin-bottom:16px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-                <span style="font-weight:700;color:#0A3D91">{selected_reg}</span>
-                <span style="font-weight:800;color:{colour};font-size:1.1rem">
-                    {score}% - {_score_label(score)}
-                </span>
-            </div>
-            <div style="background:#dde6f7;border-radius:6px;height:12px">
-                <div style="background:{colour};width:{score}%;height:12px;border-radius:6px;
-                            transition:width 0.5s"></div>
-            </div>
-            <div style="font-size:0.8rem;color:#666;margin-top:6px">{reg["description"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        rows = []
-        for item in reg["breakdown"]:
-            clause = reg["clauses"].get(item["feature_key"], "-")
-            rows.append({
-                "Status":  "Done" if item["implemented"] else "Pending",
-                "Feature": item["feature_name"],
-                "Clause":  clause,
-                "Weight":  item["weight"],
-            })
-
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-
-        done_count    = reg["features_done"]
-        pending_count = reg["features_pending"]
-        fig_pie = go.Figure(data=go.Pie(
-            labels=["Implemented", "Pending"],
-            values=[done_count, pending_count],
-            hole=0.6,
-            marker_colors=["#1a9e5c", "#d93025"],
-            textinfo="label+value",
-        ))
-        fig_pie.update_layout(
-            height=280,
-            showlegend=False,
-            margin=dict(l=0, r=0, t=10, b=0),
-            annotations=[dict(
-                text=f"{score}%",
-                x=0.5, y=0.5,
-                font=dict(size=22, color="#0A3D91"),
-                showarrow=False,
-            )],
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    # =========================================================================
-    # TAB 3 - Action Items
-    # =========================================================================
-    with tab3:
-        st.subheader("Pending Action Items")
-
-        if not pending:
-            st.success("All tracked features are implemented. No pending actions.")
-        else:
-            st.warning(f"**{len(pending)} action items** require attention to improve compliance scores.")
-
-            for item in pending:
-                w             = item["weight"]
-                impact_colour = "#d93025" if w == 3 else "#f0a500" if w == 2 else "#5a7ab5"
-                impact_label  = "High Impact" if w == 3 else "Medium Impact" if w == 2 else "Low Impact"
-
-                with st.container(border=True):
-                    c1, c2, c3 = st.columns([3, 3, 1])
-                    c1.markdown(f"**{item['feature_name']}**")
-                    c1.caption(f"{item['regulation']}")
-                    c2.markdown(f"`{item['clause']}`")
-                    c3.markdown(
-                        f"<span style='color:{impact_colour};font-weight:700'>"
-                        f"Weight: {w} — {impact_label}</span>",
-                        unsafe_allow_html=True,
-                    )
-
-            df_pending = pd.DataFrame(pending)
-            fig_impact = px.bar(
-                df_pending.groupby("regulation").size().reset_index(name="gaps"),
-                x="regulation", y="gaps",
-                color="gaps",
-                color_continuous_scale=["#f0a500", "#d93025"],
-                labels={"regulation": "Regulation", "gaps": "Pending Features"},
-                title="Pending Features by Regulation",
-            )
-            fig_impact.update_layout(
-                height=320,
-                showlegend=False,
+            fig_heat.update_layout(
+                height=140,
+                margin=dict(l=0, r=0, t=10, b=0),
+                xaxis=dict(tickangle=-40, tickfont=dict(size=10)),
+                yaxis=dict(tickfont=dict(size=11)),
                 plot_bgcolor="#ffffff",
                 paper_bgcolor="#ffffff",
-                coloraxis_showscale=False,
             )
-            st.plotly_chart(fig_impact, use_container_width=True)
+            st.plotly_chart(fig_heat, use_container_width=True)
 
     # =========================================================================
-    # TAB 4 - Feature Controls (DPO only)
+    # TAB 2 — Clause Detail table with amendment references (Step 10J)
     # =========================================================================
-    with tab4:
-        st.subheader("Feature Implementation Controls")
+    with tab2:
+        st.subheader(t("clause_by_clause_detail"))
 
-        if role != "DPO":
-            st.info("Only the DPO role can mark features as implemented.")
+        if not clauses:
+            st.info(t("no_clause_data"))
         else:
-            st.caption("Mark remediation tasks as complete. Compliance scores update immediately.")
+            filter_options_display = [t("all"), t("compliant"), t("partial"), t("non_compliant")]
+            filter_options_internal = ["All", "compliant", "partial", "non_compliant"]
 
-            pending_keys  = [p["feature_key"] for p in pending]
-            pending_names = {p["feature_key"]: p["feature_name"] for p in pending}
+            filter_display = st.selectbox(
+                t("filter_by_status"),
+                filter_options_display,
+            )
+            filter_status = filter_options_internal[filter_options_display.index(filter_display)]
 
-            if not pending_keys:
-                st.success("All features implemented. Nothing to action.")
-            else:
-                selected_key = st.selectbox(
-                    "Select feature to mark as implemented",
-                    pending_keys,
-                    format_func=lambda k: pending_names.get(k, k),
-                )
-                if st.button("Mark as Implemented", type="primary", use_container_width=True):
-                    mark_feature_implemented(
-                        selected_key,
-                        actor=st.session_state.get("username", "dpo"),
-                    )
-                    st.success(f"**{pending_names[selected_key]}** marked as implemented. Scores updated.")
-                    audit_log(
-                        action=f"Compliance Feature Remediated | feature={selected_key}",
-                        user=st.session_state.get("username", "dpo"),
-                    )
-                    st.rerun()
+            filtered = (
+                clauses if filter_status == "All"
+                else [c for c in clauses if c.get("status") == filter_status]
+            )
 
-        # Full feature status table (all roles)
-        st.divider()
-        st.subheader("All Features Status")
-        feat_rows = [
-            {
-                "Status":  "Done" if v["implemented"] else "Pending",
-                "Feature": v["name"],
-                "Weight":  v["weight"],
+            rows = []
+            for c in filtered:
+                amend = c.get("amendment_reference", "")
+                clause_display = c.get("clause_id", "")
+                if amend:
+                    clause_display += f" ↳ {amend}"
+
+                rows.append({
+                    t("clause"):      clause_display,
+                    t("description"): c.get("description", ""),
+                    t("status"):      t(c.get("status", "non_compliant")),
+                    t("risk_score"):  c.get("score", 0),
+                    t("evidence"):    " | ".join(c.get("evidence", [])),
+                })
+
+            df_clauses = pd.DataFrame(rows)
+            st.dataframe(df_clauses, use_container_width=True, hide_index=True)
+
+            # Score distribution donut
+            counts = {
+                t("compliant"):     compliant_count,
+                t("partial"):       partial_count,
+                t("non_compliant"): non_compliant_count,
             }
-            for v in FEATURES.values()
-        ]
-        st.dataframe(pd.DataFrame(feat_rows), use_container_width=True, hide_index=True)
+            fig_pie = go.Figure(data=go.Pie(
+                labels=list(counts.keys()),
+                values=list(counts.values()),
+                hole=0.6,
+                marker_colors=[
+                    _STATUS_HEX["compliant"],
+                    _STATUS_HEX["partial"],
+                    _STATUS_HEX["non_compliant"],
+                ],
+                textinfo="label+value",
+            ))
+            fig_pie.update_layout(
+                height=280,
+                showlegend=False,
+                margin=dict(l=0, r=0, t=10, b=0),
+                annotations=[dict(
+                    text=f"{overall}%",
+                    x=0.5, y=0.5,
+                    font=dict(size=22, color="#0A3D91"),
+                    showarrow=False,
+                )],
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+    # =========================================================================
+    # TAB 3 — Export (Step 10I)
+    # =========================================================================
+    with tab3:
+        st.subheader(t("board_ready_export"))
+        st.caption(t("export_caption"))
+
+        render_export_buttons("compliance")
+
+        # Also provide raw clause table for download
+        if clauses:
+            export_rows = []
+            for c in clauses:
+                export_rows.append({
+                    "clause_id":           c.get("clause_id", ""),
+                    "description":         c.get("description", ""),
+                    "status":              c.get("status", ""),
+                    "score":               c.get("score", 0),
+                    "amendment_reference": c.get("amendment_reference", ""),
+                    "evidence":            " | ".join(c.get("evidence", [])),
+                })
+            df_export = pd.DataFrame(export_rows)
+            csv_bytes  = df_export.to_csv(index=False).encode("utf-8")
+
+            st.download_button(
+                label=t("download_clause_csv"),
+                data=csv_bytes,
+                file_name="compliance_clause_report.csv",
+                mime="text/csv",
+            )
+
+        # Audit log export event
+        audit_log(
+            action="Compliance Export Tab Accessed",
+            user=st.session_state.get("username", "unknown"),
+        )
