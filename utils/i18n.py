@@ -15,22 +15,55 @@ Step 6 compliance:
   6J+ t() used for all UI label calls; add_translation() / register_language()
       let callers patch strings without editing this file
 
+Step 7 i18n hardening (new):
+  7A  t() raises KeyError on missing key instead of returning empty string —
+      no silent blank UI elements; call t_safe() for optional/graceful fallback
+  7B  validate_translation_completeness() — startup parity check across all
+      registered languages; raises TranslationParityError on mismatch
+  7C  DROPDOWN_OPTIONS — canonical key-list constants for all select widgets;
+      callers use [t(k) for k in DROPDOWN_OPTIONS["xyz"]] for translated lists
+  7D  t() enforces strict ASCII-free output in Malayalam mode; raises
+      EnglishLeakageError if ASCII alpha characters appear in returned value
+  7E  t_required() — alias for t() that additionally guards empty string
+  7F  Clause label keys added for compliance / notices / DPIA modules
+  7G  validate_translation_completeness() called automatically on first t() use
+      in a new session (lazy startup guard)
+
 Architecture:
-  t(key)                    — primary call for all UI text
-  normalize_malayalam(text) — call after any Malayalam text is produced
-  translate_en_to_ml(text)  — for notices / clause explanations only
-  validate_no_english_rendered(text) — called before critical page renders
+  t(key)                              — primary call; raises on missing key
+  t_safe(key, default)                — graceful fallback for optional strings
+  t_required(key)                     — raises if result is empty
+  validate_translation_completeness() — call at app init / post-login
+  normalize_malayalam(text)           — call after any Malayalam text is produced
+  translate_en_to_ml(text)            — for notices / clause explanations only
+  validate_no_english_rendered(text)  — called before critical page renders
 
 Malayalam STRICT mode:
   When lang == "ml", t() NEVER falls back to English.
-  Missing keys return "" (empty string) instead.
-  This enforces zero English leakage when Malayalam is selected.
+  Missing keys raise KeyError immediately.
+  This enforces zero blank UI and zero English leakage when Malayalam is selected.
 """
 
 from __future__ import annotations
 
 import unicodedata
 import streamlit as st
+
+
+# ===========================================================================
+# Step 7 — Custom exception types
+# ===========================================================================
+
+class TranslationKeyError(KeyError):
+    """Raised when a required translation key is missing from the active language."""
+
+
+class TranslationParityError(RuntimeError):
+    """Raised when a language dictionary is missing keys present in English."""
+
+
+class EnglishLeakageError(ValueError):
+    """Raised when ASCII alphabetic characters appear in a Malayalam-mode translation result."""
 
 
 # ===========================================================================
@@ -542,6 +575,196 @@ LANG: dict[str, dict[str, str]] = {
         "write_test_log_entry":         "Write Test Log Entry (Dev Only)",
         "write_to_ledger":              "Write to Ledger",
         "entry_written":                "Entry written. Refresh to see it.",
+
+        # ── Step 7A/7B/7E — i18n hardening meta-strings ──────────────────────
+        "translation_parity_error":     "Translation parity failure: missing keys in language '{lang}': {keys}",
+        "translation_key_missing":      "Missing translation key '{key}' for language '{lang}'",
+        "english_leakage_detected":     "English leakage detected in Malayalam output for key '{key}'",
+        "i18n_validation_passed":       "Translation completeness validated: all languages match English key set.",
+
+        # ── Step 7C — Dropdown option keys (used in DROPDOWN_OPTIONS) ─────────
+        "status_open":                  "Open",
+        "status_closed":                "Closed",
+        "status_under_review":          "Under Review",
+        "status_pending":               "Pending",
+        "status_active":                "Active",
+        "status_resolved":              "Resolved",
+        "status_escalated":             "Escalated",
+        "status_approved":              "Approved",
+        "status_rejected":              "Rejected",
+        "risk_low":                     "Low",
+        "risk_medium":                  "Medium",
+        "risk_high":                    "High",
+        "risk_critical":                "Critical",
+        "sla_on_track":                 "On Track",
+        "sla_at_risk":                  "At Risk",
+        "sla_breached":                 "Breached",
+        "filter_all_statuses":          "All Statuses",
+        "filter_all_regions":           "All Regions",
+        "filter_all_branches":          "All Branches",
+        "export_format_pdf":            "PDF (Board-ready)",
+        "export_format_json":           "JSON (Machine)",
+        "export_format_xml":            "XML (Regulatory)",
+
+        # ── Step 7F — Clause label keys ───────────────────────────────────────
+        "clause_label_dpdp_s5":         "DPDP Act 2023 Section 5 — Notice",
+        "clause_label_dpdp_s6":         "DPDP Act 2023 Section 6 — Consent",
+        "clause_label_dpdp_s7":         "DPDP Act 2023 Section 7 — Legitimate Uses",
+        "clause_label_dpdp_s8":         "DPDP Act 2023 Section 8 — Breach Notification",
+        "clause_label_dpdp_s9":         "DPDP Act 2023 Section 9 — Children's Data",
+        "clause_label_dpdp_s10":        "DPDP Act 2023 Section 10 — Significant Fiduciary",
+        "clause_label_dpdp_s11":        "DPDP Act 2023 Section 11 — Data Principal Rights",
+        "clause_label_dpdp_s12":        "DPDP Act 2023 Section 12 — Right to Correction",
+        "clause_label_dpdp_s13":        "DPDP Act 2023 Section 13 — Right to Grievance Redressal",
+        "clause_label_dpdp_s16":        "DPDP Act 2023 Section 16 — Data Retention Limit",
+        "clause_label_rbi_csf":         "RBI Cyber Security Framework",
+        "clause_label_nabard_it":       "NABARD IT Guidelines",
+        "clause_label_cert_in":         "CERT-IN Directions 2022",
+        "clause_label_dpdp_r12":        "DPDP Rules 2025 Rule 12 — Breach Reporting",
+
+        # ── Step 8 engine-dashboard new keys ─────────────────────────────────
+        "system_dashboard":             "System Dashboard",
+        "active_breaches":              "Active Breaches",
+        "weighted_score":               "Weighted across frameworks",
+        "weighted_across_branches":     "Weighted across all branches",
+        "audit_chain_valid":            "Audit Chain Integrity: VERIFIED",
+        "audit_chain_broken":           "Audit Chain Integrity: BROKEN",
+        "root_hash":                    "Root Hash",
+        "contact_dpo_immediately":      "Contact the DPO immediately",
+        "escalation_overview":          "Escalation Overview",
+        "escalation_branch":            "Branch",
+        "escalation_regional":          "Regional",
+        "escalation_dpo":               "DPO",
+        "escalation_board":             "Board",
+        "escalations_pending":          "escalations pending",
+        "level":                        "Level",
+        "dpia_status_summary":          "DPIA Status Summary",
+        "dpia_active":                  "Active DPIAs",
+        "dpia_overdue":                 "Overdue DPIAs",
+        "dpia_approved":                "Approved DPIAs",
+        "cleared":                      "Cleared",
+        "requires_action":              "Requires Action",
+        "regional_dashboard_caption":   "Regional aggregation view",
+        "regional_average":             "Regional average",
+        "no_data_for_region":           "No data available for your region.",
+        "engine_data_unavailable":      "Engine data unavailable — some metrics may be incomplete.",
+        "escalation_dpia":              "Escalation & DPIA",
+        "framework_compliance_breakdown": "Framework Compliance Breakdown",
+        "governance_report":            "Governance Report",
+        "customer_dashboard_message":   "Welcome to the Kerala Bank Data Privacy Portal.",
+        "customer_consents_caption":    "Your active consents and rights requests.",
+        "no_governance_metrics_for_customer": "Governance metrics are not available for customer accounts.",
+
+        # ── Step 15 export-hardening new keys ────────────────────────────────
+        "classification_confidential":  "CONFIDENTIAL",
+        "classification_label":         "Classification",
+        "generated_at":                 "Generated At",
+        "page":                         "Page",
+        "additional_data":              "Additional Data",
+        "data":                         "Data",
+        "details":                      "Details",
+        "clause_level_compliance_detail": "Clause-Level Compliance Detail",
+        "clause_id":                    "Clause ID",
+        "amendment_reference":          "Amendment Reference",
+        "score":                        "Score",
+        "export_pdf":                   "PDF (Board-ready)",
+        "export_json":                  "JSON (Machine)",
+        "export_xml":                   "XML (Regulatory)",
+        "download_pdf":                 "Download PDF",
+        "download_json":                "Download JSON",
+        "download_xml":                 "Download XML",
+        "pdf_generation_failed":        "PDF generation failed",
+        "export_failed":                "Export failed",
+        "audit_log_write_failed":       "Audit log write failed",
+        "on_track":                     "On Track",
+        "at_risk":                      "At Risk",
+        "breached":                     "Breached",
+        "overdue":                      "Overdue",
+        "days":                         "days",
+        "request_id":                   "Request ID",
+        "score_pct":                    "Score %",
+        "open_requests":                "Open Requests",
+        "sla_breaches":                 "SLA Breaches",
+        "across_system":                "Across system",
+        "board_dashboard_caption":      "Executive summary — all regions",
+        "dpo_dashboard_caption":        "Full governance console — all modules",
+        "auditor_dashboard_caption":    "Compliance oversight view — read-only",
+        "admin_dashboard_caption":      "Technical system health console",
+        "dpdp_compliance_view":         "DPDP Compliance View",
+        "across_4_frameworks":          "Across 4 regulatory frameworks",
+        "requests_within_deadline":     "Requests resolved within SLA deadline",
+        "incident_governance":          "Incident governance",
+        "lifecycle_compliant":          "Lifecycle compliant",
+        "under_sla_monitoring":         "Under SLA monitoring",
+        "requires_escalation":          "Requires escalation",
+        "regulatory_score":             "Regulatory compliance score",
+        "sla_status_distribution":      "SLA Status Distribution",
+        "sla_status_this_branch":       "SLA Status — This Branch",
+        "branch_risk_level":            "Branch Risk Level",
+        "current_risk_status":          "Current Risk Status",
+        "active_incidents_reported":    "active incidents reported",
+        "rights_requests_action_required": "Rights Requests — Action Required",
+        "branch_risk_distribution":     "Branch Risk Distribution",
+        "branch_risk_profile_by_zone":  "Branch Risk Profile by Zone",
+        "component_health":             "Component Health",
+        "rule_engine":                  "Rule Engine",
+        "orchestration_layer":          "Orchestration Layer",
+        "audit_ledger":                 "Audit Ledger",
+        "auth_service":                 "Auth Service",
+        "db_connection_pool":           "DB Connection Pool",
+        "compliance_engine":            "Compliance Engine",
+        "currently_logged_in":          "Currently logged in",
+        "log_entries_recorded":         "Log entries recorded today",
+        "since_last_reset":             "Since last reset",
+        "current_period":               "Current period",
+        "audit_event_volume_today":     "Audit Event Volume Today",
+        "event_distribution":           "Event Distribution",
+        "evt_login":                    "Login",
+        "evt_data_access":              "Data Access",
+        "evt_consent_update":           "Consent Update",
+        "evt_rights_request":           "Rights Request",
+        "evt_dpia_action":              "DPIA Action",
+        "evt_breach_report":            "Breach Report",
+        "evt_login_successful":         "Login Successful",
+        "evt_consent_updated":          "Consent Updated",
+        "evt_login_failed":             "Login Failed",
+        "evt_rights_request_submitted": "Rights Request Submitted",
+        "total_audit_entries":          "Total Audit Entries",
+        "last_backup":                  "Last Backup",
+        "no_data_for_branch":           "No data available for your branch.",
+        "avg_compliance_score":         "Avg Compliance Score",
+        "branches_below_target":        "Branches Below Target",
+        "score_below_90":               "Score below 90%",
+        "branch_compliance_scorecard":  "Branch Compliance Scorecard",
+        "compliance_score_pct":         "Compliance Score %",
+        "open_rights_requests":         "Open Rights Requests",
+        "compliance_vs_rights_requests": "Compliance vs Rights Requests",
+        "active_rights_requests_per_branch": "Active Rights Requests per Branch",
+        "rights_request_volume_by_branch": "Rights Request Volume by Branch",
+        "rights_request_management":    "Rights Request Management",
+        "no_incidents_reported":        "No incidents reported.",
+        "kerala_branch_risk_distribution": "Kerala Branch Risk Distribution",
+        "gis_map_note":                 "Map shows branch risk distribution across Kerala.",
+        "knowledge_graph_caption":      "Entity relationship map for DPDP governance.",
+        "knowledge_graph_note":         "Graph shows relationships between key governance entities.",
+        "kg_customer":                  "Customer",
+        "kg_consent":                   "Consent",
+        "kg_purpose":                   "Purpose",
+        "kg_branch":                    "Branch",
+        "kg_dpia":                      "DPIA",
+        "kg_risk":                      "Risk",
+        "kg_rights_request":            "Rights Request",
+        "kg_sla":                       "SLA",
+        "kg_compliance":                "Compliance",
+        "gis_map_caption":              "Geospatial view of branch risk posture across Kerala.",
+        "target_90_pct":                "Target: 90%",
+        "purpose_distribution_note":    "Compliance score derived from live engine state.",
+        "branch_level_compliance_scores": "Branch-Level Compliance Scores",
+        "projected_consent_expirations": "Projected Consent Expirations",
+        "expiring_consents":            "Expiring Consents",
+        "consent_forecast_august_warning": "⚠ August 2026: High expiry volume predicted. Begin early renewal outreach.",
+        "sla_status_by_branch":         "SLA Status by Branch",
+        "approved_dpias":               "Approved DPIAs",
     },
 
     # ── Malayalam (മലയാളം) ───────────────────────────────────────────────────
@@ -1045,6 +1268,196 @@ LANG: dict[str, dict[str, str]] = {
         "write_test_log_entry":         "ടെസ്റ്റ് ലോഗ് എൻട്രി എഴുതുക (ഡെവ് മാത്രം)",
         "write_to_ledger":              "ലെഡ്ജറിൽ എഴുതുക",
         "entry_written":                "എൻട്രി എഴുതി. കാണാൻ റിഫ്രഷ് ചെയ്യുക.",
+
+        # ── Step 7A/7B/7E — i18n hardening meta-strings ──────────────────────
+        "translation_parity_error":     "വിവർത്തന പൊരുത്ത പരാജയം: '{lang}' ഭാഷയിൽ കീകൾ കാണുന്നില്ല: {keys}",
+        "translation_key_missing":      "'{lang}' ഭാഷയ്ക്ക് '{key}' വിവർത്തന കീ കാണുന്നില്ല",
+        "english_leakage_detected":     "'{key}' കീയ്ക്കായി മലയാളം ഔട്ട്പുട്ടിൽ ഇംഗ്ലീഷ് ചോർച്ച കണ്ടെത്തി",
+        "i18n_validation_passed":       "വിവർത്തന സമ്പൂർണ്ണത സ്ഥിരീകരിച്ചു: എല്ലാ ഭാഷകളും ഇംഗ്ലീഷ് കീ സെറ്റ് ഉൾക്കൊള്ളുന്നു.",
+
+        # ── Step 7C — Dropdown option keys ────────────────────────────────────
+        "status_open":                  "തുറന്നത്",
+        "status_closed":                "അടച്ചത്",
+        "status_under_review":          "അവലോകനത്തിൽ",
+        "status_pending":               "തീർപ്പുകൽപ്പിക്കാത്തത്",
+        "status_active":                "സജീവം",
+        "status_resolved":              "പരിഹരിച്ചത്",
+        "status_escalated":             "ഉയർത്തിയത്",
+        "status_approved":              "അംഗീകൃതം",
+        "status_rejected":              "നിരസിച്ചത്",
+        "risk_low":                     "കുറഞ്ഞത്",
+        "risk_medium":                  "മധ്യമം",
+        "risk_high":                    "ഉയർന്നത്",
+        "risk_critical":                "ഗുരുതരം",
+        "sla_on_track":                 "ശരിയായ പാതയിൽ",
+        "sla_at_risk":                  "അപകടത്തിൽ",
+        "sla_breached":                 "ലംഘിച്ചത്",
+        "filter_all_statuses":          "എല്ലാ സ്ഥിതികളും",
+        "filter_all_regions":           "എല്ലാ മേഖലകളും",
+        "filter_all_branches":          "എല്ലാ ശാഖകളും",
+        "export_format_pdf":            "പിഡിഎഫ് (ബോർഡ്-റെഡി)",
+        "export_format_json":           "ജോൺ (മെഷീൻ)",
+        "export_format_xml":            "എക്സ്എംഎൽ (റെഗുലേറ്ററി)",
+
+        # ── Step 7F — Clause label keys ───────────────────────────────────────
+        "clause_label_dpdp_s5":         "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 5 — അറിയിപ്പ്",
+        "clause_label_dpdp_s6":         "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 6 — അനുമതി",
+        "clause_label_dpdp_s7":         "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 7 — നിയമസഹ ഉപയോഗങ്ങൾ",
+        "clause_label_dpdp_s8":         "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 8 — ലംഘന അറിയിപ്പ്",
+        "clause_label_dpdp_s9":         "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 9 — കുട്ടികളുടെ ഡാറ്റ",
+        "clause_label_dpdp_s10":        "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 10 — പ്രധാന ഫിഡ്യൂഷ്യറി",
+        "clause_label_dpdp_s11":        "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 11 — ഡാറ്റ പ്രിൻസിപ്പൽ അവകാശങ്ങൾ",
+        "clause_label_dpdp_s12":        "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 12 — തിരുത്തൽ അവകാശം",
+        "clause_label_dpdp_s13":        "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 13 — പരാതി പരിഹാര അവകാശം",
+        "clause_label_dpdp_s16":        "ഡിപിഡിപി ആക്ട് 2023 സെക്ഷൻ 16 — ഡാറ്റ സൂക്ഷിക്കൽ പരിധി",
+        "clause_label_rbi_csf":         "ആർബിഐ സൈബർ സുരക്ഷ ചട്ടക്കൂട്",
+        "clause_label_nabard_it":       "നബാർഡ് ഐടി മാർഗ്ഗനിർദ്ദേശങ്ങൾ",
+        "clause_label_cert_in":         "സിഇആർടി-ഐഎൻ നിർദ്ദേശങ്ങൾ 2022",
+        "clause_label_dpdp_r12":        "ഡിപിഡിപി ചട്ടങ്ങൾ 2025 ചട്ടം 12 — ലംഘന റിപ്പോർട്ടിംഗ്",
+
+        # ── Step 8 engine-dashboard new keys ─────────────────────────────────
+        "system_dashboard":             "സിസ്റ്റം ഡാഷ്ബോർഡ്",
+        "active_breaches":              "സജീവ ലംഘനങ്ങൾ",
+        "weighted_score":               "ചട്ടക്കൂടുകൾ ഉടനീളം ഭാരം ചേർത്തത്",
+        "weighted_across_branches":     "എല്ലാ ശാഖകളിലും ഭാരം ചേർത്തത്",
+        "audit_chain_valid":            "ഓഡിറ്റ് ശൃംഖല സമഗ്രത: സ്ഥിരീകരിച്ചു",
+        "audit_chain_broken":           "ഓഡിറ്റ് ശൃംഖല സമഗ്രത: തകർന്നു",
+        "root_hash":                    "റൂട്ട് ഹാഷ്",
+        "contact_dpo_immediately":      "ഉടൻ ഡിപിഒയെ ബന്ധപ്പെടുക",
+        "escalation_overview":          "എസ്കലേഷൻ അവലോകനം",
+        "escalation_branch":            "ശാഖ",
+        "escalation_regional":          "പ്രാദേശിക",
+        "escalation_dpo":               "ഡിപിഒ",
+        "escalation_board":             "ബോർഡ്",
+        "escalations_pending":          "എസ്കലേഷനുകൾ തീർപ്പുകൽപ്പിക്കാത്തത്",
+        "level":                        "തലം",
+        "dpia_status_summary":          "ഡിപിഐഎ സ്ഥിതി സംഗ്രഹം",
+        "dpia_active":                  "സജീവ ഡിപിഐഎകൾ",
+        "dpia_overdue":                 "കാലതാമസമുള്ള ഡിപിഐഎകൾ",
+        "dpia_approved":                "അംഗീകൃത ഡിപിഐഎകൾ",
+        "cleared":                      "ക്ലിയർ ചെയ്തത്",
+        "requires_action":              "നടപടി ആവശ്യമാണ്",
+        "regional_dashboard_caption":   "പ്രാദേശിക സമഗ്ര കാഴ്ച",
+        "regional_average":             "പ്രാദേശിക ശരാശരി",
+        "no_data_for_region":           "നിങ്ങളുടെ മേഖലയ്ക്ക് ഡാറ്റ ലഭ്യമല്ല.",
+        "engine_data_unavailable":      "എൻജിൻ ഡാറ്റ ലഭ്യമല്ല — ചില മെട്രിക്കുകൾ അപൂർണ്ണമായിരിക്കാം.",
+        "escalation_dpia":              "എസ്കലേഷൻ & ഡിപിഐഎ",
+        "framework_compliance_breakdown": "ചട്ടക്കൂട് അനുസരണ വിശദാംശം",
+        "governance_report":            "ഭരണ റിപ്പോർട്ട്",
+        "customer_dashboard_message":   "കേരള ബാങ്ക് ഡാറ്റ പ്രൈവസി പോർട്ടലിലേക്ക് സ്വാഗതം.",
+        "customer_consents_caption":    "നിങ്ങളുടെ സജീവ അനുമതികളും അവകാശ അഭ്യർത്ഥനകളും.",
+        "no_governance_metrics_for_customer": "ഉപഭോക്തൃ അക്കൗണ്ടുകൾക്ക് ഭരണ മെട്രിക്കുകൾ ലഭ്യമല്ല.",
+
+        # ── Step 15 export-hardening new keys ────────────────────────────────
+        "classification_confidential":  "രഹസ്യം",
+        "classification_label":         "തരംതിരിക്കൽ",
+        "generated_at":                 "നിർമ്മിച്ച സമയം",
+        "page":                         "പേജ്",
+        "additional_data":              "അധിക ഡാറ്റ",
+        "data":                         "ഡാറ്റ",
+        "details":                      "വിശദാംശങ്ങൾ",
+        "clause_level_compliance_detail": "ക്ലോസ് തല അനുസരണ വിശദാംശം",
+        "clause_id":                    "ക്ലോസ് ഐഡി",
+        "amendment_reference":          "ഭേദഗതി റഫറൻസ്",
+        "score":                        "സ്കോർ",
+        "export_pdf":                   "പിഡിഎഫ് (ബോർഡ്-റെഡി)",
+        "export_json":                  "ജോൺ (മെഷീൻ)",
+        "export_xml":                   "എക്സ്എംഎൽ (റെഗുലേറ്ററി)",
+        "download_pdf":                 "പിഡിഎഫ് ഡൗൺലോഡ് ചെയ്യുക",
+        "download_json":                "ജോൺ ഡൗൺലോഡ് ചെയ്യുക",
+        "download_xml":                 "എക്സ്എംഎൽ ഡൗൺലോഡ് ചെയ്യുക",
+        "pdf_generation_failed":        "പിഡിഎഫ് നിർമ്മാണം പരാജയപ്പെട്ടു",
+        "export_failed":                "എക്സ്പോർട്ട് പരാജയപ്പെട്ടു",
+        "audit_log_write_failed":       "ഓഡിറ്റ് ലോഗ് എഴുതൽ പരാജയപ്പെട്ടു",
+        "on_track":                     "ശരിയായ പാതയിൽ",
+        "at_risk":                      "അപകടത്തിൽ",
+        "breached":                     "ലംഘിച്ചത്",
+        "overdue":                      "കാലഹരണം",
+        "days":                         "ദിവസം",
+        "request_id":                   "അഭ്യർത്ഥന ഐഡി",
+        "score_pct":                    "സ്കോർ %",
+        "open_requests":                "തുറന്ന അഭ്യർത്ഥനകൾ",
+        "sla_breaches":                 "എസ്എൽഎ ലംഘനങ്ങൾ",
+        "across_system":                "സിസ്റ്റം ഉടനീളം",
+        "board_dashboard_caption":      "എക്സിക്യൂട്ടീവ് സംഗ്രഹം — എല്ലാ മേഖലകളും",
+        "dpo_dashboard_caption":        "പൂർണ്ണ ഭരണ കൺസോൾ — എല്ലാ മൊഡ്യൂളുകളും",
+        "auditor_dashboard_caption":    "അനുസരണ നിരീക്ഷണ കാഴ്ച — വായനാ-മാത്രം",
+        "admin_dashboard_caption":      "ടെക്നിക്കൽ സിസ്റ്റം ആരോഗ്യ കൺസോൾ",
+        "dpdp_compliance_view":         "ഡിപിഡിപി അനുസരണ കാഴ്ച",
+        "across_4_frameworks":          "4 നിയന്ത്രണ ചട്ടക്കൂടുകൾ ഉടനീളം",
+        "requests_within_deadline":     "എസ്എൽഎ സময়പരിധിക്കുള്ളിൽ അഭ്യർത്ഥനകൾ",
+        "incident_governance":          "സംഭവ ഭരണം",
+        "lifecycle_compliant":          "ജീവിതചക്രം അനുസരണം",
+        "under_sla_monitoring":         "എസ്എൽഎ നിരീക്ഷണത്തിൽ",
+        "requires_escalation":          "എസ്കലേഷൻ ആവശ്യമാണ്",
+        "regulatory_score":             "നിയന്ത്രണ അനുസരണ സ്കോർ",
+        "sla_status_distribution":      "എസ്എൽഎ സ്ഥിതി വിതരണം",
+        "sla_status_this_branch":       "എസ്എൽഎ സ്ഥിതി — ഈ ശാഖ",
+        "branch_risk_level":            "ശാഖ അപകട നില",
+        "current_risk_status":          "നിലവിലെ അപകട സ്ഥിതി",
+        "active_incidents_reported":    "സജീവ സംഭവങ്ങൾ റിപ്പോർട്ട് ചെയ്തു",
+        "rights_requests_action_required": "അവകാശ അഭ്യർത്ഥനകൾ — നടപടി ആവശ്യമാണ്",
+        "branch_risk_distribution":     "ശാഖ അപകട വിതരണം",
+        "branch_risk_profile_by_zone":  "മേഖല അടിസ്ഥാനത്തിൽ ശാഖ അപകട പ്രൊഫൈൽ",
+        "component_health":             "ഘടക ആരോഗ്യം",
+        "rule_engine":                  "നിയമ എൻജിൻ",
+        "orchestration_layer":          "ഓർക്കസ്ട്രേഷൻ പാളി",
+        "audit_ledger":                 "ഓഡിറ്റ് ലെഡ്ജർ",
+        "auth_service":                 "ഓതൻ സർവ്വീസ്",
+        "db_connection_pool":           "ഡിബി കണക്ഷൻ പൂൾ",
+        "compliance_engine":            "അനുസരണ എൻജിൻ",
+        "currently_logged_in":          "നിലവിൽ ലോഗിൻ ആയത്",
+        "log_entries_recorded":         "ഇന്ന് ലോഗ് എൻട്രികൾ രേഖപ്പെടുത്തി",
+        "since_last_reset":             "അവസാന റീസെറ്റ് മുതൽ",
+        "current_period":               "നിലവിലെ കാലഘട്ടം",
+        "audit_event_volume_today":     "ഇന്നത്തെ ഓഡിറ്റ് ഇവന്റ് അളവ്",
+        "event_distribution":           "ഇവന്റ് വിതരണം",
+        "evt_login":                    "ലോഗിൻ",
+        "evt_data_access":              "ഡാറ്റ ആക്സസ്",
+        "evt_consent_update":           "അനുമതി അപ്ഡേറ്റ്",
+        "evt_rights_request":           "അവകാശ അഭ്യർത്ഥന",
+        "evt_dpia_action":              "ഡിപിഐഎ നടപടി",
+        "evt_breach_report":            "ലംഘന റിപ്പോർട്ട്",
+        "evt_login_successful":         "ലോഗിൻ വിജയകരം",
+        "evt_consent_updated":          "അനുമതി അപ്ഡേറ്റ് ചെയ്തു",
+        "evt_login_failed":             "ലോഗിൻ പരാജയപ്പെട്ടു",
+        "evt_rights_request_submitted": "അവകാശ അഭ്യർത്ഥന സമർപ്പിച്ചു",
+        "total_audit_entries":          "മൊത്തം ഓഡിറ്റ് എൻട്രികൾ",
+        "last_backup":                  "അവസാന ബാക്കപ്പ്",
+        "no_data_for_branch":           "നിങ്ങളുടെ ശാഖയ്ക്ക് ഡാറ്റ ലഭ്യമല്ല.",
+        "avg_compliance_score":         "ശരാശരി അനുസരണ സ്കോർ",
+        "branches_below_target":        "ലക്ഷ്യത്തിൽ താഴെ ശാഖകൾ",
+        "score_below_90":               "90%-ൽ താഴെ സ്കോർ",
+        "branch_compliance_scorecard":  "ശാഖ അനുസരണ സ്കോർകാർഡ്",
+        "compliance_score_pct":         "അനുസരണ സ്കോർ %",
+        "open_rights_requests":         "തുറന്ന അവകാശ അഭ്യർത്ഥനകൾ",
+        "compliance_vs_rights_requests": "അനുസരണ vs അവകാശ അഭ്യർത്ഥനകൾ",
+        "active_rights_requests_per_branch": "ശാഖ അനുസരിച്ച് സജീവ അഭ്യർത്ഥനകൾ",
+        "rights_request_volume_by_branch": "ശാഖ അടിസ്ഥാനത്തിൽ അഭ്യർത്ഥന അളവ്",
+        "rights_request_management":    "അവകാശ അഭ്യർത്ഥന നിയന്ത്രണം",
+        "no_incidents_reported":        "സംഭവങ്ങൾ ഒന്നും റിപ്പോർട്ട് ചെയ്തിട്ടില്ല.",
+        "kerala_branch_risk_distribution": "കേരള ശാഖ അപകട വിതരണം",
+        "gis_map_note":                 "മാപ്പ് കേരളത്തിലെ ശാഖ അപകട വിതരണം കാണിക്കുന്നു.",
+        "knowledge_graph_caption":      "ഡിപിഡിപി ഭരണത്തിനുള്ള ഘടക ബന്ധ മാപ്പ്.",
+        "knowledge_graph_note":         "ഗ്രാഫ് പ്രധാന ഭരണ ഘടകങ്ങൾ തമ്മിലുള്ള ബന്ധങ്ങൾ കാണിക്കുന്നു.",
+        "kg_customer":                  "ഉപഭോക്താവ്",
+        "kg_consent":                   "അനുമതി",
+        "kg_purpose":                   "ഉദ്ദേശ്യം",
+        "kg_branch":                    "ശാഖ",
+        "kg_dpia":                      "ഡിപിഐഎ",
+        "kg_risk":                      "അപകടം",
+        "kg_rights_request":            "അവകാശ അഭ്യർത്ഥന",
+        "kg_sla":                       "എസ്എൽഎ",
+        "kg_compliance":                "അനുസരണം",
+        "gis_map_caption":              "കേരളത്തിലെ ശാഖ അപകട നിലയുടെ ഭൂസ്ഥാനിക കാഴ്ച.",
+        "target_90_pct":                "ലക്ഷ്യം: 90%",
+        "purpose_distribution_note":    "ലൈവ് എൻജിൻ സ്ഥിതിയിൽ നിന്ന് ഉരുത്തിരിഞ്ഞ അനുസരണ സ്കോർ.",
+        "branch_level_compliance_scores": "ശാഖ-തല അനുസരണ സ്കോറുകൾ",
+        "projected_consent_expirations": "പ്രവചിക്കപ്പെട്ട അനുമതി കാലഹരണങ്ങൾ",
+        "expiring_consents":            "കാലഹരണമാകുന്ന അനുമതികൾ",
+        "consent_forecast_august_warning": "⚠ ആഗസ്റ്റ് 2026: ഉയർന്ന കാലഹരണ അളവ് പ്രവചിക്കപ്പെടുന്നു. നേരത്തേ പുതുക്കൽ ആരംഭിക്കുക.",
+        "sla_status_by_branch":         "ശാഖ അനുസരിച്ч് എസ്എൽഎ സ്ഥിതി",
+        "approved_dpias":               "അംഗീകൃത ഡിപിഐഎകൾ",
     },
 }
 
@@ -1053,33 +1466,242 @@ TRANSLATIONS = LANG
 
 
 # ===========================================================================
-# STEP 6C — Translation function (session-driven, STRICT Malayalam mode)
+# Step 7C — Canonical dropdown option key lists
+# Use: [t(k) for k in DROPDOWN_OPTIONS["status"]]  in all UI widgets.
+# Never use raw English strings like ["Open", "Closed"] in selectboxes.
+# ===========================================================================
+
+DROPDOWN_OPTIONS: dict[str, list[str]] = {
+    # Generic status selects
+    "status": [
+        "status_open", "status_closed", "status_under_review",
+        "status_pending", "status_active", "status_resolved",
+        "status_escalated", "status_approved", "status_rejected",
+    ],
+    "status_incident": [
+        "status_open", "status_under_review",
+        "status_resolved", "status_closed",
+    ],
+    "status_request": [
+        "status_pending", "status_active",
+        "status_approved", "status_rejected", "status_escalated",
+    ],
+    "status_consent": [
+        "status_active", "status_pending",
+        "status_rejected", "status_closed",
+    ],
+    # Risk levels
+    "risk_level": ["risk_low", "risk_medium", "risk_high", "risk_critical"],
+    # SLA status
+    "sla_status": ["sla_on_track", "sla_at_risk", "sla_breached"],
+    # Filters
+    "filter_status": ["filter_all_statuses", "status_active", "status_closed"],
+    "filter_region": ["filter_all_regions"],
+    "filter_branch": ["filter_all_branches"],
+    "filter_all":    ["filter_all"],
+    # Export formats
+    "export_format": ["export_format_pdf", "export_format_json", "export_format_xml"],
+    # Processing purposes
+    "purpose": [
+        "purpose_loan", "purpose_kyc", "purpose_account",
+        "purpose_insurance", "purpose_credit", "purpose_marketing",
+        "purpose_fd", "purpose_savings", "purpose_remittance",
+    ],
+    # Data categories (breach module)
+    "data_category": [
+        "cat_financial", "cat_health", "cat_biometric", "cat_identity",
+        "cat_contact", "cat_location", "cat_transaction", "cat_employment",
+    ],
+    # DPIA risk types
+    "risk_type": [
+        "risk_type_privacy", "risk_type_security",
+        "risk_type_compliance", "risk_type_operational",
+    ],
+    # DPIA assessment types
+    "assessment_type": [
+        "assessment_full", "assessment_screening", "assessment_targeted",
+    ],
+    # Notice product journeys
+    "product_journey": [
+        "journey_savings", "journey_loan", "journey_insurance",
+        "journey_fd", "journey_remittance", "journey_credit_card",
+    ],
+    # Sort options
+    "sort_order": ["sort_newest", "sort_oldest", "sort_severity"],
+    # Display language selector
+    "display_language": ["english", "malayalam"],
+    # Clause labels (compliance / notices / DPIA)
+    "clause_label": [
+        "clause_label_dpdp_s5",  "clause_label_dpdp_s6",
+        "clause_label_dpdp_s7",  "clause_label_dpdp_s8",
+        "clause_label_dpdp_s9",  "clause_label_dpdp_s10",
+        "clause_label_dpdp_s11", "clause_label_dpdp_s12",
+        "clause_label_dpdp_s13", "clause_label_dpdp_s16",
+        "clause_label_rbi_csf",  "clause_label_nabard_it",
+        "clause_label_cert_in",  "clause_label_dpdp_r12",
+    ],
+}
+
+
+def get_dropdown_options(group: str, extra_keys: list[str] | None = None) -> list[str]:
+    """
+    Return a list of translated display strings for a named dropdown group.
+
+    Usage (replaces all raw English lists in UI widgets):
+        opts = get_dropdown_options("status_incident")
+        choice = st.selectbox(t("new_status"), opts)
+
+    Args:
+        group:      Key into DROPDOWN_OPTIONS.
+        extra_keys: Optional additional translation keys to append.
+
+    Returns:
+        List of translated strings for the current session language.
+
+    Raises:
+        KeyError: If group is not in DROPDOWN_OPTIONS.
+    """
+    if group not in DROPDOWN_OPTIONS:
+        raise KeyError(f"Unknown DROPDOWN_OPTIONS group: '{group}'")
+    keys = DROPDOWN_OPTIONS[group] + (extra_keys or [])
+    return [t(k) for k in keys]
+
+
+def dropdown_key_for_value(group: str, translated_value: str) -> str | None:
+    """
+    Reverse-lookup: given a translated display value, return the original key.
+
+    Useful when storing canonical keys in data model after a selectbox choice.
+
+    Args:
+        group:            DROPDOWN_OPTIONS group name.
+        translated_value: The translated string chosen by the user.
+
+    Returns:
+        Original key string, or None if not found.
+    """
+    if group not in DROPDOWN_OPTIONS:
+        return None
+    for key in DROPDOWN_OPTIONS[group]:
+        if t(key) == translated_value:
+            return key
+    return None
+
+
+# ===========================================================================
+# Step 7B — Translation completeness validation
+# ===========================================================================
+
+# Lazy startup guard — set True once validated in the current process
+_VALIDATION_DONE: bool = False
+
+
+def validate_translation_completeness(
+    reference_lang: str = "en",
+    raise_on_failure: bool = True,
+) -> dict[str, list[str]]:
+    """
+    Validate that all registered non-reference languages contain every key
+    present in the reference language dictionary.
+
+    Call this once during app initialisation (post-login) and after every
+    call to register_language() / add_translation().
+
+    Args:
+        reference_lang:  The canonical source language (default "en").
+        raise_on_failure: If True, raises TranslationParityError on mismatch.
+                          If False, returns missing-key report without raising.
+
+    Returns:
+        Dict mapping language code → list of missing key strings.
+        Empty dict means full parity.
+
+    Raises:
+        TranslationParityError: If raise_on_failure is True and any language
+                                has missing keys.
+    """
+    global _VALIDATION_DONE
+    reference_keys = set(LANG.get(reference_lang, {}).keys())
+    missing: dict[str, list[str]] = {}
+
+    for lang_code, lang_dict in LANG.items():
+        if lang_code == reference_lang:
+            continue
+        lang_keys   = set(lang_dict.keys())
+        absent      = sorted(reference_keys - lang_keys)
+        if absent:
+            missing[lang_code] = absent
+
+    if missing and raise_on_failure:
+        summary_parts = []
+        for lang_code, keys in missing.items():
+            key_preview = keys[:10]
+            ellipsis    = f" … and {len(keys) - 10} more" if len(keys) > 10 else ""
+            summary_parts.append(
+                f"  [{lang_code}] missing {len(keys)} key(s): "
+                f"{', '.join(key_preview)}{ellipsis}"
+            )
+        raise TranslationParityError(
+            "Translation parity check failed. The following languages are "
+            "incomplete:\n" + "\n".join(summary_parts)
+        )
+
+    _VALIDATION_DONE = True
+    return missing
+
+
+
+# ===========================================================================
+# STEP 6C / Step 7A / 7D — Translation function (hardened)
 # ===========================================================================
 
 def t(key: str) -> str:
     """
     Return translated text for the current session language.
 
+    Step 7A — Strict missing-key enforcement:
+      Missing keys raise TranslationKeyError in ALL language modes.
+      No silent empty strings. No silent fallback to raw key.
+      Use t_safe(key) for optional strings where missing is acceptable.
+
+    Step 7D — Malayalam ASCII leakage guard:
+      In Malayalam mode, if the translated value contains ASCII alphabetic
+      characters, EnglishLeakageError is raised immediately.
+      Exceptions: numeric characters, punctuation, and known technical tokens
+      (version strings, IDs) are permitted via t_safe().
+
     Malayalam STRICT mode (lang == "ml"):
       - Returns LANG["ml"][key] if the key exists.
-      - Returns "" (empty string) if the key is missing.
-      - NEVER falls back to English.
-      - This ensures zero English leakage when Malayalam is selected.
+      - Raises TranslationKeyError if the key is missing.
+      - Raises EnglishLeakageError if result contains ASCII alpha characters.
 
-    English mode (lang == "en" or any unregistered lang):
+    English mode (lang == "en"):
       - Returns LANG["en"][key] if the key exists.
-      - Returns key (raw key) as last resort.
+      - Raises TranslationKeyError if the key is missing.
 
     Other registered languages:
       - Returns LANG[lang][key] if exists.
-      - Falls back to LANG["en"][key], then key.
+      - Falls back to LANG["en"][key] if missing in target language.
+      - Raises TranslationKeyError if missing in both.
+
+    Lazy startup guard:
+      On first call in a new session, triggers validate_translation_completeness()
+      in non-raising mode and stores result in session state for operator review.
 
     Args:
-        key: Translation key, e.g. "dashboard", "submit_request", "Status"
+        key: Translation key, e.g. "dashboard", "submit_request"
 
     Returns:
         Translated string for the active language.
+
+    Raises:
+        TranslationKeyError: If the key is missing from the active language
+                             (and from English fallback for non-en/non-ml langs).
+        EnglishLeakageError: If Malayalam mode returns a value containing
+                             ASCII alphabetic characters.
     """
+    global _VALIDATION_DONE
+
     # Support both "lang" and "language" session keys for compatibility
     lang = st.session_state.get("lang") or st.session_state.get("language", "en")
 
@@ -1087,16 +1709,105 @@ def t(key: str) -> str:
     if lang not in LANG:
         lang = "en"
 
-    # Malayalam STRICT mode — no English fallback
+    # Lazy startup validation — runs once per session, non-raising
+    if not _VALIDATION_DONE and not st.session_state.get("_i18n_validated"):
+        try:
+            missing = validate_translation_completeness(raise_on_failure=False)
+            st.session_state["_i18n_validated"]  = True
+            st.session_state["_i18n_missing"]    = missing
+        except Exception:
+            pass  # Never block the UI on validation error
+
+    # ── Malayalam STRICT mode ─────────────────────────────────────────────────
     if lang == "ml":
-        return LANG["ml"].get(key, "")
+        if key not in LANG["ml"]:
+            raise TranslationKeyError(
+                f"Missing Malayalam translation for key '{key}'. "
+                "Add the key to LANG['ml'] in utils/i18n.py."
+            )
+        value = LANG["ml"][key]
+        # Step 7D — ASCII leakage guard
+        ascii_alpha = [ch for ch in value if ch.isascii() and ch.isalpha()]
+        if ascii_alpha:
+            raise EnglishLeakageError(
+                f"English leakage detected for key '{key}' in Malayalam mode. "
+                f"Offending characters: {''.join(set(ascii_alpha))!r}. "
+                "Translate the value fully into Malayalam in LANG['ml']."
+            )
+        return value
 
-    # English mode
+    # ── English mode ──────────────────────────────────────────────────────────
     if lang == "en":
-        return LANG["en"].get(key, key)
+        if key not in LANG["en"]:
+            raise TranslationKeyError(
+                f"Missing English translation for key '{key}'. "
+                "Add the key to LANG['en'] in utils/i18n.py."
+            )
+        return LANG["en"][key]
 
-    # Other registered languages — fallback to English, then raw key
-    return LANG[lang].get(key) or LANG["en"].get(key) or key
+    # ── Other registered languages — fallback chain ───────────────────────────
+    lang_dict = LANG[lang]
+    if key in lang_dict:
+        return lang_dict[key]
+    if key in LANG["en"]:
+        return LANG["en"][key]  # graceful English fallback for partial languages
+    raise TranslationKeyError(
+        f"Missing translation for key '{key}' in language '{lang}' "
+        "(and in English fallback). Add to LANG['{lang}'] or LANG['en']."
+    )
+
+
+def t_safe(key: str, default: str = "") -> str:
+    """
+    Graceful translation lookup — returns default instead of raising.
+
+    Use this ONLY for:
+      - Optional UI strings where blank is acceptable
+      - Dynamic keys generated at runtime that may not exist
+      - Error message formatting where t() itself might fail
+
+    For all critical UI labels, use t() to ensure missing keys are caught.
+
+    Args:
+        key:     Translation key.
+        default: Value to return if key is missing (default: "").
+
+    Returns:
+        Translated string, or default if key is missing or leakage detected.
+    """
+    try:
+        return t(key)
+    except (TranslationKeyError, EnglishLeakageError):
+        return default
+
+
+def t_required(key: str) -> str:
+    """
+    Step 7E — Translation lookup that additionally raises if result is empty.
+
+    Use in UI layers where an empty string would cause a broken layout
+    (e.g. button labels, column headers, section titles).
+
+    Args:
+        key: Translation key.
+
+    Returns:
+        Translated string (guaranteed non-empty).
+
+    Raises:
+        TranslationKeyError: If key is missing.
+        ValueError: If translation resolves to an empty string.
+    """
+    value = t(key)
+    if not value:
+        raise ValueError(
+            f"Translation for key '{key}' resolved to an empty string "
+            f"in language '{st.session_state.get('lang', 'en')}'. "
+            "Update the translation value in utils/i18n.py."
+        )
+    return value
+
+
 
 
 # ===========================================================================
@@ -1110,7 +1821,7 @@ def validate_no_english_rendered(rendered_text: str) -> None:
 
     Raises
     ------
-    ValueError — if English text is detected while lang == "ml".
+    EnglishLeakageError — if English text is detected while lang == "ml".
 
     Usage
     -----
@@ -1130,7 +1841,7 @@ def validate_no_english_rendered(rendered_text: str) -> None:
         if ch.isascii() and ch.isalpha()
     ]
     if english_chars:
-        raise ValueError(
+        raise EnglishLeakageError(
             f"English text detected in Malayalam rendering mode. "
             f"Offending characters: {''.join(set(english_chars))!r}. "
             f"Ensure all UI strings pass through t() before rendering."
@@ -1335,6 +2046,10 @@ def add_translation(lang: str, key: str, value: str) -> None:
       - Patch a single string without editing this file
       - Support RBI or NABARD localisation requirements at runtime
 
+    After calling this, validate_translation_completeness() should be
+    called again to ensure parity is maintained. This function resets the
+    lazy validation flag so the next t() call triggers re-validation.
+
     Args:
         lang:  ISO language code, e.g. "hi", "ta", "ar"
         key:   Translation key string
@@ -1345,14 +2060,18 @@ def add_translation(lang: str, key: str, value: str) -> None:
         add_translation("hi", "dashboard", "डैशबोर्ड")
         add_translation("ta", "submit_request", "கோரிக்கை சமர்ப்பிக்கவும்")
     """
+    global _VALIDATION_DONE
     if lang not in LANG:
         LANG[lang] = {}
     LANG[lang][key] = value
+    _VALIDATION_DONE = False  # Force re-validation on next t() call
 
 
 def register_language(lang: str, translations: dict[str, str]) -> None:
     """
     Register a full language dictionary at once.
+
+    Resets the lazy validation flag so the next t() call triggers re-validation.
 
     Args:
         lang:         ISO language code, e.g. "hi"
@@ -1362,9 +2081,11 @@ def register_language(lang: str, translations: dict[str, str]) -> None:
         from utils.i18n import register_language
         register_language("hi", {"dashboard": "डैशबोर्ड", ...})
     """
+    global _VALIDATION_DONE
     if lang not in LANG:
         LANG[lang] = {}
     LANG[lang].update(translations)
+    _VALIDATION_DONE = False  # Force re-validation on next t() call
 
 
 # ===========================================================================

@@ -1,230 +1,293 @@
 """
-engine/audit_ledger.py
-----------------------
-Append-only, hash-chained audit ledger for the DPCMS.
+engine/purpose_enforcer.py
+--------------------------
+Risk-aware, enforcement-driven purpose validation for the DPCMS.
 
-Every action taken in the system is recorded here with:
-  - A unique sequential ID
-  - UTC timestamp
-  - Action description
-  - Actor (user / role / service)
-  - Optional metadata dict
-  - Previous entry's hash (chain link)
-  - Current entry's SHA-256 hash (covers all fields above)
+Responsibilities:
+  - Maintain a Purpose Risk Registry (no hardcoded risk in logic)
+  - Validate that a declared purpose is registered
+  - Enforce DPIA completion for high-risk purposes
+  - Enforce branch isolation (actor branch must match entity branch)
+  - Detect purpose drift (declared notice purpose vs actual processing purpose)
+  - Expose a risk multiplier for downstream compliance scoring
 
-The chain makes tampering detectable: any modification to a past
-entry will break every subsequent hash in the chain.
+Design contract:
+  - NO storage writes — this module validates and returns structured results only.
+  - All audit calls must be made by the orchestration layer using the returned
+    violation payloads.
 
-Log file location: data/audit_ledger.json  (auto-created)
+Public interface:
+  validate_purpose(purpose, product, actor_branch, entity_branch) -> dict
+  get_purpose_risk(purpose) -> dict
+  enforce_dpia_requirement(purpose, product)
+  get_risk_multiplier(purpose) -> float
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
-import os
-import uuid
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Optional
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Purpose Risk Registry
+# ---------------------------------------------------------------------------
+# Single source of truth for purpose metadata.
+# risk_level  : "low" | "medium" | "high" | "critical"
+# requires_dpia: whether a completed DPIA must exist before processing
 # ---------------------------------------------------------------------------
 
-LEDGER_PATH = Path(os.getenv("LEDGER_PATH", "data/audit_ledger.json"))
-GENESIS_HASH = "0" * 64      # Sentinel hash used for the very first entry
+PURPOSE_REGISTRY: dict[str, dict[str, Any]] = {
+    "loan_processing": {
+        "risk_level":    "medium",
+        "requires_dpia": False,
+    },
+    "kyc_verification": {
+        "risk_level":    "high",
+        "requires_dpia": True,
+    },
+    "marketing": {
+        "risk_level":    "high",
+        "requires_dpia": True,
+    },
+    "account_opening": {
+        "risk_level":    "medium",
+        "requires_dpia": False,
+    },
+}
+
+# Risk-level → SLA / compliance weight multiplier
+_RISK_MULTIPLIERS: dict[str, float] = {
+    "low":      1.0,
+    "medium":   1.2,
+    "high":     1.5,
+    "critical": 2.0,
+}
+
+# Roles that may override branch isolation (must be granted by governance layer)
+_BRANCH_OVERRIDE_ROLES: frozenset[str] = frozenset({"dpo", "board"})
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Internal stub — replace with real DPIA repository lookup
 # ---------------------------------------------------------------------------
 
-def _ensure_ledger() -> None:
-    """Create ledger file and parent directories if they don't exist."""
-    LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if not LEDGER_PATH.exists():
-        LEDGER_PATH.write_text("[]", encoding="utf-8")
-
-
-def _load_ledger() -> list[dict]:
-    _ensure_ledger()
-    raw = LEDGER_PATH.read_text(encoding="utf-8").strip()
-    return json.loads(raw) if raw else []
-
-
-def _save_ledger(entries: list[dict]) -> None:
-    LEDGER_PATH.write_text(
-        json.dumps(entries, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-
-
-def _compute_hash(entry: dict) -> str:
+def _dpia_exists(product: str) -> bool:
     """
-    Compute a SHA-256 hash over the canonical fields of an entry.
-    The 'current_hash' field is excluded so the hash covers everything else.
+    Stub: query the DPIA repository for a completed assessment for `product`.
+
+    Replace this with an actual DB / service call in production.
+    Returns False by default so enforcement is fail-safe.
     """
-    payload = {
-        "id":            entry["id"],
-        "timestamp":     entry["timestamp"],
-        "action":        entry["action"],
-        "user":          entry["user"],
-        "metadata":      entry.get("metadata"),
-        "previous_hash": entry["previous_hash"],
-    }
-    canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    # TODO: integrate with dpia_repository.get_completed(product)
+    return False
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-def audit_log(
-    action: str,
-    user: str,
-    metadata: Optional[dict[str, Any]] = None,
-) -> dict:
+def get_purpose_risk(purpose: str) -> dict:
     """
-    Append a new entry to the audit ledger.
+    Return the risk metadata for a registered purpose.
 
     Parameters
     ----------
-    action   : Human-readable description of what happened,
-               e.g. "Consent Created", "ACCESS DENIED | purpose=marketing".
-    user     : The actor — a username, role, or service name.
-    metadata : Optional dict of extra context (customer_id, module, etc.).
+    purpose : The processing purpose string (must be in PURPOSE_REGISTRY).
 
     Returns
     -------
-    dict — the newly appended audit entry (including its hash).
+    dict with keys: purpose, risk_level, requires_dpia
+
+    Raises
+    ------
+    ValueError  — if the purpose is not in the registry.
     """
-    entries = _load_ledger()
-
-    previous_hash = entries[-1]["current_hash"] if entries else GENESIS_HASH
-    entry_id = len(entries) + 1
-
-    entry: dict[str, Any] = {
-        "id":            entry_id,
-        "timestamp":     datetime.now(timezone.utc).isoformat(),
-        "action":        action,
-        "user":          user,
-        "metadata":      metadata or {},
-        "previous_hash": previous_hash,
-        "current_hash":  "",          # placeholder — computed below
+    meta = PURPOSE_REGISTRY.get(purpose)
+    if meta is None:
+        raise ValueError(
+            f"PURPOSE_ENFORCER | Unknown purpose '{purpose}'. "
+            "Register it in PURPOSE_REGISTRY before use."
+        )
+    return {
+        "purpose":      purpose,
+        "risk_level":   meta["risk_level"],
+        "requires_dpia": meta["requires_dpia"],
     }
 
-    entry["current_hash"] = _compute_hash(entry)
-    entries.append(entry)
-    _save_ledger(entries)
-    return entry
 
-
-def get_logs(
-    limit: Optional[int] = None,
-    user_filter: Optional[str] = None,
-    action_filter: Optional[str] = None,
-) -> list[dict]:
+def enforce_dpia_requirement(purpose: str, product: str) -> None:
     """
-    Retrieve audit log entries, most-recent first.
+    Raise if a high-risk purpose requires a DPIA that has not been completed.
 
     Parameters
     ----------
-    limit         : Max number of entries to return (None = all).
-    user_filter   : Return only entries where user == user_filter.
-    action_filter : Return only entries where action contains this substring.
+    purpose : The processing purpose (must be in PURPOSE_REGISTRY).
+    product : The product / system requesting processing.
+
+    Raises
+    ------
+    ValueError  — if purpose is unregistered.
+    PermissionError — if DPIA is required but absent.
+    """
+    meta = PURPOSE_REGISTRY.get(purpose)
+    if meta is None:
+        raise ValueError(
+            f"PURPOSE_ENFORCER | Cannot enforce DPIA for unknown purpose '{purpose}'."
+        )
+
+    if meta["requires_dpia"] and not _dpia_exists(product):
+        raise PermissionError(
+            f"PURPOSE_ENFORCER | DPIA REQUIRED — purpose='{purpose}', "
+            f"product='{product}'. Complete a DPIA before activating consent."
+        )
+
+
+def get_risk_multiplier(purpose: str) -> float:
+    """
+    Return the SLA / compliance weight multiplier for a given purpose.
+
+    Parameters
+    ----------
+    purpose : The processing purpose (must be in PURPOSE_REGISTRY).
 
     Returns
     -------
-    list[dict] — matching entries in reverse-chronological order.
+    float — multiplier (1.0 for low, 1.2 medium, 1.5 high, 2.0 critical).
+
+    Raises
+    ------
+    ValueError — if purpose is unregistered or risk_level has no mapped multiplier.
     """
-    entries = _load_ledger()
-    entries = list(reversed(entries))
-
-    if user_filter:
-        entries = [e for e in entries if e["user"] == user_filter]
-    if action_filter:
-        entries = [e for e in entries if action_filter.lower() in e["action"].lower()]
-    if limit:
-        entries = entries[:limit]
-
-    return entries
+    risk_info = get_purpose_risk(purpose)   # raises ValueError if unknown
+    risk_level = risk_info["risk_level"]
+    multiplier = _RISK_MULTIPLIERS.get(risk_level)
+    if multiplier is None:
+        raise ValueError(
+            f"PURPOSE_ENFORCER | No multiplier defined for risk_level='{risk_level}'."
+        )
+    return multiplier
 
 
-def verify_chain() -> dict:
+def validate_purpose(
+    purpose: str,
+    product: str,
+    actor_branch: str,
+    entity_branch: str,
+    declared_notice_purpose: Optional[str] = None,
+    actor_role: Optional[str] = None,
+) -> dict:
     """
-    Verify the integrity of the entire audit ledger by re-computing and
-    comparing hashes from genesis to the latest entry.
+    Full-stack purpose validation gate.
+
+    Checks (in order):
+      1. Purpose is registered.
+      2. DPIA is completed (if required).
+      3. Branch isolation — actor branch must match entity branch
+         unless actor_role is a permitted override role.
+      4. Purpose drift — declared notice purpose must match processing purpose.
+
+    Parameters
+    ----------
+    purpose                  : The purpose being asserted for this processing action.
+    product                  : The product / system initiating processing.
+    actor_branch             : Branch identifier of the acting user / service.
+    entity_branch            : Branch identifier of the data subject / entity.
+    declared_notice_purpose  : Purpose stated in the original privacy notice / consent
+                               (optional; drift check is skipped if None).
+    actor_role               : Role of the actor (e.g. "dpo", "board") for override
+                               evaluation (optional).
 
     Returns
     -------
     dict:
-        valid        : bool   — True if the full chain is intact
-        total        : int    — number of entries checked
-        first_breach : int|None — id of the first corrupted entry (if any)
-        message      : str    — human-readable verdict
+        allowed          : bool
+        purpose          : str
+        risk_level       : str
+        risk_multiplier  : float
+        requires_dpia    : bool
+        violations       : list[dict] — structured violation records for audit
+
+    Notes
+    -----
+    This function does NOT write to the audit ledger.
+    The caller (orchestration layer) must pass `violations` to audit_log().
     """
-    entries = _load_ledger()
-    expected_previous = GENESIS_HASH
+    violations: list[dict] = []
+    allowed = True
 
-    for entry in entries:
-        # Check previous_hash linkage
-        if entry["previous_hash"] != expected_previous:
-            return {
-                "valid":        False,
-                "total":        len(entries),
-                "first_breach": entry["id"],
-                "message":      f"Chain broken at entry #{entry['id']}: previous_hash mismatch.",
-            }
+    # ── 1. Registry check ──────────────────────────────────────────────────
+    meta = PURPOSE_REGISTRY.get(purpose)
+    if meta is None:
+        violations.append({
+            "code":    "UNREGISTERED_PURPOSE",
+            "message": f"Purpose '{purpose}' is not in the Purpose Risk Registry.",
+            "purpose": purpose,
+            "product": product,
+        })
+        # Cannot continue — all downstream checks depend on registry metadata.
+        return {
+            "allowed":         False,
+            "purpose":         purpose,
+            "risk_level":      None,
+            "risk_multiplier": None,
+            "requires_dpia":   None,
+            "violations":      violations,
+        }
 
-        # Re-compute current_hash
-        recomputed = _compute_hash(entry)
-        if recomputed != entry["current_hash"]:
-            return {
-                "valid":        False,
-                "total":        len(entries),
-                "first_breach": entry["id"],
-                "message":      f"Hash mismatch at entry #{entry['id']}: entry has been tampered with.",
-            }
+    risk_level = meta["risk_level"]
+    requires_dpia = meta["requires_dpia"]
+    risk_multiplier = _RISK_MULTIPLIERS.get(risk_level, 1.0)
 
-        expected_previous = entry["current_hash"]
+    # ── 2. DPIA enforcement ─────────────────────────────────────────────────
+    if requires_dpia and not _dpia_exists(product):
+        allowed = False
+        violations.append({
+            "code":    "DPIA_MISSING",
+            "message": (
+                f"Purpose '{purpose}' is high-risk and requires a completed DPIA "
+                f"for product '{product}'."
+            ),
+            "purpose": purpose,
+            "product": product,
+        })
+
+    # ── 3. Branch isolation ─────────────────────────────────────────────────
+    if actor_branch != entity_branch:
+        is_override_role = actor_role and actor_role.lower() in _BRANCH_OVERRIDE_ROLES
+        if not is_override_role:
+            allowed = False
+            violations.append({
+                "code":         "BRANCH_ISOLATION_VIOLATION",
+                "message": (
+                    f"Cross-branch processing denied: actor_branch='{actor_branch}' "
+                    f"≠ entity_branch='{entity_branch}'. "
+                    "Only DPO or board-level roles may override."
+                ),
+                "actor_branch":  actor_branch,
+                "entity_branch": entity_branch,
+                "actor_role":    actor_role,
+            })
+
+    # ── 4. Purpose drift detection ──────────────────────────────────────────
+    if declared_notice_purpose is not None and declared_notice_purpose != purpose:
+        allowed = False
+        violations.append({
+            "code":    "PURPOSE_DRIFT",
+            "message": (
+                f"Purpose drift detected: notice declared '{declared_notice_purpose}' "
+                f"but processing requested '{purpose}'."
+            ),
+            "declared_purpose":   declared_notice_purpose,
+            "processing_purpose": purpose,
+            "product":            product,
+        })
 
     return {
-        "valid":        True,
-        "total":        len(entries),
-        "first_breach": None,
-        "message":      f"Ledger intact. All {len(entries)} entries verified.",
-    }
-
-
-def clear_ledger(confirm: bool = False) -> bool:
-    """
-    Wipe the ledger (development / testing only).
-    Requires confirm=True to prevent accidental deletion.
-    """
-    if not confirm:
-        raise ValueError("Pass confirm=True to clear the ledger. This is irreversible.")
-    _ensure_ledger()
-    LEDGER_PATH.write_text("[]", encoding="utf-8")
-    return True
-
-
-# ---------------------------------------------------------------------------
-# Streamlit-friendly summary (for Audit Logs module)
-# ---------------------------------------------------------------------------
-
-def ledger_stats() -> dict:
-    """
-    Return summary statistics for the Audit Logs dashboard widget.
-    """
-    entries = _load_ledger()
-    users = {e["user"] for e in entries}
-    return {
-        "total_entries": len(entries),
-        "unique_actors": len(users),
-        "latest_entry":  entries[-1]["timestamp"] if entries else None,
-        "chain_valid":   verify_chain()["valid"],
+        "allowed":         allowed,
+        "purpose":         purpose,
+        "risk_level":      risk_level,
+        "risk_multiplier": risk_multiplier,
+        "requires_dpia":   requires_dpia,
+        "violations":      violations,
     }
 
 
@@ -232,24 +295,81 @@ def ledger_stats() -> dict:
 # Smoke test
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Reset for clean demo
-    clear_ledger(confirm=True)
-    print("Ledger cleared.\n")
+    import json
 
-    # Append some entries
-    audit_log("System Startup",             user="system")
-    audit_log("Consent Created",            user="officer_01",  metadata={"customer_id": "CUST001", "purpose": "loan_processing"})
-    audit_log("Data Access Request Raised", user="cust_portal", metadata={"customer_id": "CUST002"})
-    audit_log("Consent Revoked",            user="officer_02",  metadata={"customer_id": "CUST001", "purpose": "marketing"})
-    audit_log("Breach Reported",            user="dpo_admin",   metadata={"breach_id": "BR-2024-001"})
+    def _pp(label: str, data: Any) -> None:
+        print(f"\n── {label} {'─' * max(0, 55 - len(label))}")
+        print(json.dumps(data, indent=2, default=str))
 
-    print("── Last 5 entries ──────────────────────────────────────")
-    for e in get_logs(limit=5):
-        print(f"  #{e['id']:03d} | {e['timestamp'][:19]} | {e['user']:<15s} | {e['action']}")
+    # 1. Happy path — same branch, registered low-risk purpose, no drift
+    _pp(
+        "PASS | loan_processing, same branch",
+        validate_purpose(
+            purpose="loan_processing",
+            product="core_banking",
+            actor_branch="branch_A",
+            entity_branch="branch_A",
+        ),
+    )
 
-    print("\n── Chain Verification ──────────────────────────────────")
-    result = verify_chain()
-    print(f"  {result['message']}")
+    # 2. DPIA missing for marketing
+    _pp(
+        "FAIL | marketing — DPIA missing",
+        validate_purpose(
+            purpose="marketing",
+            product="crm_platform",
+            actor_branch="branch_A",
+            entity_branch="branch_A",
+        ),
+    )
 
-    print("\n── Stats ───────────────────────────────────────────────")
-    print(f"  {ledger_stats()}")
+    # 3. Cross-branch violation
+    _pp(
+        "FAIL | cross-branch (no override role)",
+        validate_purpose(
+            purpose="loan_processing",
+            product="core_banking",
+            actor_branch="branch_A",
+            entity_branch="branch_B",
+        ),
+    )
+
+    # 4. Cross-branch allowed via DPO override
+    _pp(
+        "PASS | cross-branch allowed (DPO override)",
+        validate_purpose(
+            purpose="loan_processing",
+            product="core_banking",
+            actor_branch="branch_A",
+            entity_branch="branch_B",
+            actor_role="dpo",
+        ),
+    )
+
+    # 5. Purpose drift
+    _pp(
+        "FAIL | purpose drift (account_opening → marketing)",
+        validate_purpose(
+            purpose="marketing",
+            product="crm_platform",
+            actor_branch="branch_A",
+            entity_branch="branch_A",
+            declared_notice_purpose="account_opening",
+        ),
+    )
+
+    # 6. Unknown purpose
+    _pp(
+        "FAIL | unregistered purpose",
+        validate_purpose(
+            purpose="fraud_analytics",
+            product="risk_engine",
+            actor_branch="branch_A",
+            entity_branch="branch_A",
+        ),
+    )
+
+    # 7. Risk multipliers
+    print("\n── Risk Multipliers ─────────────────────────────────────")
+    for p in PURPOSE_REGISTRY:
+        print(f"  {p:<25s} → ×{get_risk_multiplier(p)}")

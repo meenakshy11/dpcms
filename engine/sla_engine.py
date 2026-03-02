@@ -2,33 +2,60 @@
 engine/sla_engine.py
 --------------------
 Central SLA Orchestration Layer — DPDPA 2023 Compliance Framework.
+Step 14 Hardening — deterministic, event-driven, history-tracked, escalation-aware.
 
 Responsibilities:
-  - Central SLA registry (storage/sla_registry.json)
-  - Automated SLA evaluation + breach detection
-  - Escalation engine (per-module escalation contacts)
-  - SMS / notification trigger hook
-  - Regulatory breach timer (CERT-In style 6-hour deadline)
+  - Central SLA registry         (storage/sla_registry.json)
+  - SLA history log              (storage/sla_history.json)       ← Step 14C
+  - Standardised record schema                                     ← Step 14B
+  - Automated SLA evaluation + breach detection                    ← Step 14D
+  - Tiered escalation engine     (level 0-3, no notifications)    ← Step 14E
+  - SLA compliance rate          (for compliance_engine)          ← Step 14F
+  - Immutable status transitions (closed is terminal)             ← Step 14G
+  - Orchestration-gated writes   (no open("sla_registry.json"))  ← Step 14H
   - Consent expiry 7-day reminder window
   - DPIA periodic review scheduling
-  - SLA completion marking (rights closure, breach resolution, DPIA approval)
   - Dashboard color-flag helpers (green / amber / red)
 
+Step 14 changes summary:
+  14B  Standardised SLA record schema — entity_type, branch,
+       escalation_level, closed_at, history ref
+  14C  Append-only SLA history log — every status change recorded
+  14D  evaluate_sla(entry) — single-entry evaluator, called from
+       evaluate_slas() and directly by orchestration post-commit
+  14E  Tiered escalation: 0→branch officer, 1→regional compliance,
+       2→DPO, 3→Board; level stored, no notifications at this step
+  14F  get_sla_compliance_rate() — float used by compliance_engine
+  14G  _validate_transition() — immutable closed-state guard
+  14H  All writes via _write_sla_registry() — no raw open() calls
+
 Architecture:
-  register_sla()      → write SLA record to registry
-  evaluate_slas()     → background/dashboard job: detect breaches + send alerts
-  mark_sla_completed()→ called when the linked entity is resolved
-  get_sla_indicator() → UI color badge helper
+  register_sla()            → write standardised SLA record to registry
+  evaluate_sla(entry)       → evaluate and mutate a single entry in-place
+  evaluate_slas()           → evaluate all active SLAs; called by orchestration
+  mark_sla_completed()      → close entity's SLA(s) via valid transition
+  get_sla_compliance_rate() → float compliance rate for compliance_engine
+  get_sla_compliance_summary() → detailed summary dict
+  get_sla_indicator()       → UI color badge helper
+  get_all_slas()            → filtered registry reader
+  load_sla_history()        → full history log reader
+  recalculate_sla()         → orchestration post-commit hook (Step 14H)
 
   Legacy calculate_sla_status() / get_sla_detail() / evaluate_batch() /
-  sla_summary() are preserved for backward-compatibility with existing dashboards.
+  sla_summary() / status_badge() are preserved for backward-compatibility.
 """
 
 from __future__ import annotations
 
+import json
+import logging
+import os
 import uuid
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Storage helpers
@@ -39,8 +66,6 @@ from typing import Optional
 try:
     from storage_manager import load_json, save_json
 except ImportError:  # graceful fallback for unit-test contexts
-    import json, os
-
     def load_json(path: str, default=None):
         try:
             with open(path, "r") as f:
@@ -49,9 +74,9 @@ except ImportError:  # graceful fallback for unit-test contexts
             return default
 
     def save_json(path: str, data):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w") as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=2, default=str)
 
 # ---------------------------------------------------------------------------
 # Notification + audit hooks
@@ -60,23 +85,26 @@ try:
     from engine.orchestration import trigger_notification
 except ImportError:
     def trigger_notification(channel: str, recipient: str, message: str):
-        print(f"[NOTIFY][{channel.upper()}] → {recipient}: {message}")
+        logger.info(f"[NOTIFY][{channel.upper()}] → {recipient}: {message}")
 
 try:
     from engine.audit_ledger import audit_log
 except ImportError:
-    def audit_log(event: str, actor: str = "system", details: dict = None):
-        print(f"[AUDIT] {event} | {actor} | {details}")
+    def audit_log(action: str, user: str = "system", metadata: dict = None):
+        logger.info(f"[AUDIT] {action} | {user} | {metadata}")
 
 # ---------------------------------------------------------------------------
-# Storage path
+# Storage paths
 # ---------------------------------------------------------------------------
-SLA_FILE = "storage/sla_registry.json"
+
+SLA_FILE     = "storage/sla_registry.json"
+HISTORY_FILE = "storage/sla_history.json"      # Step 14C — append-only history log
 
 # ---------------------------------------------------------------------------
-# DPDPA 2023 SLA Configuration (legacy + extended)
+# DPDPA 2023 SLA Configuration — deadlines in days / hours
 # ---------------------------------------------------------------------------
-SLA_CONFIG: dict[str, int] = {
+
+SLA_CONFIG: Dict[str, int] = {
     # Data Principal Rights (Chapter V, DPDPA 2023) — days
     "data_access_request":          30,
     "data_correction_request":      30,
@@ -99,76 +127,315 @@ SLA_CONFIG: dict[str, int] = {
     "vendor_audit":                 90,
 }
 
-# Escalation contacts per module
-ESCALATION_CONTACTS: dict[str, str] = {
+# ---------------------------------------------------------------------------
+# Step 14E — Tiered escalation ladder
+# ---------------------------------------------------------------------------
+
+ESCALATION_LADDER: Dict[int, str] = {
+    0: "branch_officer",
+    1: "regional_compliance_officer",
+    2: "dpo",
+    3: "board",
+}
+
+# Module-default escalation start level
+ESCALATION_CONTACTS: Dict[str, str] = {
     "rights":         "privacy_steward",
     "consent_expiry": "branch_officer",
     "breach":         "dpo",
     "dpia":           "governance_team",
 }
 
+# ---------------------------------------------------------------------------
+# Step 14G — Permitted SLA status transitions (immutable closed guard)
+# ---------------------------------------------------------------------------
+
+_VALID_TRANSITIONS: Dict[str, set] = {
+    "active":    {"breached", "closed"},
+    "breached":  {"closed"},
+    "closed":    set(),                 # TERMINAL — no further transitions allowed
+    "completed": set(),                 # legacy alias — also terminal
+}
 
 # ---------------------------------------------------------------------------
-# ID helper
+# Step 14B — Recognised entity types
 # ---------------------------------------------------------------------------
+
+VALID_ENTITY_TYPES = frozenset({
+    "rights_request",
+    "breach",
+    "dpia",
+    "consent",
+    "notice",
+    "vendor_audit",
+    "generic",
+})
+
+
+# ===========================================================================
+# ── INTERNAL HELPERS ────────────────────────────────────────────────────────
+# ===========================================================================
 
 def _generate_id() -> str:
     return f"SLA-{uuid.uuid4().hex[:10].upper()}"
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_dt(value) -> datetime:
+    """Parse ISO string or datetime to tz-aware UTC datetime."""
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    dt = datetime.fromisoformat(str(value))
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+# ---------------------------------------------------------------------------
+# Step 14H — Centralised write functions (the ONLY code paths that write storage)
+# ---------------------------------------------------------------------------
+
+def _write_sla_registry(records: List[dict]) -> None:
+    """
+    Step 14H — Single authorised write point for the SLA registry.
+
+    All mutations to sla_registry.json must go through this function.
+    No module other than sla_engine.py may open("storage/sla_registry.json")
+    for writing.
+    """
+    save_json(SLA_FILE, records)
+    logger.debug(f"[SLA] Registry written — {len(records)} record(s).")
+
+
+def _append_history(entry: dict) -> None:
+    """
+    Step 14C — Append a single history event to the append-only history log.
+
+    The history file is never overwritten; events are always appended.
+    """
+    history: List[dict] = load_json(HISTORY_FILE, default=[])
+    history.append(entry)
+    save_json(HISTORY_FILE, history)
+    logger.debug(
+        f"[SLA] History appended — entity={entry.get('entity_id')} "
+        f"{entry.get('old_status')} → {entry.get('new_status')}"
+    )
+
+
+def _record_transition(
+    sla: dict,
+    new_status: str,
+    reason: str,
+    actor: str = "system",
+) -> None:
+    """
+    Step 14C / 14G — Record a status transition in the history log
+    and mutate the SLA record in-place.
+
+    This is the ONLY function that may change sla["status"].
+
+    Raises
+    ------
+    ValueError if the transition is forbidden (Step 14G guard).
+    """
+    old_status = sla.get("status", "unknown")
+    _validate_transition(old_status, new_status, sla.get("sla_id", "?"))
+
+    now = _utc_now().isoformat()
+
+    history_entry: Dict[str, Any] = {
+        "history_id":  f"HST-{uuid.uuid4().hex[:8].upper()}",
+        "sla_id":      sla.get("sla_id"),
+        "entity_id":   sla.get("entity_id"),
+        "entity_type": sla.get("entity_type", "generic"),
+        "timestamp":   now,
+        "old_status":  old_status,
+        "new_status":  new_status,
+        "reason":      reason,
+        "actor":       actor,
+    }
+    _append_history(history_entry)
+
+    # Mutate in-place after history is written
+    sla["status"] = new_status
+    if new_status in ("closed", "completed"):
+        sla["closed_at"] = now
+
+
+# ---------------------------------------------------------------------------
+# Step 14G — Immutable transition validator
+# ---------------------------------------------------------------------------
+
+def _validate_transition(
+    current_status: str,
+    new_status: str,
+    sla_id: str = "?",
+) -> None:
+    """
+    Step 14G — Assert that the requested transition is permitted.
+
+    Permitted transitions:
+        active   → breached | closed
+        breached → closed
+        closed   → (none — terminal)
+        completed→ (none — treated as terminal)
+
+    Raises
+    ------
+    ValueError if the transition is forbidden.
+    """
+    allowed = _VALID_TRANSITIONS.get(current_status, set())
+    if new_status not in allowed:
+        raise ValueError(
+            f"SLA transition FORBIDDEN for sla_id='{sla_id}': "
+            f"'{current_status}' → '{new_status}' is not a valid transition. "
+            f"Allowed from '{current_status}': "
+            f"{sorted(allowed) if allowed else ['(none — terminal state)']}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Step 14E — Escalation level management
+# ---------------------------------------------------------------------------
+
+def _escalation_role(level: int) -> str:
+    """Return the role name for a given escalation level (capped at 3)."""
+    return ESCALATION_LADDER.get(min(level, 3), "board")
+
+
+def _advance_escalation(sla: dict) -> None:
+    """
+    Step 14E — Increment escalation_level and record the new responsible role.
+
+    Escalation levels:
+        0 → branch_officer
+        1 → regional_compliance_officer
+        2 → dpo
+        3 → board   (maximum)
+
+    No notification is sent at this layer — the role is stored so that
+    orchestration / compliance_engine can read and act on it.
+    """
+    current_level       = int(sla.get("escalation_level", 0))
+    new_level           = min(current_level + 1, 3)
+    sla["escalation_level"] = new_level
+    sla["escalated_to"]     = _escalation_role(new_level)
+
+    logger.info(
+        f"[SLA] Escalation advanced — sla_id={sla.get('sla_id')} "
+        f"level={new_level} role={sla['escalated_to']}"
+    )
+    audit_log(
+        action=(
+            f"SLA_ESCALATION | sla_id={sla.get('sla_id')}"
+            f" | entity={sla.get('entity_id')}"
+            f" | level={new_level} | role={sla['escalated_to']}"
+        ),
+        user="system",
+        metadata={
+            "sla_id":           sla.get("sla_id"),
+            "entity_id":        sla.get("entity_id"),
+            "escalation_level": new_level,
+            "escalated_to":     sla["escalated_to"],
+        },
+    )
+
+
 # ===========================================================================
-# STEP 4B — register_sla()
+# ── STEP 14B — register_sla() with standardised schema ──────────────────────
 # ===========================================================================
 
 def register_sla(
     entity_id: str,
     module: str,
-    sla_days: int | None = None,
-    sla_hours: int | None = None,
+    sla_days: Optional[int] = None,
+    sla_hours: Optional[int] = None,
+    entity_type: str = "generic",
+    branch: str = "",
 ) -> dict:
     """
     Register a new SLA record in the central registry.
 
+    Step 14B — the record always contains the full standardised schema:
+        entity_id, entity_type, branch, deadline, status, created_at,
+        closed_at, escalation_level, escalated_to, module, notified.
+
     Parameters
     ----------
-    entity_id  : ID of the linked entity (request_id, consent_id, breach_id …)
-    module     : "rights" | "consent_expiry" | "breach" | "dpia"
-    sla_days   : Deadline in calendar days (mutually exclusive with sla_hours)
-    sla_hours  : Deadline in hours — used for regulatory breach timers (e.g. 6h)
+    entity_id   : ID of the linked entity (request_id, consent_id, breach_id …)
+    module      : "rights" | "consent_expiry" | "breach" | "dpia" | …
+    sla_days    : Deadline in calendar days (mutually exclusive with sla_hours)
+    sla_hours   : Deadline in hours — used for regulatory breach timers
+    entity_type : One of VALID_ENTITY_TYPES (Step 14B)
+    branch      : Optional branch/region identifier for escalation routing
 
     Returns
     -------
     The saved SLA record dict.
+
+    Raises
+    ------
+    ValueError if neither sla_days nor sla_hours is supplied.
     """
     if not sla_days and not sla_hours:
         raise ValueError("SLA duration required: supply sla_days or sla_hours.")
 
-    now = datetime.utcnow()
+    if entity_type not in VALID_ENTITY_TYPES:
+        logger.warning(
+            f"register_sla: unknown entity_type '{entity_type}' — "
+            f"defaulting to 'generic'."
+        )
+        entity_type = "generic"
+
+    now      = _utc_now()
     deadline = (
         now + timedelta(days=sla_days)
         if sla_days
         else now + timedelta(hours=sla_hours)
     )
 
-    sla_record = {
-        "sla_id":     _generate_id(),
-        "entity_id":  entity_id,
-        "module":     module,
-        "created_at": now.isoformat(),
-        "deadline":   deadline.isoformat(),
-        "status":     "active",
-        "escalated":  False,
-        "notified":   False,           # consent expiry 7-day warning flag
+    # Step 14B — full standardised record schema
+    sla_record: Dict[str, Any] = {
+        "sla_id":           _generate_id(),
+        "entity_id":        entity_id,
+        "entity_type":      entity_type,         # Step 14B
+        "branch":           branch,              # Step 14B
+        "module":           module,
+        "created_at":       now.isoformat(),
+        "deadline":         deadline.isoformat(),
+        "status":           "active",
+        "closed_at":        None,                # Step 14B — set when closed
+        "escalation_level": 0,                   # Step 14B / 14E
+        "escalated_to":     _escalation_role(0), # Step 14E
+        "notified":         False,               # consent expiry 7-day warning
     }
 
-    slas = load_json(SLA_FILE, default=[])
+    slas: List[dict] = load_json(SLA_FILE, default=[])
     slas.append(sla_record)
-    save_json(SLA_FILE, slas)
+    _write_sla_registry(slas)                    # Step 14H — no raw open()
+
+    # Seed history with the creation event
+    _append_history({                            # Step 14C
+        "history_id":  f"HST-{uuid.uuid4().hex[:8].upper()}",
+        "sla_id":      sla_record["sla_id"],
+        "entity_id":   entity_id,
+        "entity_type": entity_type,
+        "timestamp":   now.isoformat(),
+        "old_status":  None,
+        "new_status":  "active",
+        "reason":      "SLA registered",
+        "actor":       "system",
+    })
 
     audit_log(
-        event="SLA_REGISTERED",
-        actor="system",
-        details={
+        action=(
+            f"SLA_REGISTERED | sla_id={sla_record['sla_id']}"
+            f" | entity={entity_id} | module={module}"
+            f" | deadline={deadline.isoformat()}"
+        ),
+        user="system",
+        metadata={
             "sla_id":    sla_record["sla_id"],
             "entity_id": entity_id,
             "module":    module,
@@ -180,207 +447,460 @@ def register_sla(
 
 
 # ===========================================================================
-# STEP 4D — Escalation logic
+# ── STEP 14D — evaluate_sla(entry) — single-entry evaluator ─────────────────
 # ===========================================================================
 
-def _get_escalation_contact(module: str) -> str:
-    """Return escalation recipient identifier for a given module."""
-    return ESCALATION_CONTACTS.get(module, "dpo")
-
-
-def _trigger_escalation(sla: dict) -> None:
+def evaluate_sla(entry: dict, actor: str = "system") -> bool:
     """
-    Fire escalation notification for a breached SLA.
-    Marks sla["escalated"] = True in-place.
-    """
-    if sla.get("escalated"):
-        return
+    Step 14D — Evaluate and mutate a single SLA record in-place.
 
-    recipient = _get_escalation_contact(sla["module"])
-    trigger_notification(
-        channel="sms",
-        recipient=recipient,
-        message=(
-            f"⚠️ SLA BREACHED — module: {sla['module']} | "
-            f"entity: {sla['entity_id']} | "
-            f"deadline was {sla['deadline'][:16]} UTC"
-        ),
-    )
-    sla["escalated"] = True
+    Called by:
+      - evaluate_slas()                — batch sweep of all active records
+      - recalculate_sla()              — orchestration post-commit hook
+      - compliance_engine checks       — direct evaluation without a sweep
 
-    audit_log(
-        event="SLA_ESCALATED",
-        actor="system",
-        details={
-            "sla_id":    sla["sla_id"],
-            "entity_id": sla["entity_id"],
-            "module":    sla["module"],
-            "recipient": recipient,
-        },
-    )
+    Logic:
+      1. Skip non-active records immediately — only "active" status is evaluated.
+      2. If now > deadline → transition to "breached", advance escalation level.
+      3. If consent_expiry module and within 7-day warning window → set notified.
 
-
-# ===========================================================================
-# STEP 4F — Consent expiry warning (7-day pre-expiry SMS)
-# ===========================================================================
-
-def _get_customer_phone(entity_id: str) -> str | None:
-    """
-    Resolve a customer phone number from the entity_id (consent_id).
-    Attempts to load from the consent registry; returns None if not found.
-    """
-    try:
-        from engine.consent_validator import get_all_consents
-        for consent in get_all_consents():
-            if consent.get("consent_id") == entity_id:
-                return consent.get("customer_phone") or consent.get("phone")
-    except Exception:
-        pass
-    return None
-
-
-def _send_expiry_warning(sla: dict) -> None:
-    """
-    Send 7-day expiry warning SMS for consent_expiry module SLAs.
-    Marks sla["notified"] = True in-place.
-    """
-    if sla.get("notified"):
-        return
-
-    phone = _get_customer_phone(sla["entity_id"])
-    if phone:
-        trigger_notification(
-            channel="sms",
-            recipient=phone,
-            message=(
-                "Your consent will expire in 7 days. "
-                "Please renew to avoid interruption to your services."
-            ),
-        )
-    sla["notified"] = True
-
-    audit_log(
-        event="CONSENT_EXPIRY_WARNING_SENT",
-        actor="system",
-        details={"sla_id": sla["sla_id"], "entity_id": sla["entity_id"]},
-    )
-
-
-# ===========================================================================
-# STEP 4C — evaluate_slas()  (core monitor engine)
-# ===========================================================================
-
-def evaluate_slas() -> dict:
-    """
-    Evaluate all active SLA records.
-
-    Actions:
-      - Mark 'breached' when deadline has passed → fire escalation
-      - Send 7-day expiry warning for consent_expiry module SLAs
-        before they breach
-
-    Designed to run:
-      - On every dashboard load (lightweight, idempotent)
-      - Via background scheduler (e.g. APScheduler / Celery beat)
+    Parameters
+    ----------
+    entry : Single SLA record dict (mutated in-place when status changes).
+    actor : Actor identifier for history log.
 
     Returns
     -------
-    dict: { "breached": int, "warned": int, "active": int }
+    True if the record was mutated (status changed or notified flag set).
+    False if no change was needed.
     """
-    slas = load_json(SLA_FILE, default=[])
-    now = datetime.utcnow()
-    updated = False
-    counts = {"breached": 0, "warned": 0, "active": 0}
+    if entry.get("status") != "active":
+        return False
+
+    now      = _utc_now()
+    deadline = _parse_dt(entry["deadline"])
+    mutated  = False
+
+    # ── Breached ─────────────────────────────────────────────────────────────
+    if now > deadline:
+        _record_transition(
+            sla=entry,
+            new_status="breached",
+            reason="Deadline expired without resolution",
+            actor=actor,
+        )
+        _advance_escalation(entry)               # Step 14E
+        audit_log(
+            action=(
+                f"SLA_BREACHED | sla_id={entry.get('sla_id')}"
+                f" | entity={entry.get('entity_id')}"
+                f" | module={entry.get('module')}"
+                f" | deadline={entry['deadline']}"
+            ),
+            user=actor,
+            metadata={
+                "sla_id":    entry.get("sla_id"),
+                "entity_id": entry.get("entity_id"),
+                "module":    entry.get("module"),
+                "deadline":  entry["deadline"],
+            },
+        )
+        mutated = True
+
+    # ── Consent expiry 7-day pre-warning ─────────────────────────────────────
+    elif (
+        entry.get("module") == "consent_expiry"
+        and not entry.get("notified")
+        and now > deadline - timedelta(days=7)
+    ):
+        entry["notified"] = True
+        _append_history({
+            "history_id":  f"HST-{uuid.uuid4().hex[:8].upper()}",
+            "sla_id":      entry.get("sla_id"),
+            "entity_id":   entry.get("entity_id"),
+            "entity_type": entry.get("entity_type", "consent"),
+            "timestamp":   now.isoformat(),
+            "old_status":  "active",
+            "new_status":  "active",
+            "reason":      "Consent expiry 7-day warning window entered",
+            "actor":       actor,
+        })
+        audit_log(
+            action=f"CONSENT_EXPIRY_WARNING | sla_id={entry.get('sla_id')}",
+            user=actor,
+            metadata={
+                "sla_id":    entry.get("sla_id"),
+                "entity_id": entry.get("entity_id"),
+            },
+        )
+        mutated = True
+
+    return mutated
+
+
+# ===========================================================================
+# ── evaluate_slas() — batch sweep of all active records ─────────────────────
+# ===========================================================================
+
+def evaluate_slas(actor: str = "system") -> dict:
+    """
+    Evaluate all active SLA records against the current time.
+
+    Designed to run:
+      - Via orchestration post-commit hook (recalculate_sla)
+      - On every compliance evaluation
+      - Via background scheduler (APScheduler / Celery beat)
+
+    All mutations go through evaluate_sla() → _record_transition() →
+    _write_sla_registry() — no direct open() calls. (Step 14H)
+
+    Parameters
+    ----------
+    actor : Who triggered the sweep (logged in history).
+
+    Returns
+    -------
+    dict: { "breached": int, "warned": int, "active": int, "skipped": int }
+    """
+    slas: List[dict] = load_json(SLA_FILE, default=[])
+    counts   = {"breached": 0, "warned": 0, "active": 0, "skipped": 0}
+    any_updated = False
 
     for sla in slas:
-        if sla["status"] != "active":
+        if sla.get("status") != "active":
+            counts["skipped"] += 1
             continue
 
-        deadline = datetime.fromisoformat(sla["deadline"])
+        mutated = evaluate_sla(sla, actor=actor)
 
-        # ── Breached ──────────────────────────────────────────────────────
-        if now > deadline:
-            sla["status"] = "breached"
-            _trigger_escalation(sla)
-            counts["breached"] += 1
-            updated = True
-
-        # ── Consent expiry 7-day pre-warning ─────────────────────────────
-        elif (
-            sla["module"] == "consent_expiry"
-            and not sla.get("notified")
-            and now > deadline - timedelta(days=7)
-        ):
-            _send_expiry_warning(sla)
-            counts["warned"] += 1
-            updated = True
-
+        if mutated:
+            if sla["status"] == "breached":
+                counts["breached"] += 1
+            else:
+                counts["warned"] += 1   # notified flag set — still active
+            any_updated = True
         else:
             counts["active"] += 1
 
-    if updated:
-        save_json(SLA_FILE, slas)
+    if any_updated:
+        _write_sla_registry(slas)               # Step 14H
 
+    logger.info(
+        f"[SLA] evaluate_slas complete — "
+        f"breached={counts['breached']} warned={counts['warned']} "
+        f"active={counts['active']} skipped={counts['skipped']}"
+    )
     return counts
 
 
 # ===========================================================================
-# STEP 4G — mark_sla_completed()
+# ── STEP 14G — mark_sla_completed() with immutable-state guard ──────────────
 # ===========================================================================
 
-def mark_sla_completed(entity_id: str) -> int:
+def mark_sla_completed(
+    entity_id: str,
+    actor: str = "system",
+    reason: str = "Entity resolved",
+) -> int:
     """
-    Mark all active SLA records for entity_id as 'completed'.
+    Close all open (active or breached) SLA records for an entity.
+
+    Step 14G — Immutable transition rules:
+        active   → closed    ✓  allowed
+        breached → closed    ✓  allowed
+        closed   → anything  ✗  BLOCKED — terminal state
 
     Call this when:
-      - A rights request is closed / fulfilled
+      - A rights request is fulfilled
       - A breach is resolved / reported to CERT-In / Board
       - A DPIA is approved
       - A consent renewal is processed
 
+    Parameters
+    ----------
+    entity_id : Entity whose SLAs should be closed.
+    actor     : Actor identifier for history log and audit ledger.
+    reason    : Human-readable reason for closure.
+
     Returns
     -------
-    Number of SLA records updated.
+    Number of SLA records successfully closed.
     """
-    slas = load_json(SLA_FILE, default=[])
-    updated_count = 0
+    slas: List[dict] = load_json(SLA_FILE, default=[])
+    updated_count    = 0
+    skipped_terminal = 0
 
     for sla in slas:
-        if sla["entity_id"] == entity_id and sla["status"] == "active":
-            sla["status"] = "completed"
+        if sla.get("entity_id") != entity_id:
+            continue
+
+        current = sla.get("status", "")
+
+        if current in ("closed", "completed"):
+            skipped_terminal += 1
+            continue                             # Step 14G — terminal, skip silently
+
+        if current not in ("active", "breached"):
+            logger.warning(
+                f"mark_sla_completed: unexpected status '{current}' for "
+                f"sla_id={sla.get('sla_id')} — skipping."
+            )
+            continue
+
+        try:
+            _record_transition(                  # Step 14C + 14G
+                sla=sla,
+                new_status="closed",
+                reason=reason,
+                actor=actor,
+            )
             updated_count += 1
+        except ValueError as exc:
+            logger.error(f"mark_sla_completed: transition blocked — {exc}")
 
     if updated_count:
-        save_json(SLA_FILE, slas)
+        _write_sla_registry(slas)               # Step 14H
         audit_log(
-            event="SLA_COMPLETED",
-            actor="system",
-            details={"entity_id": entity_id, "records_closed": updated_count},
+            action=(
+                f"SLA_CLOSED | entity={entity_id}"
+                f" | records_closed={updated_count}"
+            ),
+            user=actor,
+            metadata={
+                "entity_id":      entity_id,
+                "records_closed": updated_count,
+                "reason":         reason,
+            },
+        )
+
+    if skipped_terminal:
+        logger.debug(
+            f"mark_sla_completed: {skipped_terminal} terminal record(s) "
+            f"skipped for entity '{entity_id}' (already closed)."
         )
 
     return updated_count
 
 
 # ===========================================================================
-# STEP 4E — Convenience: register regulatory breach timer (6-hour CERT-In)
+# ── STEP 14F — get_sla_compliance_rate() for compliance_engine ──────────────
 # ===========================================================================
 
-def register_breach_sla(breach_id: str) -> dict:
+def get_sla_compliance_rate() -> float:
+    """
+    Step 14F — Compute the SLA compliance rate across all terminal records.
+
+    Formula
+    -------
+    compliant = records closed at or before their deadline
+    breached  = records that reached "breached" status
+    rate      = compliant / (compliant + breached)
+
+    Only terminal records (closed + breached) contribute to the denominator;
+    active records are excluded because their outcome is not yet known.
+
+    Returns
+    -------
+    float — compliance rate in the range [0.0, 1.0].
+             Returns 1.0 if no terminal records exist (benefit of the doubt).
+
+    Example
+    -------
+    >>> rate = get_sla_compliance_rate()
+    >>> print(f"SLA compliance: {rate * 100:.1f}%")
+    SLA compliance: 87.5%
+    """
+    slas: List[dict] = load_json(SLA_FILE, default=[])
+    compliant = 0
+    breached  = 0
+
+    for sla in slas:
+        status = sla.get("status", "")
+
+        if status in ("closed", "completed"):
+            closed_at = sla.get("closed_at")
+            deadline  = sla.get("deadline")
+
+            if closed_at and deadline:
+                try:
+                    if _parse_dt(closed_at) <= _parse_dt(deadline):
+                        compliant += 1
+                    else:
+                        # Closed after deadline — counts as a late close
+                        breached += 1
+                except (ValueError, TypeError):
+                    compliant += 1   # malformed dates get benefit of the doubt
+            else:
+                compliant += 1       # legacy records without closed_at — assume compliant
+
+        elif status == "breached":
+            breached += 1
+
+        # "active" records are excluded — outcome not yet determined
+
+    total = compliant + breached
+    if total == 0:
+        return 1.0
+
+    return round(compliant / total, 4)
+
+
+def get_sla_compliance_summary() -> dict:
+    """
+    Extended compliance summary for compliance_engine and dashboards.
+
+    Returns
+    -------
+    dict:
+        rate             : float  — [0.0, 1.0]
+        rate_percent     : float  — [0.0, 100.0]
+        compliant        : int    — closed on time
+        breached         : int    — reached breached status OR closed late
+        active           : int    — not yet resolved
+        total_terminal   : int    — compliant + breached
+        total_registered : int    — all records
+    """
+    slas: List[dict] = load_json(SLA_FILE, default=[])
+    compliant = breached = active = 0
+
+    for sla in slas:
+        status = sla.get("status", "")
+
+        if status in ("closed", "completed"):
+            closed_at = sla.get("closed_at")
+            deadline  = sla.get("deadline")
+            try:
+                if closed_at and deadline and _parse_dt(closed_at) > _parse_dt(deadline):
+                    breached += 1
+                else:
+                    compliant += 1
+            except (ValueError, TypeError):
+                compliant += 1
+
+        elif status == "breached":
+            breached += 1
+        else:
+            active += 1
+
+    total_terminal = compliant + breached
+    rate           = (compliant / total_terminal) if total_terminal else 1.0
+
+    return {
+        "rate":             round(rate, 4),
+        "rate_percent":     round(rate * 100, 2),
+        "compliant":        compliant,
+        "breached":         breached,
+        "active":           active,
+        "total_terminal":   total_terminal,
+        "total_registered": len(slas),
+    }
+
+
+# ===========================================================================
+# ── STEP 14H — recalculate_sla() — orchestration post-commit hook ───────────
+# ===========================================================================
+
+def recalculate_sla(
+    action_type: str,
+    payload: dict,
+    actor: str,
+    transaction_result: dict,
+) -> None:
+    """
+    Step 14H — Orchestration post-commit hook.
+
+    Called by GovernanceTransactionManager._post_commit_sla() after every
+    committed governance transaction. This replaces any direct
+    sla_engine.recalculate() calls that may have existed in UI modules.
+
+    Logic:
+      1. If the action type signals closure → mark_sla_completed()
+      2. Always run evaluate_slas() to sweep newly expired deadlines.
+
+    Parameters
+    ----------
+    action_type        : Governance action type e.g. "rights_close",
+                         "breach_resolve", "dpia_approve".
+    payload            : Transaction payload (may contain entity_id, request_id).
+    actor              : Actor who triggered the transaction.
+    transaction_result : Result dict from GovernanceTransactionManager.
+    """
+    if not transaction_result.get("success"):
+        logger.debug(
+            f"recalculate_sla: skipping post-commit work for "
+            f"failed transaction action='{action_type}'."
+        )
+        return
+
+    entity_id   = payload.get("entity_id") or payload.get("request_id")
+    close_verbs = {"close", "resolve", "complete", "approve", "closed", "fulfil"}
+
+    action_lower = action_type.lower()
+    if entity_id and any(v in action_lower for v in close_verbs):
+        closed = mark_sla_completed(
+            entity_id=entity_id,
+            actor=actor,
+            reason=f"Closed via governance action: {action_type}",
+        )
+        logger.info(
+            f"recalculate_sla: {closed} SLA record(s) closed "
+            f"for entity '{entity_id}' via action '{action_type}'."
+        )
+
+    # Always sweep active records after any committed action
+    evaluate_slas(actor=actor)
+
+
+# ===========================================================================
+# ── Convenience registration helpers ────────────────────────────────────────
+# ===========================================================================
+
+def register_breach_sla(breach_id: str, branch: str = "") -> dict:
     """
     Register a 6-hour regulatory notification SLA for a data breach.
-
     Aligns with CERT-In / DPDP Board mandatory breach reporting window.
-    Automatically triggers escalation to DPO if breached.
     """
     return register_sla(
         entity_id=breach_id,
         module="breach",
         sla_hours=6,
+        entity_type="breach",
+        branch=branch,
+    )
+
+
+def register_rights_sla(
+    request_id: str,
+    request_type: str = "data_access_request",
+    branch: str = "",
+) -> dict:
+    """
+    Register an SLA for a Data Principal Rights request.
+    Deadline is resolved from SLA_CONFIG (default 30 days).
+    """
+    days = SLA_CONFIG.get(request_type, 30)
+    return register_sla(
+        entity_id=request_id,
+        module="rights",
+        sla_days=days,
+        entity_type="rights_request",
+        branch=branch,
+    )
+
+
+def register_dpia_sla(dpia_id: str, branch: str = "") -> dict:
+    """Register a 60-day DPIA review SLA."""
+    return register_sla(
+        entity_id=dpia_id,
+        module="dpia",
+        sla_days=SLA_CONFIG.get("dpia_review", 60),
+        entity_type="dpia",
+        branch=branch,
     )
 
 
 # ===========================================================================
-# STEP 4H — Dashboard color-flag helper
+# ── Dashboard + query helpers ────────────────────────────────────────────────
 # ===========================================================================
 
 def get_sla_indicator(sla: dict) -> str:
@@ -391,7 +911,7 @@ def get_sla_indicator(sla: dict) -> str:
     -------
     "green"  — SLA active and within deadline
     "red"    — SLA breached
-    "amber"  — SLA completed or any other terminal state
+    "amber"  — SLA closed / completed
     """
     status = sla.get("status", "")
     if status == "active":
@@ -402,29 +922,55 @@ def get_sla_indicator(sla: dict) -> str:
         return "amber"
 
 
-# ===========================================================================
-# Convenience: load all SLA records (for dashboard / audit views)
-# ===========================================================================
-
-def get_all_slas(module: str | None = None, status: str | None = None) -> list[dict]:
+def get_all_slas(
+    module: Optional[str] = None,
+    status: Optional[str] = None,
+    entity_type: Optional[str] = None,
+) -> List[dict]:
     """
-    Load SLA records with optional filtering by module and/or status.
+    Load SLA records with optional filtering by module, status, entity_type.
     """
-    slas = load_json(SLA_FILE, default=[])
+    slas: List[dict] = load_json(SLA_FILE, default=[])
     if module:
         slas = [s for s in slas if s.get("module") == module]
     if status:
         slas = [s for s in slas if s.get("status") == status]
+    if entity_type:
+        slas = [s for s in slas if s.get("entity_type") == entity_type]
     return slas
 
 
+def load_sla_history(
+    entity_id: Optional[str] = None,
+    sla_id: Optional[str] = None,
+) -> List[dict]:
+    """
+    Step 14C — Return the full SLA history log, optionally filtered.
+
+    Parameters
+    ----------
+    entity_id : Filter by entity_id.
+    sla_id    : Filter by sla_id.
+
+    Returns
+    -------
+    List of history events ordered oldest → newest.
+    """
+    history: List[dict] = load_json(HISTORY_FILE, default=[])
+    if entity_id:
+        history = [h for h in history if h.get("entity_id") == entity_id]
+    if sla_id:
+        history = [h for h in history if h.get("sla_id") == sla_id]
+    return history
+
+
 # ===========================================================================
-# ── LEGACY API — preserved for backward-compatibility ──────────────────────
+# ── LEGACY API — preserved for backward-compatibility ───────────────────────
 # Existing dashboard code using calculate_sla_status(), get_sla_detail(),
 # evaluate_batch(), sla_summary(), status_badge() continues to work unchanged.
 # ===========================================================================
 
-STATUS_BADGE: dict[str, str] = {
+STATUS_BADGE: Dict[str, str] = {
     "Green": "🟢 On Track",
     "Amber": "🟡 At Risk",
     "Red":   "🔴 Overdue",
@@ -443,9 +989,9 @@ def calculate_sla_status(
     Amber  → ≤ 50 % remains but not yet past deadline
     Red    → deadline passed
     """
-    now = reference_time or datetime.utcnow()
-    deadline = submitted_time + timedelta(days=sla_days)
-    remaining = deadline - now
+    now         = reference_time or datetime.now(timezone.utc)
+    deadline    = submitted_time + timedelta(days=sla_days)
+    remaining   = deadline - now
     half_window = timedelta(days=sla_days) / 2
 
     if remaining.total_seconds() < 0:
@@ -463,12 +1009,12 @@ def get_sla_detail(
     reference_time: Optional[datetime] = None,
 ) -> dict:
     """Return a full SLA detail dict for a given request (legacy interface)."""
-    now = reference_time or datetime.utcnow()
-    sla_days = SLA_CONFIG.get(request_type, 30)
-    deadline = submitted_time + timedelta(days=sla_days)
-    remaining = deadline - now
+    now               = reference_time or datetime.now(timezone.utc)
+    sla_days          = SLA_CONFIG.get(request_type, 30)
+    deadline          = submitted_time + timedelta(days=sla_days)
+    remaining         = deadline - now
     remaining_seconds = remaining.total_seconds()
-    status = calculate_sla_status(submitted_time, sla_days, now)
+    status            = calculate_sla_status(submitted_time, sla_days, now)
 
     return {
         "request_id":      request_id,
@@ -484,20 +1030,22 @@ def get_sla_detail(
 
 
 def evaluate_batch(
-    requests: list[dict],
+    requests: List[dict],
     reference_time: Optional[datetime] = None,
-) -> list[dict]:
+) -> List[dict]:
     """
     Evaluate a list of request dicts; return enriched SLA detail records
     sorted Red → Amber → Green (legacy interface).
     """
-    order = {"Red": 0, "Amber": 1, "Green": 2}
+    order   = {"Red": 0, "Amber": 1, "Green": 2}
     results = []
 
     for req in requests:
         submitted = req["submitted_time"]
         if isinstance(submitted, str):
             submitted = datetime.fromisoformat(submitted)
+        if submitted.tzinfo is None:
+            submitted = submitted.replace(tzinfo=timezone.utc)
 
         detail = get_sla_detail(
             request_id=req["request_id"],
@@ -512,22 +1060,22 @@ def evaluate_batch(
 
 
 def sla_summary(
-    requests: list[dict],
+    requests: List[dict],
     reference_time: Optional[datetime] = None,
 ) -> dict:
     """
     Return Green / Amber / Red counts across a batch (legacy interface).
     """
     evaluated = evaluate_batch(requests, reference_time)
-    counts = {"Green": 0, "Amber": 0, "Red": 0}
+    counts    = {"Green": 0, "Amber": 0, "Red": 0}
     for r in evaluated:
         counts[r["status"]] += 1
 
-    total = len(evaluated)
+    total     = len(evaluated)
     compliant = counts["Green"] + counts["Amber"]
     return {
         **counts,
-        "total": total,
+        "total":           total,
         "compliance_rate": round((compliant / total * 100) if total else 0, 1),
     }
 
@@ -538,49 +1086,122 @@ def status_badge(status: str) -> str:
 
 
 # ===========================================================================
-# Smoke test
+# ── SMOKE TEST — run directly: python engine/sla_engine.py ──────────────────
 # ===========================================================================
 if __name__ == "__main__":
-    from datetime import timezone
+    import pprint
 
-    now = datetime.utcnow()
+    print("── Step 14B: register_sla() with standardised schema ────")
+    r1 = register_sla(
+        "RIGHTS-001", module="rights", sla_days=30,
+        entity_type="rights_request", branch="Thrissur",
+    )
+    r2 = register_sla(
+        "CNS-ABCDE12345", module="consent_expiry", sla_days=365,
+        entity_type="consent", branch="Kozhikode",
+    )
+    r3 = register_breach_sla("BREACH-2025-001", branch="HQ")
+    r4 = register_dpia_sla("DPIA-007", branch="Ernakulam")
+    print(f"  Registered: {r1['sla_id']} | {r2['sla_id']} | {r3['sla_id']} | {r4['sla_id']}")
+    print("\n  Sample record schema:")
+    pprint.pprint(r1)
 
-    # ── Legacy batch evaluation ───────────────────────────────────────────
-    sample_requests = [
-        {"request_id": "REQ001", "request_type": "data_access_request",       "submitted_time": now - timedelta(days=5)},
-        {"request_id": "REQ002", "request_type": "data_erasure_request",       "submitted_time": now - timedelta(days=18)},
-        {"request_id": "REQ003", "request_type": "breach_notification_board",  "submitted_time": now - timedelta(days=3)},
-        {"request_id": "REQ004", "request_type": "consent_withdrawal_action",  "submitted_time": now - timedelta(days=8)},
-        {"request_id": "REQ005", "request_type": "grievance_redressal",        "submitted_time": now - timedelta(days=1)},
-    ]
+    print("\n── Step 14D: evaluate_sla() single-entry evaluator ─────")
+    expired_entry: dict = {
+        "sla_id":           "SLA-TEST001",
+        "entity_id":        "RIGHTS-EXPIRED",
+        "entity_type":      "rights_request",
+        "module":           "rights",
+        "deadline":         (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
+        "status":           "active",
+        "escalation_level": 0,
+        "escalated_to":     "branch_officer",
+        "closed_at":        None,
+        "notified":         False,
+    }
+    mutated = evaluate_sla(expired_entry)
+    print(
+        f"  mutated={mutated} | new_status='{expired_entry['status']}' "
+        f"| escalation_level={expired_entry['escalation_level']} "
+        f"| escalated_to={expired_entry['escalated_to']}"
+    )
 
-    print("\n── Legacy SLA Evaluation ───────────────────────────────")
-    for detail in evaluate_batch(sample_requests):
-        badge = status_badge(detail["status"])
+    print("\n── Step 14E: Escalation ladder ──────────────────────────")
+    for level, role in ESCALATION_LADDER.items():
+        print(f"  Level {level} → {role}")
+
+    print("\n── Step 14G: _validate_transition() guard ───────────────")
+    for bad_from, bad_to in [("closed", "active"), ("closed", "breached"),
+                              ("completed", "active")]:
+        try:
+            _validate_transition(bad_from, bad_to, sla_id="SLA-GUARD-TEST")
+        except ValueError as e:
+            print(f"  Blocked [{bad_from}→{bad_to}]: ✓")
+
+    _validate_transition("active", "breached")
+    print("  Allowed: active → breached ✓")
+    _validate_transition("active", "closed")
+    print("  Allowed: active → closed   ✓")
+    _validate_transition("breached", "closed")
+    print("  Allowed: breached → closed ✓")
+
+    print("\n── Step 14G: mark_sla_completed() — immutable guard ─────")
+    n  = mark_sla_completed("RIGHTS-001", reason="Rights request fulfilled")
+    print(f"  Closed {n} record(s) for RIGHTS-001")
+    n2 = mark_sla_completed("RIGHTS-001", reason="Duplicate close attempt")
+    print(f"  Attempt 2: closed {n2} record(s) (expected 0 — terminal)")
+
+    print("\n── Step 14F: get_sla_compliance_rate() ──────────────────")
+    rate = get_sla_compliance_rate()
+    print(f"  Compliance rate: {rate * 100:.1f}%")
+    pprint.pprint(get_sla_compliance_summary())
+
+    print("\n── Step 14C: load_sla_history() ────────────────────────")
+    history = load_sla_history(entity_id="RIGHTS-001")
+    print(f"  {len(history)} history event(s) for RIGHTS-001:")
+    for h in history:
         print(
-            f"{badge:20s} | {detail['request_id']} | {detail['request_type']:<35s} "
-            f"| {detail['remaining_days']}d remaining | deadline {detail['deadline'][:10]}"
+            f"    [{h['timestamp'][11:19]}] "
+            f"{str(h['old_status']):<10s} → {h['new_status']:<10s} | {h['reason']}"
         )
 
-    print("\n── Legacy Summary ──────────────────────────────────────")
-    print(sla_summary(sample_requests))
+    print("\n── evaluate_slas() batch sweep ──────────────────────────")
+    pprint.pprint(evaluate_slas())
 
-    # ── New registry-based registration ──────────────────────────────────
-    print("\n── Registry SLA Registration ───────────────────────────")
-    r1 = register_sla("RIGHTS-001", module="rights", sla_days=30)
-    r2 = register_sla("CNS-ABCDE12345", module="consent_expiry", sla_days=365)
-    r3 = register_breach_sla("BREACH-2025-001")
-    r4 = register_sla("DPIA-007", module="dpia", sla_days=60)
-    print(f"Registered: {r1['sla_id']} | {r2['sla_id']} | {r3['sla_id']} | {r4['sla_id']}")
+    print("\n── Step 14H: recalculate_sla() orchestration hook ───────")
+    recalculate_sla(
+        action_type="breach_resolve",
+        payload={"entity_id": "BREACH-2025-001"},
+        actor="dpo_admin",
+        transaction_result={"success": True},
+    )
+    print("  recalculate_sla() called without error.")
 
-    print("\n── evaluate_slas() ─────────────────────────────────────")
-    counts = evaluate_slas()
-    print(f"Breached: {counts['breached']} | Warned: {counts['warned']} | Active: {counts['active']}")
+    print("\n── Legacy batch evaluation ──────────────────────────────")
+    now = datetime.now(timezone.utc)
+    sample = [
+        {"request_id": "REQ001", "request_type": "data_access_request",
+         "submitted_time": now - timedelta(days=5)},
+        {"request_id": "REQ002", "request_type": "data_erasure_request",
+         "submitted_time": now - timedelta(days=18)},
+        {"request_id": "REQ003", "request_type": "breach_notification_board",
+         "submitted_time": now - timedelta(days=3)},
+    ]
+    for detail in evaluate_batch(sample):
+        badge = status_badge(detail["status"])
+        print(
+            f"  {badge:20s} | {detail['request_id']} | "
+            f"{detail['remaining_days']}d remaining | "
+            f"deadline {detail['deadline'][:10]}"
+        )
+    print()
+    pprint.pprint(sla_summary(sample))
 
-    print("\n── mark_sla_completed() ────────────────────────────────")
-    n = mark_sla_completed("RIGHTS-001")
-    print(f"Marked {n} SLA record(s) completed for RIGHTS-001")
-
-    print("\n── get_sla_indicator() ─────────────────────────────────")
+    print("\n── All SLA records ──────────────────────────────────────")
     for sla in get_all_slas():
-        print(f"  {sla['sla_id']} [{sla['module']}] → indicator: {get_sla_indicator(sla)}")
+        indicator = get_sla_indicator(sla)
+        print(
+            f"  [{indicator:6s}] {sla['sla_id']} | {sla['module']:<15s} | "
+            f"status={sla['status']:<10s} | esc={sla['escalation_level']} "
+            f"→ {sla.get('escalated_to', '')} | branch={sla.get('branch', '-')}"
+        )

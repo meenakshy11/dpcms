@@ -3,78 +3,46 @@ modules/rights_portal.py
 ------------------------
 Data Principal Rights Portal — four-role rendering model.
 
-Step 2 security model:
-  - @require_role("customer")         → submit_rights_request()
-  - @require_role("branch_officer",…) → assisted_right_submission()
-  - @require_role("branch_officer",…) → process_request_update()
-  - @require_role("branch_officer",…) → mark_identity_verified()
+Architecture (updated):
+    UI  →  orchestration.execute_action()  →  Engine  →  Audit / SLA / Compliance
 
-  - initiator_role is ALWAYS "customer" — the request legally belongs to them
-  - submitted_by records the actual actor (customer or officer username)
-  - assisted=True flags walk-in / branch-assisted submissions
-  - Identity verification (mode + who + when) stored in every correction/erasure
-  - DPDP clause explainability written on every decision
-  - Customer-friendly view replaces raw JSON preview
-  - SLA registered automatically at submission
-  - SMS notification triggered at submission and on decision
-
-Role dispatch (canonical codes from auth.py):
+Role dispatch:
   customer          → render_customer_view()
   branch_officer    → render_officer_console()
-  privacy_steward   → render_officer_console()   (same console, same rights)
+  privacy_steward   → render_officer_console()
   dpo               → render_dpo_console()
   auditor           → render_auditor_console()
   others            → access denied
 
-Request schema (internal — never store translated labels as keys):
-    {
-        "id":                      "R001",
-        "customer_id":             "C101",
-        "type":                    "Erase My Data",       ← internal English key
-        "sla_key":                 "data_erasure_request",
-        "branch":                  "Thiruvananthapuram Main",
-        "initiator_role":          "customer",
-        "submitted_by":            "customer",
-        "assisted":                False,
-        "verification_mode":       None,
-        "identity_verified":       False,
-        "identity_verified_by":    None,
-        "identity_verified_at":    None,
-        "decision_explainability": None,
-        "submitted_at":  "2026-02-07T10:00:00",
-        "deadline":      "2026-03-09",
-        "status":        "Open",
-        "sla_status":    "Green",
-        "escalated":     False,
-        "notes":         ""
-    }
+Design contract:
+  - NO storage reads/writes (json.load / json.dump) in this module.
+  - NO audit_log() calls.
+  - NO register_sla() / close_sla() calls.
+  - NO compliance_engine calls.
+  - NO direct status mutation.
+  - Session-based rate throttle only — persistent throttling belongs in orchestration.
+  - All mutations go through orchestration.execute_action().
+  - All user-visible strings go through t().
 """
 
-import json
-import os
+from __future__ import annotations
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-from engine.sla_engine    import get_sla_detail, SLA_CONFIG, status_badge, calculate_sla_status
-from engine.audit_ledger  import audit_log
-from engine.orchestration import process_event, process_rights_request
-
-from auth import (
-    get_role, get_branch,
-    require_role,
-    is_assisted_submission, set_assisted_submission,
-)
-
-from utils.i18n           import t
-from utils.export_utils   import export_data
+import engine.orchestration as orchestration
+from engine.sla_engine import get_sla_detail, SLA_CONFIG, status_badge
+from auth import get_role, get_branch, set_assisted_submission
+from utils.i18n import t
+from utils.export_utils import export_data
 from utils.explainability import explain, explain_dynamic
-from utils.ui_helpers     import more_info, mask_identifier
+from utils.ui_helpers import more_info, mask_identifier
 
 
 # ---------------------------------------------------------------------------
-# Constants — internal English keys (NEVER translate these; they are data keys)
+# Constants — internal English keys (NEVER translated; these are data keys)
 # ---------------------------------------------------------------------------
 
 REQUEST_TYPE_MAP: dict[str, str] = {
@@ -92,12 +60,6 @@ CONSENT_GATED_TYPES: dict[str, str] = {
     "Erase My Data":   "kyc",
 }
 
-RIGHTS_TYPE_MAP: dict[str, str] = {
-    "Access My Data":  "access",
-    "Correct My Data": "correction",
-    "Erase My Data":   "erasure",
-}
-
 CLAUSE_MAP: dict[str, str] = {
     "Access My Data":  "data_access",
     "Correct My Data": "data_correction",
@@ -109,8 +71,12 @@ IDENTITY_VERIFICATION_REQUIRED: set[str] = {"Correct My Data", "Erase My Data"}
 OPEN_STATUSES   = {"Open", "In Progress", "Escalated"}
 CLOSED_STATUSES = {"Closed", "Rejected"}
 
+# Session-based rate limit — max submissions per session
+_SESSION_SUBMIT_LIMIT = 5
+_SESSION_SUBMIT_KEY   = "_rights_submissions_this_session"
+
 # ---------------------------------------------------------------------------
-# Display label map: internal key → i18n key  (for all UI rendering)
+# i18n helpers
 # ---------------------------------------------------------------------------
 
 _REQUEST_TYPE_I18N: dict[str, str] = {
@@ -130,12 +96,12 @@ _STATUS_I18N: dict[str, str] = {
     "Rejected":    "rejected",
 }
 
+
 def _t_request_type(internal: str) -> str:
-    """Translate an internal request type label to the active language."""
     return t(_REQUEST_TYPE_I18N.get(internal, internal.lower().replace(" ", "_")))
 
+
 def _t_status(internal: str) -> str:
-    """Translate an internal status string to the active language."""
     return t(_STATUS_I18N.get(internal, internal.lower()))
 
 
@@ -149,37 +115,26 @@ def _mask_id(raw_id: str) -> str:
         return raw_id
     return mask_identifier(raw_id, role=role)
 
+
+# ---------------------------------------------------------------------------
+# DPDP clause fallback
+# ---------------------------------------------------------------------------
+
+_DPDP_CLAUSE_FALLBACK: dict[str, dict] = {
+    "data_access":     {"number": "Section 11", "text": "Right to access personal data",
+                        "old": "DPDPA 2023 – Section 11", "new": "DPDP Rules – Right to Access"},
+    "data_correction": {"number": "Section 12", "text": "Right to correction and erasure",
+                        "old": "DPDPA 2023 – Section 12", "new": "DPDP Rules – Right to Correction"},
+    "data_erasure":    {"number": "Section 12", "text": "Right to correction and erasure",
+                        "old": "DPDPA 2023 – Section 12", "new": "DPDP Rules – Right to Erasure"},
+}
+
 SLA_COLOUR: dict[str, str] = {
     "Green": "#1a9e5c",
     "Amber": "#f0a500",
     "Red":   "#d93025",
 }
 
-_DPDP_CLAUSE_FALLBACK: dict[str, dict] = {
-    "data_access":     {
-        "number": "Section 11",
-        "text":   "Right to access personal data",
-        "old":    "DPDPA 2023 – Section 11",
-        "new":    "DPDP Rules – Right to Access",
-    },
-    "data_correction": {
-        "number": "Section 12",
-        "text":   "Right to correction and erasure",
-        "old":    "DPDPA 2023 – Section 12",
-        "new":    "DPDP Rules – Right to Correction",
-    },
-    "data_erasure":    {
-        "number": "Section 12",
-        "text":   "Right to correction and erasure",
-        "old":    "DPDPA 2023 – Section 12",
-        "new":    "DPDP Rules – Right to Erasure",
-    },
-}
-
-
-# ---------------------------------------------------------------------------
-# Safe utility wrappers
-# ---------------------------------------------------------------------------
 
 def _get_clause(clause_key: str) -> dict:
     try:
@@ -187,73 +142,32 @@ def _get_clause(clause_key: str) -> dict:
         return get_clause(clause_key)
     except (ImportError, KeyError):
         return _DPDP_CLAUSE_FALLBACK.get(clause_key, {
-            "number": "DPDP Act 2023",
-            "text":   clause_key,
-            "old":    "DPDP Act 2023",
-            "new":    "DPDP Rules",
+            "number": "DPDP Act 2023", "text": clause_key,
+            "old": "DPDP Act 2023", "new": "DPDP Rules",
         })
 
 
-def _build_explanation(clause: dict, decision: str, decided_by: str) -> dict:
-    try:
-        from utils.explainability import build_explanation
-        return build_explanation(
-            clause_number=clause.get("number", ""),
-            clause_text=clause.get("text", ""),
-            amendment_reference=clause.get("new", ""),
-            decision=decision,
-        )
-    except (ImportError, TypeError):
-        return {
-            "clause_number":       clause.get("number", "DPDP Act 2023"),
-            "clause_text":         clause.get("text", ""),
-            "decision":            decision,
-            "decided_by":          decided_by,
-            "decided_at":          datetime.utcnow().isoformat(),
-            "amendment_reference": clause.get("new", "DPDP Rules"),
-        }
+# ---------------------------------------------------------------------------
+# Session-based rate throttle (UI-layer only; persistent control in orchestration)
+# ---------------------------------------------------------------------------
+
+def _check_session_rate_limit() -> bool:
+    """Return True if the session has NOT exceeded the submission limit."""
+    count = st.session_state.get(_SESSION_SUBMIT_KEY, 0)
+    return count < _SESSION_SUBMIT_LIMIT
 
 
-def _trigger_notification(channel: str, recipient: str, message: str) -> None:
-    try:
-        from engine.orchestration import trigger_notification
-        trigger_notification(channel=channel, recipient=recipient, message=message)
-    except (ImportError, AttributeError):
-        audit_log(
-            action=f"Notification Triggered (stub) | channel={channel}",
-            user="system",
-            metadata={"channel": channel, "recipient": recipient, "message": message},
-        )
-
-
-def _register_sla(request_id: str, sla_key: str, sla_days: int) -> None:
-    try:
-        from engine.sla_engine import register_sla
-        import inspect
-        sig    = inspect.signature(register_sla)
-        params = set(sig.parameters.keys())
-        if "request_id" in params:
-            register_sla(request_id=request_id, module="rights", sla_days=sla_days)
-        elif "req_id" in params:
-            register_sla(req_id=request_id, module="rights", sla_days=sla_days)
-        elif "id" in params:
-            register_sla(id=request_id, module="rights", sla_days=sla_days)
-        else:
-            register_sla(request_id, "rights", sla_days)
-    except (ImportError, AttributeError, TypeError):
-        audit_log(
-            action=f"SLA Registered (stub) | request_id={request_id} | sla_days={sla_days}",
-            user="system",
-            metadata={"request_id": request_id, "sla_key": sla_key, "sla_days": sla_days},
-        )
+def _increment_session_counter() -> None:
+    st.session_state[_SESSION_SUBMIT_KEY] = (
+        st.session_state.get(_SESSION_SUBMIT_KEY, 0) + 1
+    )
 
 
 # ---------------------------------------------------------------------------
-# Step 2F — Customer-friendly view (replaces raw JSON preview)
+# Customer-friendly request preview (read-only, no storage)
 # ---------------------------------------------------------------------------
 
 def get_customer_friendly_view(request: dict) -> dict:
-    """Returns a non-technical, customer-safe summary of a request object."""
     return {
         t("request_id"):   request.get("id", "—"),
         t("request_type"): _t_request_type(request.get("type", "—")),
@@ -263,584 +177,6 @@ def get_customer_friendly_view(request: dict) -> dict:
         t("branch"):       request.get("branch", "—"),
         t("assisted"):     t("assisted_branch_officer") if request.get("assisted") else t("self_service"),
     }
-
-
-# ---------------------------------------------------------------------------
-# Request factory (extended schema)
-# ---------------------------------------------------------------------------
-
-def _build_request(
-    req_id:              str,
-    customer_id:         str,
-    request_type_label:  str,
-    notes:               str,
-    submitted_by:        str  = "customer",
-    assisted:            bool = False,
-    verification_mode:   str | None = None,
-) -> dict:
-    sla_key      = REQUEST_TYPE_MAP[request_type_label]
-    sla_days     = SLA_CONFIG.get(sla_key, 30)
-    submitted_at = datetime.utcnow()
-    deadline     = (submitted_at + timedelta(days=sla_days)).strftime("%Y-%m-%d")
-    branch       = get_branch() or "All"
-
-    return {
-        "id":                      req_id,
-        "customer_id":             customer_id,
-        "type":                    request_type_label,   # ← internal English key; never translated
-        "sla_key":                 sla_key,
-        "branch":                  branch,
-        "initiator_role":          "customer",
-        "submitted_by":            submitted_by,
-        "assisted":                assisted,
-        "verification_mode":       verification_mode,
-        "identity_verified":       False,
-        "identity_verified_by":    None,
-        "identity_verified_at":    None,
-        "decision_explainability": None,
-        "submitted_at":            submitted_at.isoformat(),
-        "deadline":                deadline,
-        "status":                  "Open",
-        "sla_status":              "Green",
-        "escalated":               False,
-        "notes":                   notes,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Persistent storage  (storage/rights_requests.json)
-# ---------------------------------------------------------------------------
-
-STORAGE_FILE = os.path.join("storage", "rights_requests.json")
-
-
-def _seed_records() -> list:
-    now = datetime.utcnow()
-    seeds = [
-        {
-            "type":         "Erase My Data",
-            "customer_id":  "C101",
-            "branch":       "Thiruvananthapuram Main",
-            "sla_key":      "data_erasure_request",
-            "status":       "In Progress",
-            "days_ago":     18,
-            "submitted_by": "customer",
-            "assisted":     False,
-            "id_verified":  False,
-        },
-        {
-            "type":         "Access My Data",
-            "customer_id":  "C102",
-            "branch":       "Kochi Fort",
-            "sla_key":      "data_access_request",
-            "status":       "Closed",
-            "days_ago":     5,
-            "submitted_by": "officer_02",
-            "assisted":     True,
-            "id_verified":  True,
-        },
-        {
-            "type":         "Raise Grievance",
-            "customer_id":  "C103",
-            "branch":       "Kozhikode North",
-            "sla_key":      "grievance_redressal",
-            "status":       "Open",
-            "days_ago":     22,
-            "submitted_by": "customer",
-            "assisted":     False,
-            "id_verified":  False,
-        },
-        {
-            "type":         "Correct My Data",
-            "customer_id":  "C104",
-            "branch":       "Thiruvananthapuram Main",
-            "sla_key":      "data_correction_request",
-            "status":       "In Progress",
-            "days_ago":     12,
-            "submitted_by": "officer_01",
-            "assisted":     True,
-            "id_verified":  True,
-        },
-    ]
-    records = []
-    for i, s in enumerate(seeds, 1):
-        sub_dt   = now - timedelta(days=s["days_ago"])
-        sla_days = SLA_CONFIG.get(s["sla_key"], 30)
-        records.append({
-            "id":                      f"R{i:03d}",
-            "customer_id":             s["customer_id"],
-            "type":                    s["type"],
-            "sla_key":                 s["sla_key"],
-            "branch":                  s["branch"],
-            "initiator_role":          "customer",
-            "submitted_by":            s["submitted_by"],
-            "assisted":                s["assisted"],
-            "verification_mode":       "physical_id_verified" if s["assisted"] else None,
-            "identity_verified":       s["id_verified"],
-            "identity_verified_by":    s["submitted_by"] if s["id_verified"] else None,
-            "identity_verified_at":    sub_dt.isoformat() if s["id_verified"] else None,
-            "decision_explainability": None,
-            "submitted_at":            sub_dt.isoformat(),
-            "deadline":                (sub_dt + timedelta(days=sla_days)).strftime("%Y-%m-%d"),
-            "status":                  s["status"],
-            "sla_status":              "Green",
-            "escalated":               False,
-            "notes":                   t("fulfilled_records_dispatched") if s["status"] == "Closed" else "",
-        })
-    return records
-
-
-def _load_requests() -> list:
-    os.makedirs(os.path.dirname(STORAGE_FILE), exist_ok=True)
-    if not os.path.exists(STORAGE_FILE):
-        records = _seed_records()
-        _save_requests(records)
-        return records
-    try:
-        with open(STORAGE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if not isinstance(data, list):
-            return []
-        for r in data:
-            r.setdefault("branch",                   "All")
-            r.setdefault("initiator_role",            "customer")
-            r.setdefault("submitted_by",              "customer")
-            r.setdefault("assisted",                  False)
-            r.setdefault("verification_mode",         None)
-            r.setdefault("identity_verified",         False)
-            r.setdefault("identity_verified_by",      None)
-            r.setdefault("identity_verified_at",      None)
-            r.setdefault("decision_explainability",   None)
-        return data
-    except (json.JSONDecodeError, IOError):
-        return []
-
-
-def _save_requests(records: list) -> None:
-    os.makedirs(os.path.dirname(STORAGE_FILE), exist_ok=True)
-    with open(STORAGE_FILE, "w", encoding="utf-8") as f:
-        json.dump(records, f, indent=2, ensure_ascii=False)
-
-
-def _next_id() -> str:
-    return f"R{len(_load_requests()) + 1:03d}"
-
-
-def _init_store() -> None:
-    pass
-
-
-# ---------------------------------------------------------------------------
-# SLA governance engine — runs on every page refresh for every role
-# ---------------------------------------------------------------------------
-
-def _recalculate_sla(user: str) -> None:
-    records = _load_requests()
-    changed = False
-
-    for req in records:
-        if req["status"] in CLOSED_STATUSES:
-            continue
-
-        sla_days     = SLA_CONFIG.get(req["sla_key"], 30)
-        submitted_at = datetime.fromisoformat(req["submitted_at"])
-        new_sla      = calculate_sla_status(submitted_at, sla_days)
-        old_sla      = req["sla_status"]
-
-        req["sla_status"] = new_sla
-        if new_sla != old_sla:
-            changed = True
-            audit_log(
-                action=(
-                    f"SLA Status Changed | ID={req['id']} "
-                    f"| type={req['type']} | customer={req['customer_id']} "
-                    f"| {old_sla} -> {new_sla}"
-                ),
-                user="system",
-                metadata={
-                    "request_id":   req["id"],
-                    "customer_id":  req["customer_id"],
-                    "old_sla":      old_sla,
-                    "new_sla":      new_sla,
-                    "triggered_by": user,
-                },
-            )
-            if new_sla == "Red" and old_sla != "Red":
-                audit_log(
-                    action=f"SLA Breach | request_id={req['id']}",
-                    user="system",
-                    metadata={
-                        "customer_id": req["customer_id"],
-                        "deadline":    req["deadline"],
-                    },
-                )
-                explain("rights_escalated_sla")
-
-        if new_sla == "Red" and not req["escalated"] and req["status"] in OPEN_STATUSES:
-            detail           = get_sla_detail(req["id"], req["sla_key"], submitted_at)
-            req["escalated"] = True
-            req["status"]    = "Escalated"
-            changed          = True
-            audit_log(
-                action=(
-                    f"Request Auto-Escalated | ID={req['id']} "
-                    f"| type={req['type']} | customer={req['customer_id']} "
-                    f"| overdue_by={abs(detail['remaining_days'])}d"
-                ),
-                user="system",
-                metadata={
-                    "request_id":   req["id"],
-                    "customer_id":  req["customer_id"],
-                    "type":         req["type"],
-                    "overdue_days": abs(detail["remaining_days"]),
-                    "sla_key":      req["sla_key"],
-                    "triggered_by": user,
-                },
-            )
-
-    if changed:
-        _save_requests(records)
-
-
-# ---------------------------------------------------------------------------
-# Step 2A — Customer-only rights submission
-# ---------------------------------------------------------------------------
-
-@require_role("customer")
-def submit_rights_request(
-    user:         str,
-    customer_id:  str,
-    request_type: str,
-    notes:        str,
-) -> dict:
-    sla_key  = REQUEST_TYPE_MAP[request_type]
-    sla_days = SLA_CONFIG.get(sla_key, 30)
-
-    allowed, decision = process_event({
-        "event":        "rights_request_submit",
-        "user":         user,
-        "customer_id":  customer_id,
-        "request_type": request_type,
-        "sla_key":      sla_key,
-    })
-    if not allowed:
-        return {
-            "blocked": True,
-            "reason":  decision.get("message", "Blocked by governance policy."),
-            "rule_id": decision.get("rule_id", "unknown"),
-        }
-
-    gated_purpose = CONSENT_GATED_TYPES.get(request_type)
-    if gated_purpose:
-        gate = process_rights_request(
-            customer_id=customer_id,
-            rights_type=RIGHTS_TYPE_MAP[request_type],
-            purpose=gated_purpose,
-            actor=user,
-            metadata={"request_type": request_type, "sla_key": sla_key},
-        )
-        if not gate["allowed"]:
-            return {"blocked": True, "reason": gate["reason"], "consent_gate": True}
-
-    req_id  = _next_id()
-    new_req = _build_request(
-        req_id             = req_id,
-        customer_id        = customer_id,
-        request_type_label = request_type,
-        notes              = notes,
-        submitted_by       = "customer",
-        assisted           = False,
-        verification_mode  = None,
-    )
-    records = _load_requests()
-    records.append(new_req)
-    _save_requests(records)
-
-    _register_sla(req_id, sla_key, sla_days)
-
-    audit_log(
-        action=(
-            f"Rights Request Submitted | ID={req_id} "
-            f"| customer={customer_id} | type={request_type} "
-            f"| submitted_by=customer | assisted=False "
-            f"| branch={new_req['branch']} | deadline={new_req['deadline']}"
-        ),
-        user=user,
-        metadata={
-            "request_id":   req_id,
-            "customer_id":  customer_id,
-            "type":         request_type,
-            "submitted_by": "customer",
-            "assisted":     False,
-            "branch":       new_req["branch"],
-            "sla_days":     sla_days,
-            "deadline":     new_req["deadline"],
-        },
-    )
-
-    _trigger_notification(
-        channel="sms",
-        recipient=customer_id,
-        message=(
-            f"Your Data Principal request ({request_type}) has been received. "
-            f"Reference: {req_id}. Deadline: {new_req['deadline']}."
-        ),
-    )
-
-    clause_key = CLAUSE_MAP.get(request_type)
-    if clause_key:
-        clause = _get_clause(clause_key)
-        explain_dynamic(
-            title=t("rights_invocation_title"),
-            reason=t("rights_invocation_reason"),
-            old_clause=clause.get("old", "DPDP Act 2023"),
-            new_clause=clause.get("new", "DPDP Rules"),
-        )
-
-    return {
-        "success":  True,
-        "req_id":   req_id,
-        "request":  new_req,
-        "decision": decision,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Step 2B — Assisted submission (Officer / Privacy Steward / DPO)
-# ---------------------------------------------------------------------------
-
-@require_role("branch_officer", "privacy_steward", "dpo")
-def assisted_right_submission(
-    user:              str,
-    customer_id:       str,
-    request_type:      str,
-    notes:             str,
-    verification_mode: str  = "physical_id_verified",
-    identity_verified: bool = False,
-) -> dict:
-    sla_key  = REQUEST_TYPE_MAP[request_type]
-    sla_days = SLA_CONFIG.get(sla_key, 30)
-
-    if request_type in IDENTITY_VERIFICATION_REQUIRED and not identity_verified:
-        return {
-            "blocked": True,
-            "reason":  t("identity_verification_required_error"),
-        }
-
-    allowed, decision = process_event({
-        "event":        "rights_request_submit",
-        "user":         user,
-        "customer_id":  customer_id,
-        "request_type": request_type,
-        "sla_key":      sla_key,
-    })
-    if not allowed:
-        return {
-            "blocked": True,
-            "reason":  decision.get("message", "Blocked by governance policy."),
-            "rule_id": decision.get("rule_id", "unknown"),
-        }
-
-    gated_purpose = CONSENT_GATED_TYPES.get(request_type)
-    if gated_purpose:
-        gate = process_rights_request(
-            customer_id=customer_id,
-            rights_type=RIGHTS_TYPE_MAP[request_type],
-            purpose=gated_purpose,
-            actor=user,
-            metadata={
-                "request_type": request_type,
-                "sla_key":      sla_key,
-                "assisted":     True,
-            },
-        )
-        if not gate["allowed"]:
-            return {"blocked": True, "reason": gate["reason"], "consent_gate": True}
-
-    req_id  = _next_id()
-    new_req = _build_request(
-        req_id             = req_id,
-        customer_id        = customer_id,
-        request_type_label = request_type,
-        notes              = notes,
-        submitted_by       = user,
-        assisted           = True,
-        verification_mode  = verification_mode,
-    )
-
-    if identity_verified:
-        new_req["identity_verified"]    = True
-        new_req["identity_verified_by"] = user
-        new_req["identity_verified_at"] = datetime.utcnow().isoformat()
-
-    records = _load_requests()
-    records.append(new_req)
-    _save_requests(records)
-
-    _register_sla(req_id, sla_key, sla_days)
-
-    audit_log(
-        action=(
-            f"Assisted Rights Request Submitted | ID={req_id} "
-            f"| customer={customer_id} | type={request_type} "
-            f"| submitted_by={user} | assisted=True "
-            f"| verification_mode={verification_mode} "
-            f"| identity_verified={identity_verified} "
-            f"| branch={new_req['branch']} | deadline={new_req['deadline']}"
-        ),
-        user=user,
-        metadata={
-            "request_id":        req_id,
-            "customer_id":       customer_id,
-            "type":              request_type,
-            "initiator_role":    "customer",
-            "submitted_by":      user,
-            "assisted":          True,
-            "verification_mode": verification_mode,
-            "identity_verified": identity_verified,
-            "branch":            new_req["branch"],
-            "deadline":          new_req["deadline"],
-        },
-    )
-
-    _trigger_notification(
-        channel="sms",
-        recipient=customer_id,
-        message=(
-            f"Your Data Principal request ({request_type}) has been submitted "
-            f"by a Kerala Bank officer on your behalf. Reference: {req_id}."
-        ),
-    )
-
-    return {
-        "success":  True,
-        "req_id":   req_id,
-        "request":  new_req,
-        "decision": decision,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Step 2D — Request processing update
-# ---------------------------------------------------------------------------
-
-@require_role("branch_officer", "privacy_steward", "dpo")
-def process_request_update(
-    user:        str,
-    sel_id:      str,
-    new_status:  str,
-    update_note: str,
-    records:     list,
-) -> dict:
-    allowed, decision = process_event({
-        "event":      "rights_request_update",
-        "user":       user,
-        "request_id": sel_id,
-        "new_status": new_status,
-    })
-    if not allowed:
-        return {
-            "blocked": True,
-            "rule_id": decision.get("rule_id", "unknown"),
-            "message": decision.get("message", "Policy violation detected."),
-        }
-
-    for req in records:
-        if req["id"] != sel_id:
-            continue
-
-        old_status   = req["status"]
-        sla_at_close = req["sla_status"]
-
-        req["status"] = new_status
-        req["notes"]  = update_note
-
-        clause_key = CLAUSE_MAP.get(req["type"])
-        if clause_key:
-            clause = _get_clause(clause_key)
-            req["decision_explainability"] = _build_explanation(
-                clause     = clause,
-                decision   = new_status,
-                decided_by = user,
-            )
-
-        audit_log(
-            action=(
-                f"Rights Request Updated | ID={sel_id} "
-                f"| customer={req['customer_id']} | type={req['type']} "
-                f"| {old_status} -> {new_status} "
-                f"| sla_at_close={sla_at_close} | note={update_note}"
-            ),
-            user=user,
-            metadata={
-                "request_id":   sel_id,
-                "customer_id":  req["customer_id"],
-                "old_status":   old_status,
-                "new_status":   new_status,
-                "sla_at_close": sla_at_close,
-                "note":         update_note,
-            },
-        )
-
-        if new_status == "Rejected":
-            explain_dynamic(
-                title=t("request_rejected_title"),
-                reason=t("request_rejected_reason"),
-                old_clause="DPDPA 2023 – Response obligation",
-                new_clause="DPDP Rules – Rejection procedure",
-            )
-
-        _trigger_notification(
-            channel="sms",
-            recipient=req["customer_id"],
-            message=(
-                f"Your Data Principal request {sel_id} has been processed. "
-                f"Status: {new_status}."
-            ),
-        )
-
-        return {
-            "success":      True,
-            "old_status":   old_status,
-            "sla_at_close": sla_at_close,
-            "decision":     decision,
-        }
-
-    return {"blocked": True, "message": f"Request {sel_id} not found in records."}
-
-
-# ---------------------------------------------------------------------------
-# Step 2C — Identity verification update
-# ---------------------------------------------------------------------------
-
-@require_role("branch_officer", "privacy_steward", "dpo")
-def mark_identity_verified(
-    user:       str,
-    request_id: str,
-    records:    list,
-    mode:       str = "physical_id_verified",
-) -> bool:
-    for req in records:
-        if req["id"] != request_id:
-            continue
-        req["identity_verified"]    = True
-        req["identity_verified_by"] = user
-        req["identity_verified_at"] = datetime.utcnow().isoformat()
-        req["verification_mode"]    = mode
-        audit_log(
-            action=(
-                f"Identity Verified | request_id={request_id} "
-                f"| type={req['type']} | verified_by={user} | mode={mode}"
-            ),
-            user=user,
-            metadata={
-                "request_id":  request_id,
-                "customer_id": req["customer_id"],
-                "mode":        mode,
-            },
-        )
-        return True
-    return False
 
 
 # ---------------------------------------------------------------------------
@@ -859,19 +195,17 @@ def _kpi(label: str, value, colour: str = "#0A3D91", sub: str = "") -> None:
 
 
 def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> None:
-    all_reqs = requests
-
+    """Render filterable SLA table. Status updates go through orchestration."""
     fcol1, fcol2, fcol3 = st.columns(3)
     with fcol1:
-        f_status = st.multiselect(
+        f_status_display = st.multiselect(
             t("status"),
             [t("open"), t("in_progress"), t("escalated"), t("closed"), t("rejected")],
             default=[],
             key=f"sla_f_status_{allow_update}",
         )
-        # Map translated labels back to internal values for filtering
         _rev_status = {t(v): k for k, v in _STATUS_I18N.items()}
-        f_status_internal = [_rev_status.get(s, s) for s in f_status]
+        f_status_internal = [_rev_status.get(s, s) for s in f_status_display]
 
     with fcol2:
         f_sla = st.multiselect(
@@ -881,7 +215,7 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
     with fcol3:
         f_cid = st.text_input(t("search_customer_id"), key=f"sla_f_cid_{allow_update}")
 
-    filtered = all_reqs
+    filtered = requests
     if f_status_internal: filtered = [r for r in filtered if r["status"] in f_status_internal]
     if f_sla:             filtered = [r for r in filtered if r["sla_status"] in f_sla]
     if f_cid:             filtered = [r for r in filtered if f_cid.lower() in r["customer_id"].lower()]
@@ -894,14 +228,14 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
                 datetime.fromisoformat(req["submitted_at"]),
             )
             rows.append({
-                t("id"):              req["id"],
-                t("customer_id"):     _mask_id(req["customer_id"]),
-                t("request_type"):    _t_request_type(req["type"]),
-                t("branch"):          req.get("branch", "—"),
-                t("submitted"):       req["submitted_at"][:10],
-                t("deadline"):        req["deadline"],
-                t("status"):          _t_status(req["status"]),
-                t("sla_status"):      status_badge(req["sla_status"]),
+                t("id"):           req["id"],
+                t("customer_id"):  _mask_id(req["customer_id"]),
+                t("request_type"): _t_request_type(req["type"]),
+                t("branch"):       req.get("branch", "—"),
+                t("submitted"):    req["submitted_at"][:10],
+                t("deadline"):     req["deadline"],
+                t("status"):       _t_status(req["status"]),
+                t("sla_status"):   status_badge(req["sla_status"]),
                 t("days_left"): (
                     f"{detail['remaining_days']}d"
                     if not detail["overdue"]
@@ -923,21 +257,25 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
     st.divider()
     st.subheader(t("update_status"))
 
-    open_ids = [r["id"] for r in all_reqs if r["status"] not in CLOSED_STATUSES]
+    open_ids = [r["id"] for r in requests if r["status"] not in CLOSED_STATUSES]
     if not open_ids:
         st.info(t("all_requests_closed"))
         return
 
-    sel_id      = st.selectbox(t("select_request"), open_ids)
-    sel_req     = next((r for r in all_reqs if r["id"] == sel_id), None)
+    sel_id  = st.selectbox(t("select_request"), open_ids)
+    sel_req = next((r for r in requests if r["id"] == sel_id), None)
 
-    # New status selectbox — translated display, but we store internal values
     _status_display_opts = [t("in_progress"), t("closed"), t("rejected")]
-    _status_internal_map = {t("in_progress"): "In Progress", t("closed"): "Closed", t("rejected"): "Rejected"}
-    new_status_display  = st.selectbox(t("new_status"), _status_display_opts)
-    new_status          = _status_internal_map[new_status_display]
-    update_note         = st.text_input(t("resolution_note"))
+    _status_internal_map = {
+        t("in_progress"): "In Progress",
+        t("closed"):      "Closed",
+        t("rejected"):    "Rejected",
+    }
+    new_status_display = st.selectbox(t("new_status"), _status_display_opts)
+    new_status         = _status_internal_map[new_status_display]
+    update_note        = st.text_input(t("resolution_note"))
 
+    # Identity verification gate for correction/erasure
     if sel_req and sel_req["type"] in IDENTITY_VERIFICATION_REQUIRED:
         if not sel_req.get("identity_verified"):
             st.warning(
@@ -951,16 +289,19 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
                 key=f"verify_mode_{sel_id}",
             )
             if st.button(t("mark_identity_verified"), key=f"id_verify_{sel_id}"):
-                records = _load_requests()
-                try:
-                    ok = mark_identity_verified(user, sel_id, records, verify_mode)
-                except PermissionError as exc:
-                    st.error(str(exc))
-                    return
-                if ok:
-                    _save_requests(records)
+                result = orchestration.execute_action(
+                    action_type="mark_identity_verified",
+                    payload={
+                        "request_id":        sel_id,
+                        "verification_mode": verify_mode,
+                    },
+                    actor=user,
+                )
+                if result["status"] == "success":
                     st.success(t("identity_marked_verified"))
                     st.rerun()
+                else:
+                    st.error(f"{t('identity_verification_failed')}: {result.get('message', t('unknown_error'))}")
         else:
             st.success(
                 f"{t('identity_verified_by')} `{sel_req.get('identity_verified_by', '—')}` "
@@ -969,27 +310,27 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
             )
 
     if st.button(t("update_status"), use_container_width=True, key=f"update_{sel_id}"):
-        records = _load_requests()
-        try:
-            result = process_request_update(user, sel_id, new_status, update_note, records)
-        except PermissionError as exc:
-            st.error(str(exc))
-            return
-
-        if result.get("blocked"):
+        result = orchestration.execute_action(
+            action_type="update_rights_request_status",
+            payload={
+                "request_id": sel_id,
+                "new_status": new_status,
+                "note":       update_note,
+            },
+            actor=user,
+        )
+        if result["status"] == "success":
+            if result.get("escalated"):
+                st.warning(t("flagged_for_dpo_review"))
+            st.success(
+                f"{t('request')} {sel_id} {t('updated_to')} **{_t_status(new_status)}**."
+            )
+            st.rerun()
+        else:
             st.error(
                 f"{t('update_blocked')}  \n"
-                f"{t('rule')}: `{result.get('rule_id', 'unknown')}`  \n"
                 f"{t('reason')}: {result.get('message', t('policy_violation'))}"
             )
-            return
-
-        if result.get("decision", {}).get("status") == "ESCALATE":
-            st.warning(t("flagged_for_dpo_review"))
-
-        _save_requests(records)
-        st.success(f"{t('request')} {sel_id} {t('updated_to')} **{_t_status(new_status)}**.")
-        st.rerun()
 
 
 def _render_sla_analytics(all_reqs: list, open_reqs: list) -> None:
@@ -1018,9 +359,7 @@ def _render_sla_analytics(all_reqs: list, open_reqs: list) -> None:
             margin=dict(l=0, r=0, t=40, b=0),
             annotations=[dict(
                 text=f"{len(open_reqs)}<br>{t('open')}",
-                x=0.5, y=0.5,
-                font=dict(size=15, color="#0A3D91"),
-                showarrow=False,
+                x=0.5, y=0.5, font=dict(size=15, color="#0A3D91"), showarrow=False,
             )],
         )
         st.plotly_chart(fig_pie, use_container_width=True)
@@ -1049,8 +388,7 @@ def _render_sla_analytics(all_reqs: list, open_reqs: list) -> None:
         fig_bar.update_layout(
             title=t("all_requests_by_status"),
             yaxis=dict(title=t("count")),
-            plot_bgcolor="#ffffff",
-            paper_bgcolor="#ffffff",
+            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
             font=dict(color="#0A3D91"),
             height=300, showlegend=False,
         )
@@ -1072,6 +410,51 @@ def _render_sla_analytics(all_reqs: list, open_reqs: list) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Shared submission result handler — avoids duplicating success/blocked UI
+# ---------------------------------------------------------------------------
+
+def _handle_submission_result(result: dict, request_type: str) -> bool:
+    """
+    Display success or error from orchestration submission result.
+    Returns True if submission succeeded (caller should st.rerun()).
+    """
+    if result["status"] == "success":
+        record = result["record"]
+        st.success(
+            f"{t('request_submitted_success')} **{record['id']}**  \n"
+            f"{t('deadline')}: **{record['deadline']}**"
+        )
+        if result.get("escalated"):
+            st.warning(t("flagged_for_dpo_review"))
+        clause_key = CLAUSE_MAP.get(request_type)
+        if clause_key:
+            clause = _get_clause(clause_key)
+            explain_dynamic(
+                title=t("rights_invocation_title"),
+                reason=t("rights_invocation_reason"),
+                old_clause=clause.get("old", "DPDP Act 2023"),
+                new_clause=clause.get("new", "DPDP Rules"),
+            )
+        _increment_session_counter()
+        return True
+
+    # Blocked
+    if result.get("consent_gate"):
+        explain("rights_blocked_no_consent")
+        st.error(
+            f"{t('request_blocked_consent_gate')}  \n"
+            f"{t('reason')}: {result.get('message', t('policy_violation'))}  \n"
+            f"{t('valid_consent_required_for')} **{_t_request_type(request_type)}**."
+        )
+    else:
+        st.error(
+            f"{t('request_blocked')}  \n"
+            f"{t('reason')}: {result.get('message', t('policy_violation'))}"
+        )
+    return False
+
+
+# ---------------------------------------------------------------------------
 # CUSTOMER VIEW
 # ---------------------------------------------------------------------------
 
@@ -1082,8 +465,13 @@ def render_customer_view() -> None:
     st.header(t("rights_portal"))
     st.caption(t("customer_portal_caption"))
 
-    all_reqs  = _load_requests()
-    my_reqs   = [r for r in all_reqs if r["customer_id"].lower() == customer_id.lower()]
+    # Load via orchestration query (read-only)
+    query_result = orchestration.execute_action(
+        action_type="query_rights_requests",
+        payload={"customer_id": customer_id},
+        actor=user,
+    )
+    my_reqs   = query_result.get("records", [])
     my_open   = [r for r in my_reqs if r["status"] in OPEN_STATUSES]
     my_closed = [r for r in my_reqs if r["status"] in CLOSED_STATUSES]
 
@@ -1100,11 +488,15 @@ def render_customer_view() -> None:
         st.caption(t("customer_rights_caption"))
         more_info(t("customer_rights_sla_note"))
 
+        # Session rate limit guard
+        if not _check_session_rate_limit():
+            st.error(t("rate_limit_exceeded_session"))
+            return
+
         col1, col2 = st.columns(2)
         with col1:
             st.text_input(t("customer_id"), value=customer_id, disabled=True)
-            # Display translated labels; map back to internal key for logic
-            _rt_display_options  = [_t_request_type(k) for k in REQUEST_TYPE_MAP.keys()]
+            _rt_display_options     = [_t_request_type(k) for k in REQUEST_TYPE_MAP.keys()]
             _rt_display_to_internal = {_t_request_type(k): k for k in REQUEST_TYPE_MAP.keys()}
             rt_display   = st.selectbox(t("request_type"), _rt_display_options)
             request_type = _rt_display_to_internal[rt_display]
@@ -1118,7 +510,7 @@ def render_customer_view() -> None:
 
         with st.expander(t("preview_request")):
             preview = get_customer_friendly_view({
-                "id":           _next_id(),
+                "id":           f"<{t('assigned_on_submit')}>",
                 "customer_id":  customer_id,
                 "type":         request_type,
                 "branch":       get_branch() or "All",
@@ -1131,37 +523,21 @@ def render_customer_view() -> None:
                 st.markdown(f"**{k}:** {v}")
 
         if st.button(t("submit_request"), type="primary", use_container_width=True):
-            try:
-                result = submit_rights_request(user, customer_id, request_type, notes)
-            except PermissionError as exc:
-                st.error(str(exc))
-                return
-
-            if result.get("blocked"):
-                if result.get("consent_gate"):
-                    explain("rights_blocked_no_consent")
-                    st.error(
-                        f"{t('request_blocked_consent_gate')}  \n"
-                        f"{t('reason')}: {result['reason']}  \n"
-                        f"{t('valid_consent_required_for')} **{_t_request_type(request_type)}**."
-                    )
-                else:
-                    st.error(
-                        f"{t('request_blocked')}  \n"
-                        f"{t('rule')}: `{result.get('rule_id', 'unknown')}`  \n"
-                        f"{t('reason')}: {result['reason']}"
-                    )
-                return
-
-            if result.get("decision", {}).get("status") == "ESCALATE":
-                st.warning(t("flagged_for_dpo_review"))
-
-            new_req = result["request"]
-            st.success(
-                f"{t('request_submitted_success')} **{result['req_id']}**  \n"
-                f"{t('deadline')}: **{new_req['deadline']}** ({sla_days} {t('days')})"
-            )
-            st.rerun()
+            if not customer_id.strip():
+                st.error(t("customer_id_required"))
+            else:
+                result = orchestration.execute_action(
+                    action_type="create_rights_request",
+                    payload={
+                        "customer_id":  customer_id,
+                        "request_type": request_type,
+                        "notes":        notes,
+                        "assisted":     False,
+                    },
+                    actor=user,
+                )
+                if _handle_submission_result(result, request_type):
+                    st.rerun()
 
     # ── My Requests tab ───────────────────────────────────────────────────────
     with tab2:
@@ -1173,12 +549,12 @@ def render_customer_view() -> None:
         else:
             rows = [
                 {
-                    t("request_id"):  r["id"],
+                    t("request_id"):   r["id"],
                     t("request_type"): _t_request_type(r["type"]),
-                    t("submitted"):   r["submitted_at"][:10],
-                    t("deadline"):    r["deadline"],
-                    t("status"):      _t_status(r["status"]),
-                    t("notes"):       r["notes"] or "—",
+                    t("submitted"):    r["submitted_at"][:10],
+                    t("deadline"):     r["deadline"],
+                    t("status"):       _t_status(r["status"]),
+                    t("notes"):        r["notes"] or "—",
                 }
                 for r in my_reqs
             ]
@@ -1196,9 +572,7 @@ def render_customer_view() -> None:
                     )
                     with st.container(border=True):
                         rc1, rc2 = st.columns([3, 1])
-                        rc1.markdown(
-                            f"**{req['id']}** — {_t_request_type(req['type'])}"
-                        )
+                        rc1.markdown(f"**{req['id']}** — {_t_request_type(req['type'])}")
                         rc1.caption(
                             f"{t('submitted')}: {req['submitted_at'][:10]}   "
                             f"{t('deadline')}: {req['deadline']}"
@@ -1232,8 +606,12 @@ def render_officer_console() -> None:
     st.header(t("rights_portal"))
     st.caption(f"{t('branch')}: **{user_branch}** — {t('sla_recalc_caption')}")
 
-    all_reqs    = _load_requests()
-    branch_reqs = [r for r in all_reqs if r.get("branch") == user_branch]
+    query_result = orchestration.execute_action(
+        action_type="query_rights_requests",
+        payload={"branch": user_branch},
+        actor=user,
+    )
+    branch_reqs = query_result.get("records", [])
     open_reqs   = [r for r in branch_reqs if r["status"] not in CLOSED_STATUSES]
 
     _total = len(branch_reqs)
@@ -1268,6 +646,11 @@ def render_officer_console() -> None:
         st.caption(t("officer_assisted_caption"))
         st.info(t("officer_assisted_info"))
         more_info(t("officer_assisted_more_info"))
+
+        # Session rate limit guard
+        if not _check_session_rate_limit():
+            st.error(t("rate_limit_exceeded_session"))
+            return
 
         col1, col2 = st.columns(2)
         with col1:
@@ -1306,7 +689,7 @@ def render_officer_console() -> None:
 
         with st.expander(t("preview_request_customer_view")):
             preview = get_customer_friendly_view({
-                "id":           _next_id(),
+                "id":           f"<{t('assigned_on_submit')}>",
                 "customer_id":  cust_id or f"<{t('enter_above')}>",
                 "type":         request_type,
                 "branch":       user_branch,
@@ -1320,52 +703,31 @@ def render_officer_console() -> None:
 
         if st.button(
             t("submit_assisted_request"), type="primary",
-            use_container_width=True, key="officer_submit"
+            use_container_width=True, key="officer_submit",
         ):
             if not cust_id.strip():
                 st.error(t("customer_id_required"))
-                return
-
-            if needs_id_verify and not identity_verified:
+            elif needs_id_verify and not identity_verified:
                 st.error(
                     f"{t('must_confirm_id_verification_before')} "
                     f"**{_t_request_type(request_type)}** {t('request')}."
                 )
-                return
-
-            try:
-                result = assisted_right_submission(
-                    user              = user,
-                    customer_id       = cust_id.strip(),
-                    request_type      = request_type,
-                    notes             = notes,
-                    verification_mode = verify_mode,
-                    identity_verified = identity_verified,
+            else:
+                result = orchestration.execute_action(
+                    action_type="create_rights_request",
+                    payload={
+                        "customer_id":        cust_id.strip(),
+                        "request_type":       request_type,
+                        "notes":              notes,
+                        "assisted":           True,
+                        "verification_mode":  verify_mode,
+                        "identity_verified":  identity_verified,
+                    },
+                    actor=user,
                 )
-            except PermissionError as exc:
-                st.error(str(exc))
-                return
-
-            if result.get("blocked"):
-                if result.get("consent_gate"):
-                    explain("rights_blocked_no_consent")
-                    st.error(
-                        f"{t('consent_gate_blocked')}: {result['reason']}  \n"
-                        f"{t('customer_needs_valid_consent_for')} {_t_request_type(request_type)}."
-                    )
-                else:
-                    st.error(f"{t('blocked')}: {result.get('reason', t('policy_violation'))}")
-                return
-
-            new_req = result["request"]
-            st.success(
-                f"{t('assisted_request_submitted')} **{result['req_id']}** "
-                f"{t('for_customer')} **{cust_id.strip()}**  \n"
-                f"{t('deadline')}: **{new_req['deadline']}** | "
-                f"{t('identity_verified')}: **{t('yes') if identity_verified else t('no')}**"
-            )
-            set_assisted_submission(False)
-            st.rerun()
+                if _handle_submission_result(result, request_type):
+                    set_assisted_submission(False)
+                    st.rerun()
 
     # ── Tab 2: Branch Processing ──────────────────────────────────────────────
     with tab2:
@@ -1385,13 +747,19 @@ def render_dpo_console() -> None:
     st.caption(t("sla_recalc_caption"))
     more_info(t("dpo_console_more_info"))
 
-    all_reqs  = _load_requests()
+    query_result = orchestration.execute_action(
+        action_type="query_rights_requests",
+        payload={},
+        actor=user,
+    )
+    all_reqs  = query_result.get("records", [])
     open_reqs = [r for r in all_reqs if r["status"] not in CLOSED_STATUSES]
-    _total    = len(all_reqs)
-    _open     = len(open_reqs)
-    _green    = sum(1 for r in open_reqs if r["sla_status"] == "Green")
-    _amber    = sum(1 for r in open_reqs if r["sla_status"] == "Amber")
-    _red      = sum(1 for r in open_reqs if r["sla_status"] == "Red" or r["status"] == "Escalated")
+
+    _total = len(all_reqs)
+    _open  = len(open_reqs)
+    _green = sum(1 for r in open_reqs if r["sla_status"] == "Green")
+    _amber = sum(1 for r in open_reqs if r["sla_status"] == "Amber")
+    _red   = sum(1 for r in open_reqs if r["sla_status"] == "Red" or r["status"] == "Escalated")
 
     m1, m2, m3, m4, m5 = st.columns(5)
     with m1: _kpi(t("total_requests"), _total, "#6B7A90", t("all_records"))
@@ -1409,9 +777,15 @@ def render_dpo_console() -> None:
         t("sla_analytics"),
     ])
 
+    # ── Tab 1: DPO-assisted submission ────────────────────────────────────────
     with tab1:
         st.subheader(t("submit_on_behalf_of_customer"))
         st.info(t("dpo_submission_info"))
+
+        # Session rate limit guard
+        if not _check_session_rate_limit():
+            st.error(t("rate_limit_exceeded_session"))
+            return
 
         col1, col2 = st.columns(2)
         with col1:
@@ -1445,7 +819,7 @@ def render_dpo_console() -> None:
 
         with st.expander(t("preview_request")):
             preview = get_customer_friendly_view({
-                "id":           _next_id(),
+                "id":           f"<{t('assigned_on_submit')}>",
                 "customer_id":  dpo_cust_id or f"<{t('enter_above')}>",
                 "type":         request_type,
                 "branch":       get_branch() or "All",
@@ -1459,37 +833,35 @@ def render_dpo_console() -> None:
 
         if st.button(
             t("submit_request"), type="primary",
-            use_container_width=True, key="dpo_submit"
+            use_container_width=True, key="dpo_submit",
         ):
             if not dpo_cust_id.strip():
                 st.error(t("customer_id_required"))
-                return
-            if needs_id_verify and not identity_verified:
+            elif needs_id_verify and not identity_verified:
                 st.error(t("identity_verification_required_error"))
-                return
-            try:
-                result = assisted_right_submission(
-                    user=user,
-                    customer_id=dpo_cust_id.strip(),
-                    request_type=request_type,
-                    notes=notes,
-                    verification_mode=verify_mode,
-                    identity_verified=identity_verified,
+            else:
+                result = orchestration.execute_action(
+                    action_type="create_rights_request",
+                    payload={
+                        "customer_id":       dpo_cust_id.strip(),
+                        "request_type":      request_type,
+                        "notes":             notes,
+                        "assisted":          True,
+                        "verification_mode": verify_mode,
+                        "identity_verified": identity_verified,
+                    },
+                    actor=user,
                 )
-            except PermissionError as exc:
-                st.error(str(exc))
-                return
-            if result.get("blocked"):
-                st.error(f"{t('blocked')}: {result.get('reason', t('policy_violation'))}")
-                return
-            st.success(f"{t('request_submitted_success')} **{result['req_id']}**")
-            st.rerun()
+                if _handle_submission_result(result, request_type):
+                    st.rerun()
 
+    # ── Tab 2: All requests + status update ───────────────────────────────────
     with tab2:
         st.subheader(t("all_requests_live_sla"))
         st.caption(t("sla_recalc_caption"))
         _render_sla_table(all_reqs, user, allow_update=True)
 
+    # ── Tab 3: Escalations ────────────────────────────────────────────────────
     with tab3:
         st.subheader(t("escalated_overdue_requests"))
         st.caption(t("auto_escalated_when_red"))
@@ -1532,52 +904,25 @@ def render_dpo_console() -> None:
                             t("resolution_note"), key=f"res_{req['id']}"
                         )
                         if st.button(f"{t('close')} {req['id']}", key=f"close_{req['id']}"):
-                            orch_allowed, orch_decision = process_event({
-                                "event":       "rights_request_close_escalated",
-                                "user":        user,
-                                "request_id":  req["id"],
-                                "customer_id": req["customer_id"],
-                            })
-                            if not orch_allowed:
+                            result = orchestration.execute_action(
+                                action_type="update_rights_request_status",
+                                payload={
+                                    "request_id": req["id"],
+                                    "new_status": "Closed",
+                                    "note":       res_note,
+                                },
+                                actor=user,
+                            )
+                            if result["status"] == "success":
+                                st.success(f"{t('request')} {req['id']} {t('closed')}.")
+                                st.rerun()
+                            else:
                                 st.error(
                                     f"{t('closure_blocked')}  \n"
-                                    f"{t('rule')}: `{orch_decision.get('rule_id', 'unknown')}`  \n"
-                                    f"{t('reason')}: {orch_decision.get('message', t('policy_violation'))}"
+                                    f"{t('reason')}: {result.get('message', t('policy_violation'))}"
                                 )
-                                st.stop()
-                            records = _load_requests()
-                            for r in records:
-                                if r["id"] == req["id"]:
-                                    r["status"] = "Closed"
-                                    r["notes"]  = res_note
-                                    clause_key  = CLAUSE_MAP.get(r["type"])
-                                    if clause_key:
-                                        r["decision_explainability"] = _build_explanation(
-                                            clause     = _get_clause(clause_key),
-                                            decision   = "Closed",
-                                            decided_by = user,
-                                        )
-                            audit_log(
-                                action=(
-                                    f"Escalated Request Closed | ID={req['id']} "
-                                    f"| customer={req['customer_id']} | type={req['type']}"
-                                ),
-                                user=user,
-                                metadata={
-                                    "request_id":   req["id"],
-                                    "note":         res_note,
-                                    "overdue_days": abs(detail["remaining_days"]),
-                                },
-                            )
-                            _trigger_notification(
-                                channel="sms",
-                                recipient=req["customer_id"],
-                                message=f"Your escalated request {req['id']} has been resolved.",
-                            )
-                            _save_requests(records)
-                            st.success(f"{t('request')} {req['id']} {t('closed')}.")
-                            st.rerun()
 
+    # ── Tab 4: Analytics ──────────────────────────────────────────────────────
     with tab4:
         st.subheader(t("sla_performance_analytics"))
         _render_sla_analytics(all_reqs, open_reqs)
@@ -1591,13 +936,21 @@ def render_auditor_console() -> None:
     st.header(t("rights_portal"))
     st.caption(t("auditor_rights_caption"))
 
-    all_reqs  = _load_requests()
+    user = st.session_state.get("username", "auditor")
+
+    query_result = orchestration.execute_action(
+        action_type="query_rights_requests",
+        payload={},
+        actor=user,
+    )
+    all_reqs  = query_result.get("records", [])
     open_reqs = [r for r in all_reqs if r["status"] not in CLOSED_STATUSES]
-    _total    = len(all_reqs)
-    _open     = len(open_reqs)
-    _green    = sum(1 for r in open_reqs if r["sla_status"] == "Green")
-    _amber    = sum(1 for r in open_reqs if r["sla_status"] == "Amber")
-    _red      = sum(1 for r in open_reqs if r["sla_status"] == "Red" or r["status"] == "Escalated")
+
+    _total = len(all_reqs)
+    _open  = len(open_reqs)
+    _green = sum(1 for r in open_reqs if r["sla_status"] == "Green")
+    _amber = sum(1 for r in open_reqs if r["sla_status"] == "Amber")
+    _red   = sum(1 for r in open_reqs if r["sla_status"] == "Red" or r["status"] == "Escalated")
 
     m1, m2, m3, m4, m5 = st.columns(5)
     with m1: _kpi(t("total_requests"), _total, "#6B7A90", t("all_records"))
@@ -1627,11 +980,6 @@ def render_auditor_console() -> None:
 # ---------------------------------------------------------------------------
 
 def show() -> None:
-    _init_store()
-    user = st.session_state.get("username", "officer")
-
-    _recalculate_sla(user)
-
     role = get_role()
 
     if role == "customer":

@@ -1,377 +1,222 @@
 """
 modules/notices.py
 ------------------
-Privacy Notice Management — Step 12 Regulatory-Grade Refactor.
+Privacy Notice Management — DPDP Act 2023 Section 5.
+
+Architecture (updated):
+    UI  →  orchestration.execute_action()  →  Engine  →  Audit / Compliance
 
 Role-access model:
-  DPO              Full access — create, publish, version, outdated-consent scan
+  DPO              Full access — create, publish, version, pending draft management
   Officer          Draft creation only — cannot publish
   Auditor          Read-only — notice history and version diff
-  Others           Access restricted
 
-Step 12 changes:
-  12A  Role gate: only DPO / Officer may create; only DPO may publish
-  12B  Standardised notice object with notice_id, content_en, content_ml,
-       linked_clauses, version int, previous_version_id, requires_reconsent
-  12C  Automatic versioning — old notice superseded, new version created
-  12D  Clause linkage validated against dpdp_clauses registry
-  12E  Deterministic Malayalam translation + normalisation on save
-  12F  Outdated-consent detection — consents with older notice_version flagged
-  12G  Notification trigger for each affected user
-  12H  Re-consent flag set when linked_clauses change between versions
-  12I  Localised display — content_ml served when session language == "ml"
-  12J  No in-place edit / delete — notices are immutable once saved
-  12K  Audit log on every create / publish / version action
+Immutable publish rule (enforced by orchestration):
+  - Published notices can NEVER be edited or overwritten.
+  - Superseding creates a new version; old becomes "superseded".
+  - Orchestration computes SHA-256 hash of content and freezes it.
 
-DPDP Act 2023 — Section 5 (Notice), Section 6 (Consent), Section 11-13 (Rights)
+Re-consent triggering (enforced by orchestration):
+  - Orchestration compares previous clause set to new clause set.
+  - If changed → marks affected users for re-consent.
+  - Module must NOT compute clause delta.
+
+Design contract:
+  - NO storage reads/writes (json.load / json.dump).
+  - NO audit_log() calls.
+  - NO hash generation (orchestration owns SHA-256 freeze).
+  - NO clause delta computation.
+  - NO re-consent flag calculation.
+  - NO compliance_engine calls.
+  - NO direct status mutation.
+  - All mutations go through orchestration.execute_action().
+  - UI validates only input format (empty check); orchestration validates clause registry.
+  - All user-visible strings go through t().
 """
 
 from __future__ import annotations
 
-import json
-import os
-import uuid
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Optional
-
 import pandas as pd
 import streamlit as st
 
+import engine.orchestration as orchestration
 from auth import get_role_display as get_role
-from engine.audit_ledger import append_audit_log
 from utils.i18n import t, translate_en_to_ml, normalize_malayalam
 from utils.export_utils import export_data
 from utils.ui_helpers import more_info
 from utils.explainability import explain_dynamic
 from utils.dpdp_clauses import get_clause
 
-# Optional notification trigger — graceful fallback if not yet wired
-try:
-    from engine.orchestration import trigger_notification
-except ImportError:
-    def trigger_notification(channel: str, recipient: str, message: str) -> None:
-        pass   # no-op until orchestration module is live
-
-# Optional customer phone lookup
-try:
-    from registry.customer_registry import get_customer_phone
-except ImportError:
-    def get_customer_phone(user_id: str) -> str:
-        return ""
-
-# Optional consent registry
-try:
-    from registry.consent_registry import get_all_consents
-except ImportError:
-    def get_all_consents() -> list[dict]: return []
-
-
 # ---------------------------------------------------------------------------
-# Storage path — notices persist across Streamlit reruns
+# Constants
 # ---------------------------------------------------------------------------
 
-_NOTICES_PATH = Path(os.getenv("NOTICES_PATH", "storage/notices.json"))
+PRODUCT_OPTIONS: list[str] = [
+    "Savings Account", "Digital Lending", "UPI Services",
+    "Mobile Banking", "Credit Card", "Fixed Deposit", "Insurance Products",
+]
 
+ALL_CLAUSE_KEYS: list[str] = [
+    "consent_lifecycle", "rights_management", "breach_reporting",
+    "data_minimisation", "audit_integrity", "sla_governance",
+    "dpia", "security_safeguards",
+]
 
-def _ensure_store() -> None:
-    _NOTICES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if not _NOTICES_PATH.exists():
-        _NOTICES_PATH.write_text(json.dumps(_SEED_NOTICES, indent=2), encoding="utf-8")
-
-
-def _load_notices() -> list[dict]:
-    _ensure_store()
-    raw = _NOTICES_PATH.read_text(encoding="utf-8").strip()
-    data = json.loads(raw) if raw else []
-    return data if isinstance(data, list) else []
-
-
-def _save_notices(notices: list[dict]) -> None:
-    _NOTICES_PATH.write_text(
-        json.dumps(notices, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-
+STATUS_COLOUR: dict[str, str] = {
+    "published":  "#1a9e5c",
+    "draft":      "#f0a500",
+    "superseded": "#9e9e9e",
+}
 
 # ---------------------------------------------------------------------------
-# Step 12B — Standardised notice structure builder
+# Sample seed notices — session bootstrap only (never written back)
 # ---------------------------------------------------------------------------
 
-def _generate_notice_id() -> str:
-    return f"NTC-{uuid.uuid4().hex[:10].upper()}"
-
-
-def _build_notice(
-    title: str,
-    content_en: str,
-    product: str,
-    linked_clauses: list[str],
-    created_by: str,
-    status: str = "draft",
-    version: int = 1,
-    previous_version_id: Optional[str] = None,
-    version_note: str = "",
-    requires_reconsent: bool = False,
-    affected_users: Optional[list[str]] = None,
-) -> dict[str, Any]:
-    """
-    Build a standardised notice object. (Step 12B)
-    Malayalam content is derived deterministically from English. (Step 12E)
-    """
-    content_ml = normalize_malayalam(translate_en_to_ml(content_en))  # Step 12E
-
-    return {
-        "notice_id":           _generate_notice_id(),
-        "title":               title,
-        "product":             product,
-        "content_en":          content_en,
-        "content_ml":          content_ml,
-        "linked_clauses":      linked_clauses,
-        "version":             version,
-        "version_note":        version_note,
-        "previous_version_id": previous_version_id,
-        "created_by":          created_by,
-        "created_at":          datetime.now(timezone.utc).isoformat(),
-        "published_on":        None,
-        "published_by":        None,
-        "status":              status,           # "draft" | "published" | "superseded"
-        "requires_reconsent":  requires_reconsent,
-        "affected_users":      affected_users or [],
-    }
-
-
-# ---------------------------------------------------------------------------
-# Step 12D — Clause linkage validation
-# ---------------------------------------------------------------------------
-
-def _validate_clauses(clause_list: list[str]) -> list[str]:
-    """
-    Validate that every clause code resolves in the DPDP clause registry.
-    Returns list of invalid codes (empty = all valid).
-    """
-    invalid = []
-    for code in clause_list:
-        if not get_clause(code):
-            invalid.append(code)
-    return invalid
-
-
-# ---------------------------------------------------------------------------
-# Step 12F — Outdated-consent detection
-# ---------------------------------------------------------------------------
-
-def _find_outdated_users(product: str, new_version: int) -> list[str]:
-    """
-    Return IDs of data principals whose consent references an older
-    notice version for this product. (Step 12F)
-    """
-    consents = get_all_consents()
-    outdated = []
-    for c in consents:
-        if (
-            c.get("product") == product
-            and int(c.get("notice_version", 0)) < new_version
-        ):
-            uid = c.get("data_principal_id") or c.get("customer_id")
-            if uid and uid not in outdated:
-                outdated.append(uid)
-    return outdated
-
-
-# ---------------------------------------------------------------------------
-# Step 12G — Notify outdated-consent users
-# ---------------------------------------------------------------------------
-
-def _notify_affected_users(user_ids: list[str]) -> None:
-    """
-    Trigger SMS notification to each user whose consent is now outdated.
-    Falls back silently if orchestration is not yet wired. (Step 12G)
-    """
-    for uid in user_ids:
-        phone = get_customer_phone(uid)
-        if phone:
-            trigger_notification(
-                channel="sms",
-                recipient=phone,
-                message=(
-                    "Your privacy notice has been updated. "
-                    "Please review and reconfirm your consent at your earliest convenience."
-                ),
-            )
-
-
-# ---------------------------------------------------------------------------
-# Step 12C — Versioning engine
-# ---------------------------------------------------------------------------
-
-def _create_new_version(
-    old_notice: dict,
-    content_en: str,
-    linked_clauses: list[str],
-    version_note: str,
-    created_by: str,
-) -> tuple[dict, dict]:
-    """
-    Supersede old_notice and return (superseded_old, new_version_notice).
-    Sets requires_reconsent if linked_clauses changed. (Step 12H)
-    Detects affected users and triggers notifications. (Step 12F / 12G)
-    """
-    superseded = dict(old_notice)
-    superseded["status"] = "superseded"
-
-    new_version     = old_notice["version"] + 1
-    clauses_changed = set(old_notice.get("linked_clauses", [])) != set(linked_clauses)
-
-    affected_users = _find_outdated_users(old_notice["product"], new_version)
-    _notify_affected_users(affected_users)
-
-    new_notice = _build_notice(
-        title=old_notice["title"],
-        content_en=content_en,
-        product=old_notice["product"],
-        linked_clauses=linked_clauses,
-        created_by=created_by,
-        status="draft",
-        version=new_version,
-        previous_version_id=old_notice["notice_id"],
-        version_note=version_note,
-        requires_reconsent=clauses_changed,
-        affected_users=affected_users,
-    )
-
-    return superseded, new_notice
-
-
-# ---------------------------------------------------------------------------
-# Seed notices in standardised format
-# ---------------------------------------------------------------------------
-
-def _make_seed() -> list[dict]:
-    seeds = []
-
-    n1 = _build_notice(
-        title="Savings Account Privacy Notice",
-        content_en=(
+_SEED_NOTICES: list[dict] = [
+    {
+        "notice_id":           "NTC-SEED-0001",
+        "title":               "Savings Account Privacy Notice",
+        "product":             "Savings Account",
+        "content_en": (
             "This notice explains how Kerala Bank processes your personal data "
             "for Savings Account services under DPDP Act 2023 Section 5. "
             "Data is collected for account management, KYC, and regulatory compliance. "
             "Retention period: 10 years. You may exercise your rights via our Rights Portal."
         ),
-        product="Savings Account",
-        linked_clauses=["consent_lifecycle", "rights_management"],
-        created_by="dpo_admin",
-        status="published",
-        version=1,
-        version_note="Initial publication.",
-    )
-    n1["published_on"] = "2026-01-10"
-    n1["published_by"] = "dpo_admin"
-    seeds.append(n1)
-
-    n2 = _build_notice(
-        title="Digital Lending Privacy Notice",
-        content_en=(
+        "content_ml":          "",   # engine populates on creation
+        "linked_clauses":      ["consent_lifecycle", "rights_management"],
+        "version":             1,
+        "version_note":        "Initial publication.",
+        "previous_version_id": None,
+        "created_by":          "dpo_admin",
+        "created_at":          "2026-01-10T09:00:00+00:00",
+        "published_on":        "2026-01-10",
+        "published_by":        "dpo_admin",
+        "status":              "published",
+        "requires_reconsent":  False,
+        "affected_users":      [],
+    },
+    {
+        "notice_id":           "NTC-SEED-0002",
+        "title":               "Digital Lending Privacy Notice",
+        "product":             "Digital Lending",
+        "content_en": (
             "Kerala Bank processes your personal and financial data to evaluate "
             "your creditworthiness and disburse loans under DPDP Act 2023. "
             "Third-party credit bureaus may receive your data. "
             "Retention: 7 years post-loan closure."
         ),
-        product="Digital Lending",
-        linked_clauses=["consent_lifecycle", "breach_reporting", "data_minimisation"],
-        created_by="dpo_admin",
-        status="published",
-        version=1,
-        version_note="Updated data sharing clause for CIBIL integration.",
-    )
-    n2["published_on"] = "2026-02-05"
-    n2["published_by"] = "dpo_admin"
-    seeds.append(n2)
-
-    n3 = _build_notice(
-        title="UPI Services Privacy Notice",
-        content_en=(
+        "content_ml":          "",
+        "linked_clauses":      ["consent_lifecycle", "breach_reporting", "data_minimisation"],
+        "version":             1,
+        "version_note":        "Updated data sharing clause for CIBIL integration.",
+        "previous_version_id": None,
+        "created_by":          "dpo_admin",
+        "created_at":          "2026-02-05T09:00:00+00:00",
+        "published_on":        "2026-02-05",
+        "published_by":        "dpo_admin",
+        "status":              "published",
+        "requires_reconsent":  False,
+        "affected_users":      [],
+    },
+    {
+        "notice_id":           "NTC-SEED-0003",
+        "title":               "UPI Services Privacy Notice",
+        "product":             "UPI Services",
+        "content_en": (
             "Your transaction data processed under UPI services is governed by "
             "DPDP Act 2023 and NPCI guidelines. Data is used solely for payment "
             "processing and fraud prevention. Retention: 5 years."
         ),
-        product="UPI Services",
-        linked_clauses=["consent_lifecycle"],
-        created_by="officer_01",
-        status="draft",
-        version=1,
-        version_note="Pending DPO review.",
-    )
-    seeds.append(n3)
-
-    return seeds
-
-
-_SEED_NOTICES: list[dict] = _make_seed()
+        "content_ml":          "",
+        "linked_clauses":      ["consent_lifecycle"],
+        "version":             1,
+        "version_note":        "Pending DPO review.",
+        "previous_version_id": None,
+        "created_by":          "officer_01",
+        "created_at":          "2026-02-20T09:00:00+00:00",
+        "published_on":        None,
+        "published_by":        None,
+        "status":              "draft",
+        "requires_reconsent":  False,
+        "affected_users":      [],
+    },
+]
 
 
 # ---------------------------------------------------------------------------
-# Internal session-state bootstrap
+# Session bootstrap
 # ---------------------------------------------------------------------------
 
 def _init_notices() -> None:
-    """Load from persistent store into session state on first run."""
+    """Seed session state on first load from orchestration, falling back to sample data."""
     if "notices" not in st.session_state:
-        st.session_state.notices = _load_notices()
-        if not st.session_state.notices:
+        result = orchestration.execute_action(
+            action_type="query_notices",
+            payload={},
+            actor=st.session_state.get("username", "system"),
+        )
+        if result.get("status") == "success" and result.get("records"):
+            st.session_state.notices = result["records"]
+        else:
             st.session_state.notices = list(_SEED_NOTICES)
-            _save_notices(st.session_state.notices)
 
 
 # ---------------------------------------------------------------------------
-# Audit log helper — Step 12K
-# ---------------------------------------------------------------------------
-
-def _audit(action: str, notice: dict, actor: str) -> None:
-    append_audit_log(
-        action=action,
-        user=actor,
-        metadata={
-            "module":     "notice",
-            "notice_id":  notice.get("notice_id"),
-            "product":    notice.get("product"),
-            "version":    notice.get("version"),
-            "status":     notice.get("status"),
-        },
-    )
-
-
-# ---------------------------------------------------------------------------
-# Localised content resolver — Step 12I
+# Read helpers (no writes)
 # ---------------------------------------------------------------------------
 
 def _resolve_content(notice: dict) -> str:
+    """Return locale-appropriate content (Step 12I)."""
     lang = st.session_state.get("language", "en")
     if lang == "ml":
         return notice.get("content_ml") or notice.get("content_en", "")
     return notice.get("content_en", "")
 
 
-# ---------------------------------------------------------------------------
-# Score colour helper (unchanged from original)
-# ---------------------------------------------------------------------------
-
 def _status_colour(status: str) -> str:
-    return {"published": "#1a9e5c", "draft": "#f0a500", "superseded": "#9e9e9e"}.get(
-        status.lower(), "#9e9e9e"
-    )
+    return STATUS_COLOUR.get(status.lower(), "#9e9e9e")
 
 
 # ---------------------------------------------------------------------------
-# Main show()
+# UI-level input format validation (format only — registry validation in orchestration)
 # ---------------------------------------------------------------------------
+
+def _pre_validate_inputs(notice_text: str, linked_clauses: list[str]) -> list[str]:
+    """
+    Validate input format before calling orchestration.
+    Orchestration performs deep clause registry validation.
+    """
+    errors: list[str] = []
+    if not notice_text.strip():
+        errors.append(t("notice_content_empty"))
+    if not linked_clauses:
+        errors.append(t("notice_clause_required"))
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# Orchestration result handler
+# ---------------------------------------------------------------------------
+
+def _handle_result(result: dict, success_msg: str) -> bool:
+    """Display success or error. Returns True on success."""
+    if result.get("status") == "success":
+        st.success(success_msg)
+        return True
+    st.error(f"{t('action_failed')}: {result.get('message', t('unknown_error'))}")
+    return False
+
+
+# ===========================================================================
+# Main Streamlit entry point
+# ===========================================================================
 
 def show() -> None:
     _init_notices()
 
-    # ── Step 12A — Role gate ──────────────────────────────────────────────────
+    # ── Role gate ─────────────────────────────────────────────────────────────
     role = get_role()
-
     ALLOWED_ROLES = ("DPO", "Officer", "Auditor")
     if role not in ALLOWED_ROLES:
         st.warning(t("notices_access_restricted"))
@@ -386,16 +231,15 @@ def show() -> None:
     # ── Header ────────────────────────────────────────────────────────────────
     st.header(t("notices"))
     st.caption(t("notices_caption"))
-
     more_info(t("notices_more_info"))
 
     # ── KPI Strip ─────────────────────────────────────────────────────────────
     all_notices = st.session_state.notices
-    _total       = len(all_notices)
-    _published   = sum(1 for n in all_notices if n.get("status") == "published")
-    _draft       = sum(1 for n in all_notices if n.get("status") == "draft")
-    _superseded  = sum(1 for n in all_notices if n.get("status") == "superseded")
-    _products    = len({n["product"] for n in all_notices})
+    _total      = len(all_notices)
+    _published  = sum(1 for n in all_notices if n.get("status") == "published")
+    _draft      = sum(1 for n in all_notices if n.get("status") == "draft")
+    _superseded = sum(1 for n in all_notices if n.get("status") == "superseded")
+    _products   = len({n["product"] for n in all_notices})
 
     k1, k2, k3, k4, k5 = st.columns(5)
     for col, label_key, val, colour, sub_key in [
@@ -430,7 +274,7 @@ def show() -> None:
     tab_idx = 0
 
     # =========================================================================
-    # TAB — Create / Version Notice (DPO + Officer only, Step 12A / 12J)
+    # TAB — Create / Version Notice (DPO + Officer only)
     # =========================================================================
     if not is_auditor:
         with tab_objects[tab_idx]:
@@ -438,26 +282,18 @@ def show() -> None:
             st.caption(t("create_notice_caption"))
 
             # ── Form inputs ───────────────────────────────────────────────────
-            product = st.selectbox(
-                t("product_journey"),
-                [
-                    "Savings Account", "Digital Lending", "UPI Services",
-                    "Mobile Banking", "Credit Card", "Fixed Deposit", "Insurance Products",
-                ],
-            )
+            product = st.selectbox(t("product_journey"), PRODUCT_OPTIONS)
 
-            # Detect existing published notice for this product to show version diff
+            # Detect existing published notice — display only, no mutation
             existing = next(
-                (
-                    n for n in reversed(all_notices)
-                    if n["product"] == product and n["status"] == "published"
-                ),
+                (n for n in reversed(all_notices)
+                 if n["product"] == product and n["status"] == "published"),
                 None,
             )
             if existing:
                 st.info(
                     f"{t('active_version_for')} **{product}**: "
-                    f"v{existing['version']} — *{existing.get('version_note','—')}*"
+                    f"v{existing['version']} — *{existing.get('version_note', '—')}*"
                 )
 
             notice_title = st.text_input(
@@ -482,20 +318,12 @@ def show() -> None:
                 height=200,
             )
 
-            # ── Step 12D — Clause linkage ──────────────────────────────────────
-            all_clause_keys = [
-                "consent_lifecycle", "rights_management", "breach_reporting",
-                "data_minimisation", "audit_integrity", "sla_governance",
-                "dpia", "security_safeguards",
-            ]
-            default_clauses = (
-                existing.get("linked_clauses", ["consent_lifecycle"])
-                if existing else ["consent_lifecycle"]
-            )
+            # ── Clause linkage (UI collects; orchestration validates registry) ─
+            default_clauses = existing.get("linked_clauses", ["consent_lifecycle"]) if existing else ["consent_lifecycle"]
             linked_clauses = st.multiselect(
                 t("linked_dpdp_clauses"),
-                options=all_clause_keys,
-                default=[c for c in default_clauses if c in all_clause_keys],
+                options=ALL_CLAUSE_KEYS,
+                default=[c for c in default_clauses if c in ALL_CLAUSE_KEYS],
                 help=t("linked_clauses_help"),
             )
 
@@ -504,7 +332,7 @@ def show() -> None:
                 placeholder=t("version_note_placeholder"),
             )
 
-            # Preview Malayalam translation
+            # Malayalam preview — display only; orchestration computes canonical ML on save
             with st.expander(t("preview_malayalam"), expanded=False):
                 if notice_text:
                     ml_preview = normalize_malayalam(translate_en_to_ml(notice_text))
@@ -512,153 +340,140 @@ def show() -> None:
                 else:
                     st.caption(t("enter_english_to_preview"))
 
-            # ── Validation ────────────────────────────────────────────────────
-            def _pre_validate() -> list[str]:
-                errors = []
-                if not notice_text.strip():
-                    errors.append(t("notice_content_empty"))
-                if not linked_clauses:
-                    errors.append(t("notice_clause_required"))
-                invalid_clauses = _validate_clauses(linked_clauses)
-                if invalid_clauses:
-                    errors.append(f"{t('invalid_clause_codes')}: {', '.join(invalid_clauses)}")
-                return errors
+            st.caption(t("hash_freeze_note"))
 
-            # ── Officer path: save draft only ─────────────────────────────────
+            # ── Officer: save draft only ──────────────────────────────────────
             if is_officer:
                 st.caption(t("officer_draft_caption"))
                 if st.button(t("save_draft"), type="primary", use_container_width=True):
-                    errs = _pre_validate()
+                    errs = _pre_validate_inputs(notice_text, linked_clauses)
                     if errs:
                         for e in errs:
                             st.error(e)
                     else:
-                        new_n = _build_notice(
-                            title=notice_title,
-                            content_en=notice_text,
-                            product=product,
-                            linked_clauses=linked_clauses,
-                            created_by=actor,
-                            status="draft",
-                            version=((existing["version"] + 1) if existing else 1),
-                            previous_version_id=existing["notice_id"] if existing else None,
-                            version_note=version_note,
+                        result = orchestration.execute_action(
+                            action_type="create_notice_version",
+                            payload={
+                                "title":                notice_title,
+                                "content_en":           notice_text,
+                                "product":              product,
+                                "linked_clauses":       linked_clauses,
+                                "version_note":         version_note,
+                                "previous_version_id":  existing["notice_id"] if existing else None,
+                                "target_status":        "draft",
+                                # Hash generation and clause registry validation
+                                # are performed inside orchestration — not here
+                            },
+                            actor=actor,
                         )
-                        st.session_state.notices.append(new_n)
-                        _save_notices(st.session_state.notices)
-                        _audit(
-                            f"Notice Draft Saved | product={product} | v{new_n['version']}",
-                            new_n, actor,
-                        )
-                        st.success(
-                            f"{t('draft')} v{new_n['version']} {t('saved_for')} **{product}**. "
-                            f"{t('pending_dpo_review')}"
-                        )
+                        if _handle_result(
+                            result,
+                            f"{t('draft')} {t('saved_for')} **{product}**. {t('pending_dpo_review')}",
+                        ):
+                            st.session_state.notices.append(result["record"])
+                            st.rerun()
 
-            # ── DPO path: draft or publish ─────────────────────────────────────
+            # ── DPO: save draft or publish ────────────────────────────────────
             elif is_dpo:
                 col1, col2 = st.columns(2)
 
                 with col1:
                     if st.button(t("save_draft"), use_container_width=True):
-                        errs = _pre_validate()
+                        errs = _pre_validate_inputs(notice_text, linked_clauses)
                         if errs:
-                            for e in errs: st.error(e)
+                            for e in errs:
+                                st.error(e)
                         else:
-                            new_n = _build_notice(
-                                title=notice_title,
-                                content_en=notice_text,
-                                product=product,
-                                linked_clauses=linked_clauses,
-                                created_by=actor,
-                                status="draft",
-                                version=((existing["version"] + 1) if existing else 1),
-                                previous_version_id=existing["notice_id"] if existing else None,
-                                version_note=version_note,
+                            result = orchestration.execute_action(
+                                action_type="create_notice_version",
+                                payload={
+                                    "title":               notice_title,
+                                    "content_en":          notice_text,
+                                    "product":             product,
+                                    "linked_clauses":      linked_clauses,
+                                    "version_note":        version_note,
+                                    "previous_version_id": existing["notice_id"] if existing else None,
+                                    "target_status":       "draft",
+                                },
+                                actor=actor,
                             )
-                            st.session_state.notices.append(new_n)
-                            _save_notices(st.session_state.notices)
-                            _audit(
-                                f"Notice Draft Saved | product={product} | v{new_n['version']}",
-                                new_n, actor,
-                            )
-                            st.success(f"{t('draft')} v{new_n['version']} {t('saved_for')} **{product}**.")
+                            if _handle_result(
+                                result,
+                                f"{t('draft')} {t('saved_for')} **{product}**.",
+                            ):
+                                st.session_state.notices.append(result["record"])
+                                st.rerun()
 
                 with col2:
                     if st.button(t("publish_notice"), type="primary", use_container_width=True):
-                        errs = _pre_validate()
+                        errs = _pre_validate_inputs(notice_text, linked_clauses)
                         if errs:
-                            for e in errs: st.error(e)
+                            for e in errs:
+                                st.error(e)
                         else:
-                            notices = st.session_state.notices
-
-                            # Step 12C — supersede existing published version
-                            if existing:
-                                superseded, new_n = _create_new_version(
-                                    old_notice=existing,
-                                    content_en=notice_text,
-                                    linked_clauses=linked_clauses,
-                                    version_note=version_note,
-                                    created_by=actor,
+                            # Orchestration will:
+                            #   1. Validate clause registry
+                            #   2. Compute SHA-256 content hash (freeze)
+                            #   3. Compare clauses → set requires_reconsent
+                            #   4. Supersede previous published notice
+                            #   5. Identify and notify affected users
+                            #   6. Write audit log and trigger compliance
+                            result = orchestration.execute_action(
+                                action_type="publish_notice",
+                                payload={
+                                    "title":               notice_title,
+                                    "content_en":          notice_text,
+                                    "product":             product,
+                                    "linked_clauses":      linked_clauses,
+                                    "version_note":        version_note,
+                                    "previous_version_id": existing["notice_id"] if existing else None,
+                                },
+                                actor=actor,
+                            )
+                            if result.get("status") == "success":
+                                record       = result["record"]
+                                reconsent_msg = (
+                                    f" **{t('reconsent_required')}**"
+                                    if record.get("requires_reconsent") else ""
                                 )
-                                # Replace old entry with superseded copy
-                                for i, n in enumerate(notices):
-                                    if n["notice_id"] == existing["notice_id"]:
-                                        notices[i] = superseded
-                                        break
+                                affected     = result.get("affected_users_count", 0)
+                                affected_msg = (
+                                    f" {affected} {t('users_notified_sms')}"
+                                    if affected else ""
+                                )
+                                st.success(
+                                    f"{t('notice')} v{record['version']} "
+                                    f"{t('published_for')} **{product}**."
+                                    + reconsent_msg + affected_msg
+                                )
+                                clause_info = get_clause("consent_lifecycle") or {}
+                                explain_dynamic(
+                                    title=t("notice_published"),
+                                    reason=t("notice_published_reason"),
+                                    old_clause=clause_info.get("old", ""),
+                                    new_clause=clause_info.get("new", ""),
+                                )
+                                # Refresh session notices from engine source of truth
+                                refresh = orchestration.execute_action(
+                                    action_type="query_notices",
+                                    payload={},
+                                    actor=actor,
+                                )
+                                if refresh.get("status") == "success":
+                                    st.session_state.notices = refresh["records"]
+                                else:
+                                    st.session_state.notices.append(record)
+                                st.rerun()
                             else:
-                                new_n = _build_notice(
-                                    title=notice_title,
-                                    content_en=notice_text,
-                                    product=product,
-                                    linked_clauses=linked_clauses,
-                                    created_by=actor,
-                                    status="draft",
-                                    version=1,
-                                    version_note=version_note,
+                                st.error(
+                                    f"{t('publish_failed')}: "
+                                    f"{result.get('message', t('unknown_error'))}"
                                 )
-
-                            # Publish
-                            new_n["status"]       = "published"
-                            new_n["published_on"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                            new_n["published_by"] = actor
-
-                            notices.append(new_n)
-                            st.session_state.notices = notices
-                            _save_notices(notices)
-
-                            _audit(
-                                f"Privacy Notice Published | product={product} | v{new_n['version']}",
-                                new_n, actor,
-                            )
-
-                            reconsent_msg = ""
-                            if new_n.get("requires_reconsent"):
-                                reconsent_msg = f" **{t('reconsent_required')}**"
-                            affected = new_n.get("affected_users", [])
-                            affected_msg = (
-                                f" {len(affected)} {t('users_notified_sms')}" if affected else ""
-                            )
-
-                            st.success(
-                                f"{t('notice')} v{new_n['version']} {t('published_for')} **{product}**."
-                                + reconsent_msg + affected_msg
-                            )
-
-                            clause_info = get_clause("consent_lifecycle") or {}
-                            explain_dynamic(
-                                title=t("notice_published"),
-                                reason=t("notice_published_reason"),
-                                old_clause=clause_info.get("old", ""),
-                                new_clause=clause_info.get("new", ""),
-                            )
-
-                            st.rerun()
 
         tab_idx += 1
 
     # =========================================================================
-    # TAB — Notice History
+    # TAB — Notice History (all roles)
     # =========================================================================
     with tab_objects[tab_idx]:
         st.subheader(t("notice_version_history"))
@@ -666,121 +481,115 @@ def show() -> None:
         if is_auditor:
             st.info(t("auditor_history_view"))
 
-        # Filters
-        fcol1, fcol2, fcol3 = st.columns(3)
-        with fcol1:
-            f_product = st.multiselect(
-                t("filter_by_product"),
-                sorted({n["product"] for n in all_notices}),
-                default=[],
-            )
-        with fcol2:
-            f_status = st.multiselect(
-                t("filter_by_status"),
-                ["published", "draft", "superseded"],
-                default=[],
-            )
-        with fcol3:
-            f_reconsent = st.checkbox(t("requires_reconsent_only"), value=False)
-
-        filtered = list(all_notices)
-        if f_product:    filtered = [n for n in filtered if n["product"] in f_product]
-        if f_status:     filtered = [n for n in filtered if n.get("status") in f_status]
-        if f_reconsent:  filtered = [n for n in filtered if n.get("requires_reconsent")]
-
-        if filtered:
-            rows = []
-            for n in filtered:
-                affected_count = len(n.get("affected_users", []))
-                rows.append({
-                    t("notice_id"):       n.get("notice_id", "—"),
-                    t("product"):         n["product"],
-                    t("version"):         f"v{n['version']}",
-                    t("status"):          t(n.get("status", "draft")),
-                    t("clauses_linked"):  ", ".join(n.get("linked_clauses", [])),
-                    t("reconsent"):       t("yes") if n.get("requires_reconsent") else t("no"),
-                    t("affected_users"):  affected_count if affected_count else "—",
-                    t("version_note"):    n.get("version_note", "—"),
-                    t("published_on"):    n.get("published_on") or "—",
-                    t("by"):              n.get("published_by") or n.get("created_by", "—"),
-                    t("created_at"):      n.get("created_at", "—")[:16],
-                })
-
-            df = pd.DataFrame(rows)
-            st.dataframe(df, use_container_width=True, hide_index=True, height=420)
-            st.caption(f"{len(filtered)} {t('notice_versions_shown')}")
-
-            export_data(df, "privacy_notices_history")
-
-            more_info(t("notice_history_more_info"))
+        if not all_notices:
+            st.info(t("no_notices_recorded"))
         else:
-            st.info(t("no_notices_match_filters"))
+            # Filters
+            fcol1, fcol2, fcol3 = st.columns(3)
+            with fcol1:
+                f_product = st.multiselect(
+                    t("filter_by_product"),
+                    sorted({n["product"] for n in all_notices}),
+                    default=[],
+                )
+            with fcol2:
+                f_status = st.multiselect(
+                    t("filter_by_status"),
+                    ["published", "draft", "superseded"],
+                    default=[],
+                )
+            with fcol3:
+                f_reconsent = st.checkbox(t("requires_reconsent_only"), value=False)
 
-        # ── DPO: publish pending drafts from history tab ──────────────────────
-        if is_dpo:
-            drafts = [n for n in st.session_state.notices if n.get("status") == "draft"]
-            if drafts:
-                st.divider()
-                st.subheader(t("publish_pending_drafts"))
+            filtered = list(all_notices)
+            if f_product:   filtered = [n for n in filtered if n["product"] in f_product]
+            if f_status:    filtered = [n for n in filtered if n.get("status") in f_status]
+            if f_reconsent: filtered = [n for n in filtered if n.get("requires_reconsent")]
 
-                draft_labels = [
-                    f"{n['product']} — v{n['version']} ({n.get('version_note', '—')[:40]})"
-                    for n in drafts
-                ]
-                sel_label = st.selectbox(t("select_draft_to_publish"), draft_labels)
-                sel_idx   = draft_labels.index(sel_label)
-                sel_draft = drafts[sel_idx]
+            if filtered:
+                rows = []
+                for n in filtered:
+                    affected_count = len(n.get("affected_users", []))
+                    rows.append({
+                        t("notice_id"):      n.get("notice_id", "—"),
+                        t("product"):        n["product"],
+                        t("version"):        f"v{n['version']}",
+                        t("status"):         t(n.get("status", "draft")),
+                        t("clauses_linked"): ", ".join(n.get("linked_clauses", [])),
+                        t("reconsent"):      t("yes") if n.get("requires_reconsent") else t("no"),
+                        t("affected_users"): affected_count if affected_count else "—",
+                        t("version_note"):   n.get("version_note", "—"),
+                        t("published_on"):   n.get("published_on") or "—",
+                        t("by"):             n.get("published_by") or n.get("created_by", "—"),
+                        t("created_at"):     n.get("created_at", "—")[:16],
+                    })
 
-                if st.button(t("publish_selected_draft"), type="primary"):
-                    notices = st.session_state.notices
+                df = pd.DataFrame(rows)
+                st.dataframe(df, use_container_width=True, hide_index=True, height=420)
+                st.caption(f"{len(filtered)} {t('notice_versions_shown')}")
+                export_data(df, "privacy_notices_history")
+                more_info(t("notice_history_more_info"))
+            else:
+                st.info(t("no_notices_match_filters"))
 
-                    # Supersede any currently published version for same product
-                    for i, n in enumerate(notices):
-                        if n["product"] == sel_draft["product"] and n["status"] == "published":
-                            notices[i] = dict(n)
-                            notices[i]["status"] = "superseded"
+            # ── DPO: publish pending drafts from history tab ──────────────────
+            if is_dpo:
+                drafts = [n for n in st.session_state.notices if n.get("status") == "draft"]
+                if drafts:
+                    st.divider()
+                    st.subheader(t("publish_pending_drafts"))
 
-                    # Publish the draft
-                    for i, n in enumerate(notices):
-                        if n["notice_id"] == sel_draft["notice_id"]:
-                            notices[i] = dict(n)
-                            notices[i]["status"]       = "published"
-                            notices[i]["published_on"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                            notices[i]["published_by"] = actor
+                    draft_labels = [
+                        f"{n['product']} — v{n['version']} ({n.get('version_note', '—')[:40]})"
+                        for n in drafts
+                    ]
+                    sel_label = st.selectbox(t("select_draft_to_publish"), draft_labels)
+                    sel_idx   = draft_labels.index(sel_label)
+                    sel_draft = drafts[sel_idx]
 
-                            # Step 12F — detect affected users now
-                            affected = _find_outdated_users(
-                                notices[i]["product"], notices[i]["version"]
+                    if st.button(t("publish_selected_draft"), type="primary"):
+                        # Orchestration supersedes any currently published version,
+                        # applies hash freeze, detects affected users, and notifies them
+                        result = orchestration.execute_action(
+                            action_type="publish_notice",
+                            payload={
+                                "notice_id":  sel_draft["notice_id"],  # publish an existing draft
+                                "product":    sel_draft["product"],
+                            },
+                            actor=actor,
+                        )
+                        if result.get("status") == "success":
+                            record = result["record"]
+                            clause_info = get_clause("consent_lifecycle") or {}
+                            explain_dynamic(
+                                title=t("notice_published"),
+                                reason=t("notice_published_reason"),
+                                old_clause=clause_info.get("old", ""),
+                                new_clause=clause_info.get("new", ""),
                             )
-                            notices[i]["affected_users"] = affected
-                            _notify_affected_users(affected)
-                            break
-
-                    st.session_state.notices = notices
-                    _save_notices(notices)
-
-                    _audit(
-                        f"Draft Published | product={sel_draft['product']} | v{sel_draft['version']}",
-                        sel_draft, actor,
-                    )
-
-                    clause_info = get_clause("consent_lifecycle") or {}
-                    explain_dynamic(
-                        title=t("notice_published"),
-                        reason=t("notice_published_reason"),
-                        old_clause=clause_info.get("old", ""),
-                        new_clause=clause_info.get("new", ""),
-                    )
-
-                    st.success(
-                        f"{t('draft')} v{sel_draft['version']} {t('published_for')} **{sel_draft['product']}**."
-                    )
-                    st.rerun()
+                            st.success(
+                                f"{t('draft')} v{sel_draft['version']} "
+                                f"{t('published_for')} **{sel_draft['product']}**."
+                            )
+                            # Refresh from engine
+                            refresh = orchestration.execute_action(
+                                action_type="query_notices",
+                                payload={},
+                                actor=actor,
+                            )
+                            if refresh.get("status") == "success":
+                                st.session_state.notices = refresh["records"]
+                            st.rerun()
+                        else:
+                            st.error(
+                                f"{t('publish_failed')}: "
+                                f"{result.get('message', t('unknown_error'))}"
+                            )
 
     tab_idx += 1
 
     # =========================================================================
-    # TAB — Notice Preview (localised display, Step 12I)
+    # TAB — Notice Preview (localised, Step 12I)
     # =========================================================================
     with tab_objects[tab_idx]:
         st.subheader(t("notice_preview"))
@@ -805,9 +614,8 @@ def show() -> None:
                     [t("english"), t("malayalam")],
                     horizontal=True,
                 )
-                # Step 12I — language-aware content resolution
                 display_lang = "ml" if lang_opt == t("malayalam") else "en"
-                content = (
+                content      = (
                     sel_notice.get("content_ml") or sel_notice.get("content_en", "")
                     if display_lang == "ml"
                     else sel_notice.get("content_en", "")
@@ -825,7 +633,7 @@ def show() -> None:
                         <div style="font-weight:700;font-size:1.05rem;color:#0A3D91;margin-bottom:8px;">
                             {sel_notice['title']}
                             <span style="font-size:0.8rem;color:#888;margin-left:8px;">
-                                v{sel_notice['version']} · {sel_notice.get('published_on','—')}
+                                v{sel_notice['version']} · {sel_notice.get('published_on', '—')}
                             </span>
                         </div>
                         <div style="font-size:0.93rem;color:#333;line-height:1.7;">
@@ -850,8 +658,8 @@ def show() -> None:
                     if prev:
                         with st.expander(t("view_superseded_version")):
                             st.caption(
-                                f"v{prev['version']} — {prev.get('version_note','—')} "
-                                f"| {t('superseded_on')} {sel_notice.get('published_on','—')}"
+                                f"v{prev['version']} — {prev.get('version_note', '—')} "
+                                f"| {t('superseded_on')} {sel_notice.get('published_on', '—')}"
                             )
                             st.write(
                                 prev.get("content_ml" if display_lang == "ml" else "content_en", "")

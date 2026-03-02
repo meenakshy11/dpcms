@@ -75,6 +75,31 @@ from engine.consent_validator import (
 )
 from engine.rules.decision_engine import DecisionEngine
 
+# ---------------------------------------------------------------------------
+# Lazy engine imports — guarded so individual modules can be absent during
+# testing without breaking the entire orchestration layer.
+# ---------------------------------------------------------------------------
+
+try:
+    from engine import consent_validator
+except ImportError:  # pragma: no cover
+    consent_validator = None  # type: ignore[assignment]
+
+try:
+    from engine import purpose_enforcer
+except ImportError:  # pragma: no cover
+    purpose_enforcer = None  # type: ignore[assignment]
+
+try:
+    from engine import sla_engine
+except ImportError:  # pragma: no cover
+    sla_engine = None  # type: ignore[assignment]
+
+try:
+    from engine import compliance_engine
+except ImportError:  # pragma: no cover
+    compliance_engine = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -118,6 +143,566 @@ _REQUIRED_EVENT_KEYS = [
     "entity_id", "recipient_id",
     "channel", "payload", "timestamp",
 ]
+
+
+# ===========================================================================
+# ─── SECTION 0: GOVERNANCE TRANSACTION MANAGER (Step 14) ───────────────────
+# ===========================================================================
+
+class GovernanceTransactionManager:
+    """
+    Central governance transaction manager.
+
+    ALL storage writes and engine invocations must flow through this class.
+    No module may write to ``storage/`` directly — call execute_action() instead.
+
+    Architecture
+    ------------
+    Pre-commit hooks   → consent check → purpose check → notice linkage check
+    Action execution   → engine validation → centralised storage write
+    Post-commit hooks  → SLA recalculation → compliance update → audit ledger
+
+    Public API
+    ----------
+    execute_action(action_type, payload, actor)
+        Validate → write → audit.  Returns a structured result dict.
+
+    _write_storage(path, data)
+        **Only** method in the system permitted to write to storage/*.
+        All other modules must call execute_action() which delegates here.
+    """
+
+    # ── Registered engine names → module references ──────────────────────────
+
+    def __init__(self) -> None:
+        self.engines: dict[str, Any] = {
+            "consent":    consent_validator,
+            "purpose":    purpose_enforcer,
+            "sla":        sla_engine,
+            "compliance": compliance_engine,
+        }
+
+    # =========================================================================
+    # Internal helpers
+    # =========================================================================
+
+    def _engine(self, name: str) -> Any:
+        """Return engine module; raise RuntimeError if not loaded."""
+        mod = self.engines.get(name)
+        if mod is None:
+            raise RuntimeError(
+                f"GovernanceTransactionManager: engine '{name}' is not available. "
+                "Ensure the module is installed and importable."
+            )
+        return mod
+
+    def _write_storage(self, path: Path | str, data: Any) -> None:
+        """
+        **Sole authorised storage-write method for the entire project.**
+
+        Parameters
+        ----------
+        path : Relative or absolute path inside the storage/ directory.
+        data : Python object serialisable to JSON, or a raw str/bytes.
+
+        Raises
+        ------
+        ValueError  if path escapes the storage/ directory (path traversal guard).
+        IOError     if the write fails.
+        """
+        target = Path(path).resolve()
+        storage_root = Path("storage").resolve()
+
+        # Path-traversal guard — only storage/ sub-paths are permitted.
+        try:
+            target.relative_to(storage_root)
+        except ValueError:
+            raise ValueError(
+                f"GovernanceTransactionManager._write_storage: "
+                f"path '{path}' is outside the permitted storage/ directory. "
+                "Direct writes to arbitrary paths are prohibited."
+            )
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(data, (str, bytes)):
+            mode = "wb" if isinstance(data, bytes) else "w"
+            target.open(mode, encoding=None if isinstance(data, bytes) else "utf-8").write(data)
+        else:
+            target.write_text(
+                json.dumps(data, indent=2, ensure_ascii=False, default=str),
+                encoding="utf-8",
+            )
+
+        logger.debug(f"[STORAGE] Written: {target}")
+
+    # =========================================================================
+    # Pre-commit hooks
+    # =========================================================================
+
+    def _pre_commit_consent(self, payload: dict, actor: str) -> tuple[bool, str]:
+        """
+        Pre-commit hook: validate that active consent exists for the
+        customer + purpose combination in the payload.
+
+        Returns (ok, reason).
+        """
+        customer_id = payload.get("customer_id", "")
+        purpose     = payload.get("purpose", "")
+
+        if not customer_id or not purpose:
+            return True, "consent_check_skipped (no customer_id/purpose in payload)"
+
+        try:
+            allowed, reason = validate_consent(customer_id, purpose, actor=actor)
+            return allowed, reason
+        except Exception as exc:
+            logger.warning(f"pre_commit_consent: validation error — {exc}")
+            return False, f"consent_validation_error: {exc}"
+
+    def _pre_commit_purpose(self, payload: dict, actor: str) -> tuple[bool, str]:
+        """
+        Pre-commit hook: validate that the stated purpose is registered and
+        active via purpose_enforcer (if available).
+
+        Returns (ok, reason).
+        """
+        purpose = payload.get("purpose", "")
+        if not purpose:
+            return True, "purpose_check_skipped (no purpose in payload)"
+
+        mod = self.engines.get("purpose")
+        if mod is None:
+            logger.debug("pre_commit_purpose: purpose_enforcer unavailable, skipping.")
+            return True, "purpose_check_skipped (engine unavailable)"
+
+        try:
+            validate_fn = getattr(mod, "validate_purpose", None)
+            if validate_fn is None:
+                return True, "purpose_check_skipped (validate_purpose not found)"
+            result = validate_fn(purpose, actor=actor)
+            # validate_purpose may return (bool, str) or just bool
+            if isinstance(result, tuple):
+                return result[0], result[1]
+            return bool(result), "purpose_valid" if result else "purpose_invalid"
+        except Exception as exc:
+            logger.warning(f"pre_commit_purpose: validation error — {exc}")
+            return False, f"purpose_validation_error: {exc}"
+
+    def _pre_commit_notice_linkage(self, payload: dict, actor: str) -> tuple[bool, str]:
+        """
+        Pre-commit hook: verify that the action references a valid, published
+        notice (required under DPDP § 5 — Notice obligation).
+
+        Returns (ok, reason).
+        """
+        notice_id = payload.get("notice_id", "")
+        if not notice_id:
+            # Notice linkage is advisory unless the action_type mandates it.
+            return True, "notice_check_skipped (no notice_id in payload)"
+
+        # Resolve against notice storage if available.
+        notice_path = Path("storage/notices.json")
+        if not notice_path.exists():
+            return True, "notice_check_skipped (notices.json not found)"
+
+        try:
+            notices = json.loads(notice_path.read_text(encoding="utf-8"))
+            linked  = any(n.get("notice_id") == notice_id for n in notices)
+            if linked:
+                return True, f"notice_linked ({notice_id})"
+            return False, f"notice_not_found: '{notice_id}' is not in notices.json"
+        except Exception as exc:
+            logger.warning(f"pre_commit_notice_linkage: error — {exc}")
+            return True, f"notice_check_error (non-blocking): {exc}"
+
+    # =========================================================================
+    # Post-commit hooks
+    # =========================================================================
+
+    def _post_commit_sla(
+        self,
+        action_type: str,
+        payload: dict,
+        actor: str,
+        result: dict,
+    ) -> None:
+        """
+        Post-commit hook: trigger SLA recalculation in sla_engine (if available).
+        """
+        mod = self.engines.get("sla")
+        if mod is None:
+            logger.debug("post_commit_sla: sla_engine unavailable, skipping.")
+            return
+
+        try:
+            recalc_fn = getattr(mod, "recalculate_sla", None)
+            if recalc_fn:
+                recalc_fn(
+                    action_type=action_type,
+                    payload=payload,
+                    actor=actor,
+                    transaction_result=result,
+                )
+        except Exception as exc:
+            # SLA update failures are logged but must NOT roll back the transaction.
+            logger.error(f"post_commit_sla: recalculation failed — {exc}")
+
+    def _post_commit_compliance(
+        self,
+        action_type: str,
+        payload: dict,
+        actor: str,
+        result: dict,
+    ) -> None:
+        """
+        Post-commit hook: trigger compliance score / status recalculation
+        in compliance_engine (if available).
+        """
+        mod = self.engines.get("compliance")
+        if mod is None:
+            logger.debug("post_commit_compliance: compliance_engine unavailable, skipping.")
+            return
+
+        try:
+            update_fn = getattr(mod, "update_compliance_status", None)
+            if update_fn:
+                update_fn(
+                    action_type=action_type,
+                    payload=payload,
+                    actor=actor,
+                    transaction_result=result,
+                )
+        except Exception as exc:
+            logger.error(f"post_commit_compliance: update failed — {exc}")
+
+    def _post_commit_audit(
+        self,
+        action_type: str,
+        payload: dict,
+        actor: str,
+        result: dict,
+        transaction_id: str,
+    ) -> None:
+        """
+        Post-commit hook: write a tamper-evident audit ledger entry for
+        every completed governance transaction.
+        """
+        try:
+            append_audit_log(
+                action=(
+                    f"GovernanceTransaction | action={action_type}"
+                    f" | status={'committed' if result.get('success') else 'failed'}"
+                    f" | tx={transaction_id}"
+                ),
+                user=actor,
+                metadata={
+                    "transaction_id": transaction_id,
+                    "action_type":    action_type,
+                    "payload_keys":   list(payload.keys()),
+                    "success":        result.get("success"),
+                    "reason":         result.get("reason"),
+                    "timestamp":      result.get("timestamp"),
+                },
+            )
+        except Exception as exc:
+            logger.error(f"post_commit_audit: ledger write failed — {exc}")
+
+    # =========================================================================
+    # Central execute_action() — Step 1.2
+    # =========================================================================
+
+    def execute_action(
+        self,
+        action_type: str,
+        payload: dict,
+        actor: str,
+    ) -> dict[str, Any]:
+        """
+        Execute a governance-validated action.
+
+        This is the **single entry-point** for all state-changing operations
+        in the system. No module may write to storage or invoke engines
+        directly — all mutations must flow through here.
+
+        Flow
+        ----
+        Pre-commit:
+          1. Validate consent         (consent_validator)
+          2. Validate purpose         (purpose_enforcer)
+          3. Validate notice linkage  (notices.json)
+
+        Execution:
+          4. Run the action-specific engine validation
+          5. Write to storage via _write_storage()
+
+        Post-commit:
+          6. SLA recalculation        (sla_engine)
+          7. Compliance update        (compliance_engine)
+          8. Append audit ledger entry
+
+        Parameters
+        ----------
+        action_type : A registered action key, e.g.
+                      "consent_create", "rights_submit", "breach_report",
+                      "notice_publish", "dpia_approve", "sla_update",
+                      "compliance_update", "notification_send".
+        payload     : Arbitrary dict — must include at minimum the fields
+                      required by the action's engine validator.
+        actor       : Username / service identifier initiating the action.
+
+        Returns
+        -------
+        dict:
+            success          : bool
+            transaction_id   : str   — globally unique TX reference
+            action_type      : str
+            actor            : str
+            timestamp        : str   — UTC ISO-8601
+            reason           : str   — human-readable outcome
+            engine_result    : dict  — raw engine validator output (if any)
+            pre_commit_checks: dict  — results of each pre-commit hook
+            storage_path     : str | None — where data was persisted
+        """
+        transaction_id = f"TX-{uuid.uuid4().hex[:12].upper()}"
+        ts             = datetime.now(timezone.utc).isoformat()
+
+        logger.info(
+            f"[GTM] execute_action | tx={transaction_id}"
+            f" | action={action_type} | actor={actor}"
+        )
+
+        # ── Pre-commit hooks ──────────────────────────────────────────────────
+        consent_ok, consent_reason   = self._pre_commit_consent(payload, actor)
+        purpose_ok, purpose_reason   = self._pre_commit_purpose(payload, actor)
+        notice_ok,  notice_reason    = self._pre_commit_notice_linkage(payload, actor)
+
+        pre_commit_checks = {
+            "consent":        {"passed": consent_ok, "reason": consent_reason},
+            "purpose":        {"passed": purpose_ok, "reason": purpose_reason},
+            "notice_linkage": {"passed": notice_ok,  "reason": notice_reason},
+        }
+
+        if not (consent_ok and purpose_ok and notice_ok):
+            failed = [k for k, v in pre_commit_checks.items() if not v["passed"]]
+            reason = f"Pre-commit validation failed: {', '.join(failed)}"
+            logger.warning(f"[GTM] {reason} | tx={transaction_id}")
+
+            result: dict[str, Any] = {
+                "success":           False,
+                "transaction_id":    transaction_id,
+                "action_type":       action_type,
+                "actor":             actor,
+                "timestamp":         ts,
+                "reason":            reason,
+                "engine_result":     {},
+                "pre_commit_checks": pre_commit_checks,
+                "storage_path":      None,
+            }
+            self._post_commit_audit(action_type, payload, actor, result, transaction_id)
+            return result
+
+        # ── Engine validation ─────────────────────────────────────────────────
+        engine_result: dict[str, Any] = {}
+        try:
+            engine_result = self._run_engine_validation(action_type, payload, actor)
+        except Exception as exc:
+            reason = f"Engine validation error for '{action_type}': {exc}"
+            logger.error(f"[GTM] {reason} | tx={transaction_id}")
+            result = {
+                "success":           False,
+                "transaction_id":    transaction_id,
+                "action_type":       action_type,
+                "actor":             actor,
+                "timestamp":         ts,
+                "reason":            reason,
+                "engine_result":     {},
+                "pre_commit_checks": pre_commit_checks,
+                "storage_path":      None,
+            }
+            self._post_commit_audit(action_type, payload, actor, result, transaction_id)
+            return result
+
+        if not engine_result.get("valid", True):
+            reason = engine_result.get("reason", f"Engine rejected action '{action_type}'")
+            logger.warning(f"[GTM] Engine blocked action | tx={transaction_id} | {reason}")
+            result = {
+                "success":           False,
+                "transaction_id":    transaction_id,
+                "action_type":       action_type,
+                "actor":             actor,
+                "timestamp":         ts,
+                "reason":            reason,
+                "engine_result":     engine_result,
+                "pre_commit_checks": pre_commit_checks,
+                "storage_path":      None,
+            }
+            self._post_commit_audit(action_type, payload, actor, result, transaction_id)
+            return result
+
+        # ── Storage write ─────────────────────────────────────────────────────
+        storage_path: str | None = None
+        try:
+            storage_path = self._persist_action(action_type, payload, transaction_id, ts)
+        except Exception as exc:
+            reason = f"Storage write failed for '{action_type}': {exc}"
+            logger.error(f"[GTM] {reason} | tx={transaction_id}")
+            result = {
+                "success":           False,
+                "transaction_id":    transaction_id,
+                "action_type":       action_type,
+                "actor":             actor,
+                "timestamp":         ts,
+                "reason":            reason,
+                "engine_result":     engine_result,
+                "pre_commit_checks": pre_commit_checks,
+                "storage_path":      None,
+            }
+            self._post_commit_audit(action_type, payload, actor, result, transaction_id)
+            return result
+
+        # ── Build committed result ────────────────────────────────────────────
+        result = {
+            "success":           True,
+            "transaction_id":    transaction_id,
+            "action_type":       action_type,
+            "actor":             actor,
+            "timestamp":         ts,
+            "reason":            f"Action '{action_type}' committed successfully.",
+            "engine_result":     engine_result,
+            "pre_commit_checks": pre_commit_checks,
+            "storage_path":      storage_path,
+        }
+
+        # ── Post-commit hooks ─────────────────────────────────────────────────
+        self._post_commit_sla(action_type, payload, actor, result)
+        self._post_commit_compliance(action_type, payload, actor, result)
+        self._post_commit_audit(action_type, payload, actor, result, transaction_id)
+
+        logger.info(
+            f"[GTM] Transaction committed | tx={transaction_id}"
+            f" | action={action_type} | path={storage_path}"
+        )
+        return result
+
+    # =========================================================================
+    # Engine dispatcher
+    # =========================================================================
+
+    _ACTION_ENGINE_MAP: dict[str, str] = {
+        # action_type prefix → engine name
+        "consent":     "consent",
+        "purpose":     "purpose",
+        "sla":         "sla",
+        "compliance":  "compliance",
+        "breach":      "compliance",
+        "dpia":        "compliance",
+        "rights":      "consent",
+        "notice":      "consent",
+    }
+
+    def _run_engine_validation(
+        self,
+        action_type: str,
+        payload: dict,
+        actor: str,
+    ) -> dict[str, Any]:
+        """
+        Dispatch to the appropriate engine based on action_type prefix.
+        Returns a dict with at minimum {"valid": bool, "reason": str}.
+        """
+        prefix = action_type.split("_")[0]
+        engine_name = self._ACTION_ENGINE_MAP.get(prefix)
+
+        if engine_name is None:
+            # Unknown action types pass engine validation but are logged.
+            logger.debug(
+                f"_run_engine_validation: no engine mapped for "
+                f"prefix='{prefix}' — validation skipped."
+            )
+            return {"valid": True, "reason": "no_engine_mapped"}
+
+        mod = self.engines.get(engine_name)
+        if mod is None:
+            logger.debug(
+                f"_run_engine_validation: engine '{engine_name}' unavailable"
+                f" — validation skipped."
+            )
+            return {"valid": True, "reason": f"engine_{engine_name}_unavailable"}
+
+        # Try standardised validate() entry-point first, then engine-specific ones.
+        for fn_name in ("validate", "validate_action", f"validate_{prefix}"):
+            fn = getattr(mod, fn_name, None)
+            if fn:
+                raw = fn(action_type=action_type, payload=payload, actor=actor)
+                if isinstance(raw, tuple):
+                    ok, msg = raw
+                    return {"valid": ok, "reason": msg}
+                if isinstance(raw, dict):
+                    return raw
+                return {"valid": bool(raw), "reason": str(raw)}
+
+        # Engine present but no known validation method → allow.
+        return {"valid": True, "reason": f"engine_{engine_name}_no_validator"}
+
+    # =========================================================================
+    # Storage persistence router
+    # =========================================================================
+
+    _ACTION_STORAGE_MAP: dict[str, str] = {
+        "consent":     "storage/consents.json",
+        "rights":      "storage/rights_requests.json",
+        "breach":      "storage/breaches.json",
+        "dpia":        "storage/dpias.json",
+        "sla":         "storage/sla_records.json",
+        "compliance":  "storage/compliance_records.json",
+        "notice":      "storage/notices.json",
+        "notification": "storage/notifications.json",
+        "purpose":     "storage/purposes.json",
+    }
+
+    def _persist_action(
+        self,
+        action_type: str,
+        payload: dict,
+        transaction_id: str,
+        timestamp: str,
+    ) -> str:
+        """
+        Append the action payload (enriched with tx metadata) to the
+        appropriate storage JSON file.  Returns the path written.
+        """
+        prefix = action_type.split("_")[0]
+        storage_file = self._ACTION_STORAGE_MAP.get(prefix, "storage/generic_actions.json")
+        target = Path(storage_file)
+
+        # Load existing records (graceful empty-file handling).
+        existing: list[dict] = []
+        if target.exists():
+            try:
+                raw = target.read_text(encoding="utf-8").strip()
+                parsed = json.loads(raw) if raw else []
+                existing = parsed if isinstance(parsed, list) else []
+            except (json.JSONDecodeError, IOError):
+                existing = []
+
+        record = {
+            "transaction_id": transaction_id,
+            "action_type":    action_type,
+            "timestamp":      timestamp,
+            **payload,
+        }
+        existing.append(record)
+
+        self._write_storage(target, existing)
+        return storage_file
+
+
+# ---------------------------------------------------------------------------
+# Module-level singleton — import and use this everywhere.
+# ---------------------------------------------------------------------------
+
+governance_manager = GovernanceTransactionManager()
 
 
 # ===========================================================================
@@ -365,9 +950,8 @@ def send_whatsapp(event: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 def _ensure_notifications_store() -> None:
-    _NOTIFICATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
     if not _NOTIFICATIONS_PATH.exists():
-        _NOTIFICATIONS_PATH.write_text("[]", encoding="utf-8")
+        governance_manager._write_storage(_NOTIFICATIONS_PATH, [])
 
 
 def _load_notifications() -> list[dict]:
@@ -378,10 +962,12 @@ def _load_notifications() -> list[dict]:
 
 
 def _save_notifications(items: list[dict]) -> None:
-    _NOTIFICATIONS_PATH.write_text(
-        json.dumps(items, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    """
+    Write notifications list to storage.
+    All writes are routed through GovernanceTransactionManager._write_storage()
+    — no module may call open("storage/...") directly.
+    """
+    governance_manager._write_storage(_NOTIFICATIONS_PATH, items)
 
 
 def create_in_app_notification(event: dict[str, Any]) -> None:
@@ -1048,19 +1634,50 @@ if __name__ == "__main__":
     from engine.audit_ledger import clear_ledger
     from engine.consent_validator import create_consent, STORAGE_PATH
 
-    # Clean slate
+    # Clean slate — init storage through the governance manager
     clear_ledger(confirm=True)
-    STORAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    STORAGE_PATH.write_text("[]", encoding="utf-8")
-    _NOTIFICATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _NOTIFICATIONS_PATH.write_text("[]", encoding="utf-8")
-    print("Storage cleared.\n")
+    governance_manager._write_storage(STORAGE_PATH, [])
+    governance_manager._write_storage(_NOTIFICATIONS_PATH, [])
+    print("Storage cleared via GovernanceTransactionManager.\n")
 
     # Seed consents
     create_consent("CUST001", "kyc",       granted=True,  actor="setup")
     create_consent("CUST001", "marketing", granted=False, actor="setup")
     create_consent("CUST002", "kyc",       granted=True,  actor="setup")
     print("Consents seeded.\n")
+
+    # ── GovernanceTransactionManager tests ───────────────────────────────────
+    print("── GovernanceTransactionManager.execute_action ────────────")
+
+    # 1. Consent create action
+    tx1 = governance_manager.execute_action(
+        action_type="consent_create",
+        payload={"customer_id": "CUST001", "purpose": "kyc", "granted": True},
+        actor="setup",
+    )
+    print(f"  [consent_create]  success={tx1['success']} tx={tx1['transaction_id']}")
+    pprint.pprint(tx1["pre_commit_checks"])
+
+    # 2. Notification send action
+    tx2 = governance_manager.execute_action(
+        action_type="notification_send",
+        payload={
+            "recipient_id": "CUST001",
+            "channel": "in_app",
+            "message": "Your account has been updated.",
+        },
+        actor="notification_service",
+    )
+    print(f"  [notification_send] success={tx2['success']} path={tx2['storage_path']}")
+
+    # 3. Path-traversal guard (should raise ValueError)
+    print("\n── _write_storage path-traversal guard ────────────────────")
+    try:
+        governance_manager._write_storage("/etc/passwd", {"hack": True})
+    except ValueError as e:
+        print(f"  Caught expected error: {e}")
+
+    print()
 
     # ── Notification dispatcher tests ─────────────────────────────────────────
     print("── dispatch_event (sms) ───────────────────────────────────")

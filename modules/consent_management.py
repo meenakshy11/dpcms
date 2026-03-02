@@ -3,49 +3,39 @@ modules/consent_management.py
 ------------------------------
 Consent Management dashboard — DPDP Act 2023 compliant.
 
-Role-access model (updated):
-  Customer        Create own consent (Tab 1 — direct)
+Architecture (updated):
+    UI  →  orchestration.execute_action()  →  Engine  →  Audit / SLA / Compliance
+
+Role-access model:
+  customer        Create own consent (Tab 1 — direct)
   branch_officer  Assisted consent capture only (Tab 1 — assisted mode)
   DPO             Full visibility — revoke, renew, analytics (NO consent creation)
   Auditor         Read-only — register and analytics only
   SystemAdmin     Access restricted
 
-Key compliance rules enforced:
-  - Only customers give consent (DPDP S.6)
-  - Officers use assisted_consent_capture(); they are never the initiator
-  - Language field removed from consent object (UI-level only)
-  - Expiry fully automated from policy engine; no manual input
-  - SLA registered with engine.sla_engine on every consent save
-  - SMS expiry warning triggered 7 days before expiry
-  - Expired status auto-updated via update_expired_consents()
-  - Sensitive ID fields masked for non-DPO roles
-  - Consent immutability preserved; modifications create new versioned record
-
-Architecture
-------------
-    UI  ->  process_event()  ->  DecisionEngine  ->  Audit
-    Customer UI  ->  create_consent()        (direct)
-    Officer UI   ->  assisted_consent_capture()  (branch walk-in)
-    DPO / Auditor -> view / revoke / renew only
+Design contract:
+  - NO storage writes, NO hash generation, NO SLA calls, NO audit_log calls here.
+  - NO validation logic (expiry, DPIA, branch, drift) — all delegated to engine.
+  - NO compliance_engine calls — orchestration triggers recalculation post-commit.
+  - Module responsibilities: render form → collect inputs → build payload → call
+    orchestration → display result.
+  - All user-visible strings go through t() — zero hardcoded English strings.
 """
 
-import uuid
+from __future__ import annotations
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-from engine.audit_ledger import audit_log
-from engine.orchestration import process_event, trigger_notification
+import engine.orchestration as orchestration
 from engine.consent_validator import (
-    revoke_consent,
-    renew_consent,
     get_all_consents,
     get_consent_status,
     PURPOSE_EXPIRY_DAYS,
 )
-from engine.sla_engine import register_sla
-from auth import get_role, get_branch, require_role
+from auth import get_role, get_branch
 from utils.i18n import t
 from utils.export_utils import export_data
 from utils.explainability import explain_dynamic
@@ -58,7 +48,6 @@ from utils.dpdp_clauses import get_clause
 
 CONSENT_STATUSES = ["Draft", "Active", "Expired", "Revoked", "Renewed", "Superseded"]
 
-# Internal status → badge colour map (dot only, no text)
 STATUS_COLOUR = {
     "Draft":      "#546e7a",
     "Active":     "#1a9e5c",
@@ -70,12 +59,12 @@ STATUS_COLOUR = {
 
 PURPOSE_LABELS = list(PURPOSE_EXPIRY_DAYS.keys())
 
-# Default retention period (days) — overridden per-purpose from policy engine
+# Default retention period (days) — used only for preview display; engine owns real value
 DEFAULT_RETENTION_DAYS = 365
 
 
 # ---------------------------------------------------------------------------
-# Helper — status dot badge (no text, colour only)
+# Display helper — status dot badge
 # ---------------------------------------------------------------------------
 
 def _status_badge(status: str) -> str:
@@ -87,254 +76,10 @@ def _status_badge(status: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helper — generate unique consent ID
-# ---------------------------------------------------------------------------
-
-def _generate_id() -> str:
-    return f"CNS-{uuid.uuid4().hex[:10].upper()}"
-
-
-# ---------------------------------------------------------------------------
-# Core consent creation — CUSTOMER ONLY
-# ---------------------------------------------------------------------------
-
-@require_role(["customer"])
-def create_consent(customer_id: str, purpose: str, granted: bool,
-                   actor: str, metadata: dict | None = None) -> dict:
-    """
-    Direct consent creation.
-    Only callable by role=customer.
-    Expiry is fully automated from PURPOSE_EXPIRY_DAYS (no manual input).
-    Language field is intentionally excluded from the consent object.
-    """
-    metadata = metadata or {}
-    retention_days = PURPOSE_EXPIRY_DAYS.get(purpose, DEFAULT_RETENTION_DAYS)
-    expiry_date = datetime.utcnow() + timedelta(days=retention_days)
-
-    consent = {
-        "consent_id":        _generate_id(),
-        "data_principal_id": customer_id,
-        "initiator_role":    "customer",
-        "submitted_by":      actor,
-        "assisted":          False,
-        "purpose":           purpose,
-        "granted":           granted,
-        "created_at":        datetime.utcnow().isoformat(),
-        "expiry_date":       expiry_date.isoformat(),
-        "status":            "active" if granted else "denied",
-        "version":           1,
-        "previous_version_id": None,
-        "metadata":          metadata,
-    }
-
-    _save_consent(consent)
-
-    register_sla(
-        request_id=consent["consent_id"],
-        module="consent_expiry",
-        sla_days=retention_days,
-    )
-
-    audit_log(
-        event="CONSENT_CREATED",
-        actor=actor,
-        details={
-            "consent_id": consent["consent_id"],
-            "customer_id": customer_id,
-            "purpose": purpose,
-            "granted": granted,
-        },
-    )
-
-    return consent
-
-
-# ---------------------------------------------------------------------------
-# Assisted consent capture — BRANCH OFFICER ONLY
-# ---------------------------------------------------------------------------
-
-@require_role(["branch_officer"])
-def assisted_consent_capture(customer_id: str, consent_payload: dict,
-                              officer_id: str) -> dict:
-    """
-    Branch walk-in assisted consent capture.
-    The officer facilitates but the DATA PRINCIPAL (customer) is always the initiator.
-    Officer appears only in submitted_by, never as initiator_role.
-    Expiry is fully automated; no manual expiry input accepted.
-    Language field is intentionally excluded from the consent object.
-    """
-    purpose = consent_payload["purpose"]
-    granted = consent_payload.get("granted", True)
-
-    retention_days = PURPOSE_EXPIRY_DAYS.get(purpose, DEFAULT_RETENTION_DAYS)
-    expiry_date = datetime.utcnow() + timedelta(days=retention_days)
-
-    consent = {
-        "consent_id":           _generate_id(),
-        "data_principal_id":    customer_id,
-        "initiator_role":       "customer",          # Always customer — not officer
-        "submitted_by":         "branch_officer",
-        "submitted_by_id":      officer_id,
-        "assisted":             True,
-        "verification_mode":    "physical_signature_verified",
-        "purpose":              purpose,
-        "granted":              granted,
-        "created_at":           datetime.utcnow().isoformat(),
-        "expiry_date":          expiry_date.isoformat(),
-        "status":               "active" if granted else "denied",
-        "version":              1,
-        "previous_version_id":  None,
-        "metadata":             consent_payload.get("metadata", {}),
-    }
-
-    _save_consent(consent)
-
-    register_sla(
-        request_id=consent["consent_id"],
-        module="consent_expiry",
-        sla_days=retention_days,
-    )
-
-    audit_log(
-        event="ASSISTED_CONSENT_CAPTURED",
-        actor=officer_id,
-        details={
-            "consent_id":   consent["consent_id"],
-            "customer_id":  customer_id,
-            "purpose":      purpose,
-            "assisted":     True,
-            "verification": "physical_signature_verified",
-        },
-    )
-
-    return consent
-
-
-# ---------------------------------------------------------------------------
-# Expiry automation — called by background scheduler
-# ---------------------------------------------------------------------------
-
-def update_expired_consents(customer_phone_lookup: dict | None = None):
-    """
-    Daily scheduled job.
-    - Marks active consents as 'expired' when expiry_date has passed.
-    - Sends SMS warning 7 days before expiry.
-    customer_phone_lookup: optional dict mapping data_principal_id -> phone number.
-    """
-    customer_phone_lookup = customer_phone_lookup or {}
-    consents = get_all_consents()
-    now = datetime.utcnow()
-
-    for consent in consents:
-        if consent.get("status") not in ("active", "Active"):
-            continue
-
-        expiry = datetime.fromisoformat(consent["expiry_date"])
-        customer_phone = customer_phone_lookup.get(consent["data_principal_id"])
-
-        # Auto-expire
-        if now > expiry:
-            consent["status"] = "expired"
-            _save_consent(consent)
-            _trigger_expiry_notification(consent, customer_phone)
-            audit_log(
-                event="CONSENT_AUTO_EXPIRED",
-                actor="system",
-                details={"consent_id": consent["consent_id"]},
-            )
-
-        # 7-day warning SMS
-        elif now > expiry - timedelta(days=7) and customer_phone:
-            trigger_notification(
-                channel="sms",
-                recipient=customer_phone,
-                message=(
-                    f"Your consent for '{consent['purpose']}' "
-                    "will expire in 7 days. Please renew to avoid interruption."
-                ),
-            )
-
-
-def _trigger_expiry_notification(consent: dict, phone: str | None):
-    """Send expiry notification if phone is available."""
-    if phone:
-        trigger_notification(
-            channel="sms",
-            recipient=phone,
-            message=(
-                f"Your consent for '{consent['purpose']}' has expired. "
-                "Please renew your consent to continue services."
-            ),
-        )
-
-
-# ---------------------------------------------------------------------------
-# Consent versioning — called on modification (immutability preserved)
-# ---------------------------------------------------------------------------
-
-def create_consent_version(old_consent: dict, updated_fields: dict,
-                            actor: str) -> dict:
-    """
-    Consent immutability: no in-place edits to purpose, created_at, or consent_id.
-    Any modification creates a new versioned record; old record becomes 'superseded'.
-    Fields that cannot be updated: consent_id, created_at, data_principal_id, initiator_role.
-    """
-    IMMUTABLE_FIELDS = {"consent_id", "created_at", "data_principal_id", "initiator_role"}
-    for field in IMMUTABLE_FIELDS:
-        updated_fields.pop(field, None)
-
-    new_consent = old_consent.copy()
-    new_consent.update(updated_fields)
-    new_consent["consent_id"]          = _generate_id()
-    new_consent["version"]             = old_consent.get("version", 1) + 1
-    new_consent["previous_version_id"] = old_consent["consent_id"]
-    new_consent["created_at"]          = datetime.utcnow().isoformat()
-
-    # Automate expiry on new version
-    purpose = new_consent.get("purpose", "")
-    retention_days = PURPOSE_EXPIRY_DAYS.get(purpose, DEFAULT_RETENTION_DAYS)
-    new_consent["expiry_date"] = (
-        datetime.utcnow() + timedelta(days=retention_days)
-    ).isoformat()
-    new_consent.pop("language", None)  # Ensure language never stored
-
-    # Supersede old record
-    old_consent["status"] = "superseded"
-    _save_consent(old_consent)
-
-    _save_consent(new_consent)
-
-    register_sla(
-        request_id=new_consent["consent_id"],
-        module="consent_expiry",
-        sla_days=retention_days,
-    )
-
-    audit_log(
-        event="CONSENT_VERSIONED",
-        actor=actor,
-        details={
-            "new_consent_id":  new_consent["consent_id"],
-            "old_consent_id":  old_consent["consent_id"],
-            "new_version":     new_consent["version"],
-        },
-    )
-
-    return new_consent
-
-
-# ---------------------------------------------------------------------------
-# Masking helper — used when returning consent data to non-DPO roles
+# Display helper — mask consent for non-privileged roles
 # ---------------------------------------------------------------------------
 
 def _mask_consent_for_display(consent: dict, role: str) -> dict:
-    """
-    Return a display-safe copy with sensitive fields masked for non-privileged roles.
-
-    DPO and Auditor see full identifiers; all other roles see masked values.
-    Role is always resolved from st.session_state (the single source of truth)
-    and the `role` argument is used only as a fallback for test contexts.
-    """
     effective_role = st.session_state.get("role", role)
     view = consent.copy()
     if effective_role not in ("DPO", "dpo", "Auditor", "auditor"):
@@ -344,16 +89,6 @@ def _mask_consent_for_display(consent: dict, role: str) -> dict:
         if "customer_id" in view:
             view["customer_id"] = mask_identifier(view["customer_id"], role=effective_role)
     return view
-
-
-# ---------------------------------------------------------------------------
-# Internal persistence stub (delegates to consent_validator store)
-# ---------------------------------------------------------------------------
-
-def _save_consent(consent: dict):
-    """Persist consent record. Delegates to the consent_validator store."""
-    from engine.consent_validator import _persist_consent  # internal store
-    _persist_consent(consent)
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +117,7 @@ def show():
     is_dpo      = role == "DPO"
     is_customer = role == "customer"
 
-    # ── Load & filter consents ───────────────────────────────────────────────
+    # ── Load & branch-filter consents (read-only) ────────────────────────────
     all_consents_raw = get_all_consents()
 
     if is_officer and user_branch and user_branch != "All":
@@ -447,7 +182,6 @@ def show():
     # ─────────────────────────────────────────────────────────────────────────
     with tab1:
         st.subheader(t("submit_request"))
-
         more_info(t("consent_creation_info"))
 
         # ── Customer: direct consent creation ────────────────────────────────
@@ -463,9 +197,9 @@ def show():
                 ) == t("grant_consent")
                 notes = st.text_area(t("notes_context"), height=100)
 
-            # Expiry is automated — show read-only info to customer
-            retention_days = PURPOSE_EXPIRY_DAYS.get(purpose, DEFAULT_RETENTION_DAYS)
-            expiry_preview = (datetime.utcnow() + timedelta(days=retention_days)).strftime("%Y-%m-%d")
+            # Expiry preview — display only, engine owns actual calculation
+            retention_days  = PURPOSE_EXPIRY_DAYS.get(purpose, DEFAULT_RETENTION_DAYS)
+            expiry_preview  = (datetime.utcnow() + timedelta(days=retention_days)).strftime("%Y-%m-%d")
             st.info(
                 f"{t('consent_auto_expiry_info')} **{purpose}** — **{expiry_preview}** ({retention_days} {t('days')})."
             )
@@ -483,40 +217,34 @@ def show():
                 if not customer_id.strip():
                     st.error(t("customer_id_required"))
                 else:
-                    cid = customer_id.strip()
-                    context = {
-                        "event":       "CONSENT_ACTIVATION",
-                        "customer_id": cid,
+                    payload = {
+                        "customer_id": customer_id.strip(),
                         "purpose":     purpose,
-                        "user":        user,
+                        "granted":     granted,
+                        "metadata":    {"notes": notes, "branch": user_branch or "All"},
                     }
-                    allowed, decision = process_event(context)
-                    if not allowed:
-                        st.error(t("consent_blocked_rule_engine"))
+                    result = orchestration.execute_action(
+                        action_type="capture_consent",
+                        payload=payload,
+                        actor=user,
+                    )
+                    if result["status"] == "success":
+                        record = result["record"]
+                        st.success(
+                            f"{t('consent_captured_success')} **{record['consent_id']}**  "
+                            f"{t('status')}: **{t(record['status'].lower())}** | "
+                            f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
+                        )
+                        clause = get_clause("consent_required")
+                        explain_dynamic(
+                            title=t("consent_registered_title"),
+                            reason=t("consent_registered_reason"),
+                            old_clause=clause["old"],
+                            new_clause=clause["new"],
+                        )
+                        st.rerun()
                     else:
-                        try:
-                            record = create_consent(
-                                customer_id=cid,
-                                purpose=purpose,
-                                granted=granted,
-                                actor=user,
-                                metadata={"notes": notes, "branch": user_branch or "All"},
-                            )
-                            st.success(
-                                f"{t('consent_captured_success')} **{record['consent_id']}**  "
-                                f"{t('status')}: **{t(record['status'].lower())}** | "
-                                f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
-                            )
-                            clause = get_clause("consent_required")
-                            explain_dynamic(
-                                title=t("consent_registered_title"),
-                                reason=t("consent_registered_reason"),
-                                old_clause=clause["old"],
-                                new_clause=clause["new"],
-                            )
-                            st.rerun()
-                        except Exception as exc:
-                            st.error(f"{t('error_creating_consent')}: {exc}")
+                        st.error(f"{t('error_creating_consent')}: {result.get('message', t('unknown_error'))}")
 
         # ── Branch Officer: assisted consent capture ──────────────────────────
         elif is_officer:
@@ -533,7 +261,7 @@ def show():
                 ) == t("grant_consent")
                 notes = st.text_area(t("branch_notes"), height=100)
 
-            # Expiry is automated — show read-only info
+            # Expiry preview — display only
             retention_days = PURPOSE_EXPIRY_DAYS.get(purpose, DEFAULT_RETENTION_DAYS)
             expiry_preview = (datetime.utcnow() + timedelta(days=retention_days)).strftime("%Y-%m-%d")
             st.info(
@@ -546,44 +274,37 @@ def show():
                 if not customer_id.strip():
                     st.error(t("customer_id_required"))
                 else:
-                    cid = customer_id.strip()
-                    context = {
-                        "event":       "CONSENT_ACTIVATION",
-                        "customer_id": cid,
+                    payload = {
+                        "customer_id": customer_id.strip(),
                         "purpose":     purpose,
-                        "user":        user,
+                        "granted":     granted,
+                        "assisted":    True,
+                        "metadata":    {"notes": notes, "branch": user_branch or "All"},
                     }
-                    allowed, decision = process_event(context)
-                    if not allowed:
-                        st.error(t("consent_blocked_rule_engine"))
+                    result = orchestration.execute_action(
+                        action_type="capture_consent",
+                        payload=payload,
+                        actor=user,
+                    )
+                    if result["status"] == "success":
+                        record = result["record"]
+                        st.success(
+                            f"{t('assisted_consent_captured_success')} **{record['consent_id']}**  "
+                            f"{t('initiator')}: **{t('customer_role')}** | "
+                            f"{t('facilitator')}: **branch_officer** ({user})  "
+                            f"{t('status')}: **{t(record['status'].lower())}** | "
+                            f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
+                        )
+                        clause = get_clause("consent_required")
+                        explain_dynamic(
+                            title=t("assisted_consent_registered_title"),
+                            reason=t("assisted_consent_registered_reason"),
+                            old_clause=clause["old"],
+                            new_clause=clause["new"],
+                        )
+                        st.rerun()
                     else:
-                        try:
-                            record = assisted_consent_capture(
-                                customer_id=cid,
-                                consent_payload={
-                                    "purpose":  purpose,
-                                    "granted":  granted,
-                                    "metadata": {"notes": notes, "branch": user_branch or "All"},
-                                },
-                                officer_id=user,
-                            )
-                            st.success(
-                                f"{t('assisted_consent_captured_success')} **{record['consent_id']}**  "
-                                f"{t('initiator')}: **{t('customer_role')}** | "
-                                f"{t('facilitator')}: **branch_officer** ({user})  "
-                                f"{t('status')}: **{t(record['status'].lower())}** | "
-                                f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
-                            )
-                            clause = get_clause("consent_required")
-                            explain_dynamic(
-                                title=t("assisted_consent_registered_title"),
-                                reason=t("assisted_consent_registered_reason"),
-                                old_clause=clause["old"],
-                                new_clause=clause["new"],
-                            )
-                            st.rerun()
-                        except Exception as exc:
-                            st.error(f"{t('error_capturing_consent')}: {exc}")
+                        st.error(f"{t('error_capturing_consent')}: {result.get('message', t('unknown_error'))}")
 
         # ── DPO / Auditor: cannot create consent ──────────────────────────────
         else:
@@ -617,7 +338,7 @@ def show():
         if records:
             rows = []
             for r in records:
-                masked = _mask_consent_for_display(r, role)
+                masked      = _mask_consent_for_display(r, role)
                 status_title = r["status"].title()
                 rows.append({
                     t("id"):         r["consent_id"],
@@ -658,6 +379,7 @@ def show():
         else:
             op_col1, op_col2 = st.columns(2)
 
+            # ── Revoke ────────────────────────────────────────────────────────
             with op_col1:
                 st.markdown(f"#### {t('revoke_consent')}")
                 rev_cid     = st.text_input(t("customer_id"), key="rev_cid")
@@ -671,12 +393,18 @@ def show():
                     if not rev_cid.strip():
                         st.error(t("customer_id_required"))
                     else:
-                        try:
-                            record = revoke_consent(
-                                rev_cid.strip(), rev_purpose,
-                                reason=rev_reason or t("revoked_by_officer_default"),
-                                actor=user,
-                            )
+                        result = orchestration.execute_action(
+                            action_type="update_consent_status",
+                            payload={
+                                "customer_id": rev_cid.strip(),
+                                "purpose":     rev_purpose,
+                                "new_status":  "revoked",
+                                "reason":      rev_reason or t("revoked_by_officer_default"),
+                            },
+                            actor=user,
+                        )
+                        if result["status"] == "success":
+                            record = result["record"]
                             st.success(
                                 f"{t('consent_revoked_success')} **{record['consent_id']}**"
                             )
@@ -688,15 +416,16 @@ def show():
                                 new_clause=clause["new"],
                             )
                             st.rerun()
-                        except ValueError as e:
-                            st.error(f"{t('revocation_failed')}: {e}")
+                        else:
+                            st.error(f"{t('revocation_failed')}: {result.get('message', t('unknown_error'))}")
 
+            # ── Renew ─────────────────────────────────────────────────────────
             with op_col2:
                 st.markdown(f"#### {t('renew_consent')}")
                 ren_cid     = st.text_input(t("customer_id"), key="ren_cid")
                 ren_purpose = st.selectbox(t("purpose"), PURPOSE_LABELS, key="ren_purpose")
 
-                # Renewal expiry is also automated
+                # Renewal expiry preview — display only, engine owns calculation
                 renewal_days    = PURPOSE_EXPIRY_DAYS.get(ren_purpose, DEFAULT_RETENTION_DAYS)
                 renewal_preview = (datetime.utcnow() + timedelta(days=renewal_days)).strftime("%Y-%m-%d")
                 st.info(
@@ -707,8 +436,17 @@ def show():
                     if not ren_cid.strip():
                         st.error(t("customer_id_required"))
                     else:
-                        try:
-                            record = renew_consent(ren_cid.strip(), ren_purpose, actor=user)
+                        result = orchestration.execute_action(
+                            action_type="update_consent_status",
+                            payload={
+                                "customer_id": ren_cid.strip(),
+                                "purpose":     ren_purpose,
+                                "new_status":  "renewed",
+                            },
+                            actor=user,
+                        )
+                        if result["status"] == "success":
+                            record = result["record"]
                             new_expiry = str(record.get("expiry_date", record.get("expires_at", "")))[:10]
                             st.success(
                                 f"{t('consent_renewed_success')} **{record['consent_id']}**  "
@@ -723,8 +461,8 @@ def show():
                                 new_clause=clause["new"],
                             )
                             st.rerun()
-                        except ValueError as e:
-                            st.error(f"{t('renewal_failed')}: {e}")
+                        else:
+                            st.error(f"{t('renewal_failed')}: {result.get('message', t('unknown_error'))}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # TAB 4 — Analytics
@@ -741,7 +479,6 @@ def show():
             with ac1:
                 status_counts = {}
                 for c in all_c:
-                    # Use translated label for display; internal key for lookup
                     label = t(c["status"].lower())
                     status_counts[label] = status_counts.get(label, 0) + 1
                 fig_pie = go.Figure(go.Pie(
@@ -757,7 +494,6 @@ def show():
                     margin=dict(l=0, r=0, t=40, b=0),
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
-
                 more_info(t("consent_status_legend"))
 
             with ac2:

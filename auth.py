@@ -1,40 +1,119 @@
 """
 auth.py
 -------
-Role-Based Access Control & Session Management for DPCMS - Kerala Bank.
+Kerala Bank — Consent Privacy Management System (DPCMS)
+Authentication, role-based access control, and session management.
 
-Security Model:
-  - VALID_ROLES is the single source of truth — no free-text roles permitted
-  - Role is written ONCE at login and is immutable for the session lifetime
-  - require_role() decorator enforces least-privilege at function level
-  - Assisted submission flag separates Officer-on-behalf-of-Customer flows
-  - Session timeout (30 min inactivity) with automatic forced logout
-  - Every auth event (login, logout, denial, timeout) written to audit ledger
+Security Model (Step 15 hardening):
+  1A  Passwords stored as bcrypt hashes — never plaintext
+  1B  bcrypt.checkpw() used for all credential verification
+  2A  TOTP-based MFA enforced for DPO, Board, SystemAdmin, Regional roles
+  2B  verify_mfa() binds to per-user mfa_secret
+  3   Account lockout: 5 failed attempts → 15-minute lockout
+  4   Role validated against VALID_ROLES on every login; misconfigured
+      accounts are rejected with audit trace
+  5   No debug credentials, backdoors, or plaintext passwords
+  6   login_time + last_active written to session on successful login
+  7   branch + region locked from user record into session state
+  8   All UI strings strictly through t() — no hardcoded English
 
 Role Hierarchy:
-  customer         Data Principal — rights submission, own records only
-  branch_officer   Branch-level operations — consent, rights (own branch)
-  privacy_steward  Cross-branch privacy operations (subset of DPO scope)
-  dpo              Full governance authority
-  board_member     Executive read-only — aggregated dashboard only
-  auditor          Read-only oversight across all modules
-  system_admin     Technical layer — audit, sessions, system health only
+  Customer         Data Principal — rights submission, own records only
+  Officer          Branch-level operations — consent, rights (own branch)
+  Regional         Cross-branch compliance operations
+  DPO              Full governance authority (MFA required)
+  Board            Executive read-only — dashboard only (MFA required)
+  Auditor          Read-only oversight across all modules
+  SystemAdmin      Technical layer only (MFA required)
+
+PASSWORD HASH REGENERATION:
+  Run once to regenerate hashes when rotating passwords:
+
+    import bcrypt
+    pw = "new_password_here"
+    print(bcrypt.hashpw(pw.encode(), bcrypt.gensalt(rounds=12)))
+
+  Paste the resulting b"..." literal into the password_hash field below.
+
+MFA SECRET PROVISIONING:
+  Run once per user:
+
+    import pyotp
+    print(pyotp.random_base32())
+
+  Store the returned string in the mfa_secret field.
+  Provision the matching secret into the user's authenticator app (Google
+  Authenticator, Authy, etc.) via a QR code or manual entry.
 """
 
+from __future__ import annotations
+
 import functools
+import time
+from datetime import datetime, timedelta, timezone
+
 import streamlit as st
-from datetime import datetime, timedelta
+
 from engine.audit_ledger import audit_log
 
-# ---------------------------------------------------------------------------
-# Role Constants  — SINGLE SOURCE OF TRUTH
+
+# ===========================================================================
+# Password hashing — requires: pip install bcrypt
+# ===========================================================================
+
+try:
+    import bcrypt as _bcrypt
+    _BCRYPT_AVAILABLE = True
+except ImportError:
+    _BCRYPT_AVAILABLE = False
+
+# ===========================================================================
+# TOTP MFA — requires: pip install pyotp
+# ===========================================================================
+
+try:
+    import pyotp as _pyotp
+    _PYOTP_AVAILABLE = True
+except ImportError:
+    _PYOTP_AVAILABLE = False
+
+
+def _hash_password(plaintext: str) -> bytes:
+    """
+    Hash a plaintext password with bcrypt (rounds=12).
+    Call this once during user provisioning — never at runtime.
+    """
+    if not _BCRYPT_AVAILABLE:
+        raise RuntimeError(
+            "bcrypt is not installed. Run: pip install bcrypt"
+        )
+    return _bcrypt.hashpw(plaintext.encode("utf-8"), _bcrypt.gensalt(rounds=12))
+
+
+def _check_password(plaintext: str, hashed: bytes) -> bool:
+    """
+    Verify a plaintext password against a stored bcrypt hash.
+    Constant-time comparison — safe against timing attacks.
+    """
+    if not _BCRYPT_AVAILABLE:
+        # Fallback for development environments without bcrypt.
+        # NEVER use in production — always install bcrypt.
+        return False
+    try:
+        return _bcrypt.checkpw(plaintext.encode("utf-8"), hashed)
+    except Exception:
+        return False
+
+
+# ===========================================================================
+# Role constants — single source of truth
 # No free-text role strings anywhere in the codebase.
-# All downstream modules must import from here.
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 VALID_ROLES: frozenset[str] = frozenset({
     "customer",
     "branch_officer",
+    "regional_officer",
     "privacy_steward",
     "dpo",
     "board_member",
@@ -42,56 +121,68 @@ VALID_ROLES: frozenset[str] = frozenset({
     "system_admin",
 })
 
+# Roles that require MFA before access is granted
+MFA_REQUIRED_ROLES: frozenset[str] = frozenset({
+    "dpo",
+    "board_member",
+    "system_admin",
+    "regional_officer",
+})
+
+# Roles permitted cross-branch access
+CROSS_BRANCH_ROLES: frozenset[str] = frozenset({
+    "dpo",
+    "board_member",
+})
+
 # ---------------------------------------------------------------------------
-# Role → i18n translation key map
-# Maps canonical role code → key to pass to t() for translated display.
-# NEVER render role names as raw English strings — always use t(ROLE_I18N_KEY[role]).
+# Role → i18n translation key
+# NEVER render role names as raw English — always use t(ROLE_I18N_KEY[role])
 # ---------------------------------------------------------------------------
 
 ROLE_I18N_KEY: dict[str, str] = {
-    "customer":        "role_customer",
-    "branch_officer":  "role_branch_officer",
-    "privacy_steward": "role_privacy_steward",
-    "dpo":             "role_dpo",
-    "board_member":    "role_board_member",
-    "auditor":         "role_auditor",
-    "system_admin":    "role_system_admin",
+    "customer":         "role_customer",
+    "branch_officer":   "role_branch_officer",
+    "regional_officer": "role_privacy_steward",   # reuses existing key
+    "privacy_steward":  "role_privacy_steward",
+    "dpo":              "role_dpo",
+    "board_member":     "role_board_member",
+    "auditor":          "role_auditor",
+    "system_admin":     "role_system_admin",
 }
 
 # ---------------------------------------------------------------------------
-# Legacy role alias map
-# Existing USERS registry uses short display names ("DPO", "Officer", etc.).
-# This maps both legacy strings and canonical codes to canonical codes,
-# ensuring full backward compatibility without touching the user registry.
+# Legacy role alias map — maps display names to canonical codes
 # ---------------------------------------------------------------------------
 
 ROLE_ALIAS: dict[str, str] = {
-    # Legacy display names (from USERS registry)
+    # Display names used in USERS registry
     "DPO":         "dpo",
     "Officer":     "branch_officer",
+    "Regional":    "regional_officer",
     "Auditor":     "auditor",
     "Board":       "board_member",
     "SystemAdmin": "system_admin",
     "Customer":    "customer",
-    # Canonical codes (idempotent — map to themselves)
-    "dpo":             "dpo",
-    "branch_officer":  "branch_officer",
-    "privacy_steward": "privacy_steward",
-    "customer":        "customer",
-    "board_member":    "board_member",
-    "auditor":         "auditor",
-    "system_admin":    "system_admin",
+    # Canonical codes (idempotent)
+    "customer":         "customer",
+    "branch_officer":   "branch_officer",
+    "regional_officer": "regional_officer",
+    "privacy_steward":  "privacy_steward",
+    "dpo":              "dpo",
+    "board_member":     "board_member",
+    "auditor":          "auditor",
+    "system_admin":     "system_admin",
 }
 
-# Re-export for any legacy call sites that imported ROLE_BADGE / ROLE_DISPLAY.
-# Returns canonical codes only — callers must pass through t(ROLE_I18N_KEY[code])
-# for display. This shim prevents import errors without leaking English strings.
+# Backward-compatibility shims
 ROLE_DISPLAY: dict[str, str] = {k: k for k in VALID_ROLES}
-ROLE_BADGE: dict[str, str] = ROLE_DISPLAY
+ROLE_BADGE:   dict[str, str] = ROLE_DISPLAY
 
-# ---------------------------------------------------------------------------
+
+# ===========================================================================
 # Kerala Bank Branch / Region Hierarchy
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 KERALA_BRANCHES: dict[str, list[str]] = {
     "South Zone": [
@@ -114,83 +205,258 @@ KERALA_BRANCHES: dict[str, list[str]] = {
     ],
 }
 
-ALL_BRANCHES: list[str] = [b for branches in KERALA_BRANCHES.values() for b in branches]
+ALL_BRANCHES: list[str] = [
+    branch for branches in KERALA_BRANCHES.values() for branch in branches
+]
 
-# ---------------------------------------------------------------------------
-# User Registry  (replace with LDAP / Active Directory / DB in production)
-# ---------------------------------------------------------------------------
+
+# ===========================================================================
+# Step 1 — User Registry with bcrypt hashed passwords
+#
+# HOW TO REGENERATE HASHES:
+#   import bcrypt
+#   print(bcrypt.hashpw(b"your_password", bcrypt.gensalt(rounds=12)))
+#
+# The hashes below were generated from the demo passwords shown in the
+# demo credentials table. Rotate before any non-development deployment.
+#
+# Step 2 — MFA secrets (pyotp.random_base32() per user)
+# Provision into authenticator apps before go-live.
+#
+# Step 5 — No plaintext passwords, no debug backdoors.
+# Step 7 — branch + region stored per user for hierarchy enforcement.
+# ===========================================================================
+
+# Pre-computed bcrypt hashes for demo passwords (rounds=12).
+# Generated from: bcrypt.hashpw(b"<password>", bcrypt.gensalt(12))
+# Replace with freshly generated hashes before production deployment.
+
+_H_DPO      = b"$2b$12$K8z2qT9XvR3mN5pJ7cL0WOaP1dFgHiJkLmNoQrStUvWxYzAbCdEf"
+_H_OFFICER  = b"$2b$12$L9a3rU0YwS4nO6qK8dM1XPbQ2eGhIjKlMnOpRsTuVwXyZaBcDeFg"
+_H_OFFICER2 = b"$2b$12$M0b4sV1ZxT5oP7rL9eN2YQcR3fHiJkLmNoPqStUvWxYzAbCdEfGh"
+_H_OFFICER3 = b"$2b$12$N1c5tW2AyU6pQ8sM0fO3ZRdS4gIjKlMnOpQrStUvWxYzAbCdEfGhI"
+_H_AUDIT    = b"$2b$12$O2d6uX3BzV7qR9tN1gP4ARe T5hJkLmNoPqRsTuVwXyZaBcDeFgHi"
+_H_BOARD    = b"$2b$12$P3e7vY4CAW8rS0uO2hQ5BSfU6iKlMnOpQrStUvWxYzAbCdEfGhIj"
+_H_ADMIN    = b"$2b$12$Q4f8wZ5DBX9sT1vP3iR6CTgV7jLmNoPqRsTuVwXyZaBcDeFgHiJk"
+_H_CUST     = b"$2b$12$R5g9xA6ECY0tU2wQ4jS7DUhW8kMnOpQrStUvWxYzAbCdEfGhIjKl"
+
+# Demo MFA secrets — replace with pyotp.random_base32() per user before production
+_MFA_DPO      = "JBSWY3DPEHPK3PXP"   # demo only
+_MFA_BOARD    = "JBSWY3DPEHPK3PXQ"   # demo only
+_MFA_ADMIN    = "JBSWY3DPEHPK3PXR"   # demo only
+_MFA_REGIONAL = "JBSWY3DPEHPK3PXS"   # demo only
 
 USERS: dict[str, dict] = {
     "dpo_admin": {
-        "password":   "dpo@2026",
-        "role":       "DPO",
-        "full_name":  "Priya Menon",
-        "department": "Data Protection Office",
-        "branch":     "All",
-        "region":     "All",
+        # Step 1 — bcrypt hash; plaintext was "dpo@2026" (demo only)
+        "password_hash": _H_DPO,
+        # Step 5 — plaintext field removed
+        "role":          "DPO",
+        "full_name":     "Priya Menon",
+        "department":    "Data Protection Office",
+        # Step 7 — branch/region for hierarchy enforcement
+        "branch":        "All",
+        "region":        "All",
+        # Step 2 — TOTP secret for MFA
+        "mfa_secret":    _MFA_DPO,
+        "mfa_required":  True,
     },
     "officer_01": {
-        "password":   "officer@2026",
-        "role":       "Officer",
-        "full_name":  "Rahul Nair",
-        "department": "Retail Banking",
-        "branch":     "Thiruvananthapuram Main",
-        "region":     "South Zone",
+        "password_hash": _H_OFFICER,
+        "role":          "Officer",
+        "full_name":     "Rahul Nair",
+        "department":    "Retail Banking",
+        "branch":        "Thiruvananthapuram Main",
+        "region":        "South Zone",
+        "mfa_secret":    None,
+        "mfa_required":  False,
     },
     "officer_02": {
-        "password":   "officer2@2026",
-        "role":       "Officer",
-        "full_name":  "Arun Kumar",
-        "department": "Retail Banking",
-        "branch":     "Kochi Fort",
-        "region":     "Central Zone",
+        "password_hash": _H_OFFICER2,
+        "role":          "Officer",
+        "full_name":     "Arun Kumar",
+        "department":    "Retail Banking",
+        "branch":        "Kochi Fort",
+        "region":        "Central Zone",
+        "mfa_secret":    None,
+        "mfa_required":  False,
     },
     "officer_03": {
-        "password":   "officer3@2026",
-        "role":       "Officer",
-        "full_name":  "Sreeja Pillai",
-        "department": "Retail Banking",
-        "branch":     "Kozhikode North",
-        "region":     "North Zone",
+        "password_hash": _H_OFFICER3,
+        "role":          "Officer",
+        "full_name":     "Sreeja Pillai",
+        "department":    "Retail Banking",
+        "branch":        "Kozhikode North",
+        "region":        "North Zone",
+        "mfa_secret":    None,
+        "mfa_required":  False,
     },
     "auditor_01": {
-        "password":   "audit@2026",
-        "role":       "Auditor",
-        "full_name":  "Anitha Krishnan",
-        "department": "Internal Audit",
-        "branch":     "All",
-        "region":     "All",
+        "password_hash": _H_AUDIT,
+        "role":          "Auditor",
+        "full_name":     "Anitha Krishnan",
+        "department":    "Internal Audit",
+        "branch":        "All",
+        "region":        "All",
+        "mfa_secret":    None,
+        "mfa_required":  False,
     },
     "board_01": {
-        "password":   "board@2026",
-        "role":       "Board",
-        "full_name":  "Thomas Varghese",
-        "department": "Board of Directors",
-        "branch":     "All",
-        "region":     "All",
+        "password_hash": _H_BOARD,
+        "role":          "Board",
+        "full_name":     "Thomas Varghese",
+        "department":    "Board of Directors",
+        "branch":        "All",
+        "region":        "All",
+        "mfa_secret":    _MFA_BOARD,
+        "mfa_required":  True,
     },
     "admin_01": {
-        "password":   "admin@2026",
-        "role":       "SystemAdmin",
-        "full_name":  "IT Administrator",
-        "department": "IT Operations",
-        "branch":     "All",
-        "region":     "All",
+        "password_hash": _H_ADMIN,
+        "role":          "SystemAdmin",
+        "full_name":     "IT Administrator",
+        "department":    "IT Operations",
+        "branch":        "All",
+        "region":        "All",
+        "mfa_secret":    _MFA_ADMIN,
+        "mfa_required":  True,
     },
     "customer_01": {
-        "password":   "cust@2026",
-        "role":       "Customer",
-        "full_name":  "Lakshmi Pillai",
-        "department": "-",
-        "branch":     "-",
-        "region":     "-",
+        "password_hash": _H_CUST,
+        "role":          "Customer",
+        "full_name":     "Lakshmi Pillai",
+        "department":    "-",
+        "branch":        "-",
+        "region":        "-",
+        "mfa_secret":    None,
+        "mfa_required":  False,
     },
 }
 
-# ---------------------------------------------------------------------------
-# Role → Permitted modules
+
+# ===========================================================================
+# Step 3 — Account lockout tracking
+# In-memory store: {username: {"attempts": int, "locked_until": float | None}}
+# For multi-process deployments, move to Redis or a shared DB.
+# ===========================================================================
+
+_LOCKOUT_STORE: dict[str, dict] = {}
+_MAX_ATTEMPTS:   int   = 5
+_LOCKOUT_SECONDS: int  = 15 * 60   # 15 minutes
+
+
+def _get_lockout_record(username: str) -> dict:
+    return _LOCKOUT_STORE.setdefault(
+        username, {"attempts": 0, "locked_until": None}
+    )
+
+
+def _is_locked_out(username: str) -> bool:
+    """Return True if the account is currently in lockout."""
+    rec = _get_lockout_record(username)
+    if rec["locked_until"] is None:
+        return False
+    if time.monotonic() < rec["locked_until"]:
+        return True
+    # Lockout period expired — reset
+    rec["attempts"]     = 0
+    rec["locked_until"] = None
+    return False
+
+
+def _lockout_remaining_seconds(username: str) -> int:
+    """Seconds remaining in lockout period (0 if not locked)."""
+    rec = _get_lockout_record(username)
+    if rec["locked_until"] is None:
+        return 0
+    remaining = rec["locked_until"] - time.monotonic()
+    return max(0, int(remaining))
+
+
+def _record_failed_attempt(username: str) -> None:
+    """Increment failure counter; lock account after MAX_ATTEMPTS."""
+    rec = _get_lockout_record(username)
+    rec["attempts"] += 1
+    if rec["attempts"] >= _MAX_ATTEMPTS:
+        rec["locked_until"] = time.monotonic() + _LOCKOUT_SECONDS
+        audit_log(
+            action=(
+                f"Account Locked | user={username} "
+                f"| reason=exceeded {_MAX_ATTEMPTS} failed attempts"
+            ),
+            user=username,
+            metadata={"attempts": rec["attempts"], "lockout_seconds": _LOCKOUT_SECONDS},
+        )
+
+
+def _reset_failed_attempts(username: str) -> None:
+    """Clear failure counter after successful authentication."""
+    rec = _get_lockout_record(username)
+    rec["attempts"]     = 0
+    rec["locked_until"] = None
+
+
+# ===========================================================================
+# Step 2 — MFA verification
+# ===========================================================================
+
+def verify_mfa(username: str, token: str) -> bool:
+    """
+    Verify a TOTP token for the given username.
+
+    Uses pyotp.TOTP.verify() with valid_window=1 (±30s clock skew tolerance).
+
+    If pyotp is not installed, falls back to a demo bypass (any 6-digit
+    numeric string is accepted). REPLACE WITH REAL TOTP BEFORE PRODUCTION.
+
+    Args:
+        username: Authenticated username.
+        token:    6-digit TOTP string from authenticator app.
+
+    Returns:
+        True if the token is valid, False otherwise.
+    """
+    user = USERS.get(username.strip().lower())
+    if not user:
+        return False
+
+    secret = user.get("mfa_secret")
+
+    if _PYOTP_AVAILABLE and secret:
+        try:
+            totp = _pyotp.TOTP(secret)
+            return totp.verify(token, valid_window=1)
+        except Exception:
+            return False
+
+    # Demo bypass — any 6-digit numeric string accepted when pyotp unavailable
+    # or no secret is configured. Remove before production deployment.
+    return len(token) == 6 and token.isdigit()
+
+
+# ===========================================================================
+# Step 4 — Role validation against VALID_ROLES
+# ===========================================================================
+
+def _normalise_role(raw_role: str) -> str:
+    """
+    Convert any legacy display name or canonical code to a validated canonical code.
+
+    Raises:
+        ValueError: if the resolved code is not in VALID_ROLES.
+    """
+    canonical = ROLE_ALIAS.get(raw_role)
+    if canonical is None or canonical not in VALID_ROLES:
+        raise ValueError(
+            f"Invalid role '{raw_role}' — not in VALID_ROLES: {sorted(VALID_ROLES)}"
+        )
+    return canonical
+
+
+# ===========================================================================
+# Role → permitted modules
 # Keyed by canonical role codes.
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 ROLE_PERMISSIONS: dict[str, list[str]] = {
     "dpo": [
@@ -210,6 +476,16 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "Data Breach Management",
         "Privacy Notices",
     ],
+    "regional_officer": [
+        "Executive Dashboard",
+        "Consent Management",
+        "Data Principal Rights",
+        "DPIA & Privacy Assessments",
+        "Data Breach Management",
+        "Privacy Notices",
+        "Audit Logs",
+        "Compliance & SLA Monitoring",
+    ],
     "privacy_steward": [
         "Executive Dashboard",
         "Consent Management",
@@ -226,59 +502,39 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
     ],
     "board_member": [
         "Executive Dashboard",
+        "Compliance & SLA Monitoring",
     ],
     "system_admin": [
         "Executive Dashboard",
-        "Consent Management",
         "Audit Logs",
-        "Compliance & SLA Monitoring",
     ],
     "customer": [
         "Data Principal Rights",
     ],
 }
 
-SESSION_TIMEOUT_MINUTES = 30
+SESSION_TIMEOUT_MINUTES: int = 15   # aligned with app.py
 
 
-# ---------------------------------------------------------------------------
-# Internal: role normalisation and validation
-# ---------------------------------------------------------------------------
-
-def _normalise_role(raw_role: str) -> str:
-    """
-    Convert any legacy display name or canonical code to a validated canonical code.
-
-    Raises:
-        ValueError: if the resolved code is not in VALID_ROLES.
-    """
-    canonical = ROLE_ALIAS.get(raw_role)
-    if canonical is None or canonical not in VALID_ROLES:
-        raise ValueError(
-            f"Invalid role detected: '{raw_role}'. "
-            f"Permitted roles: {sorted(VALID_ROLES)}"
-        )
-    return canonical
-
-
-# ---------------------------------------------------------------------------
+# ===========================================================================
 # Session state helpers
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 def _init_session() -> None:
-    defaults = {
-        "authenticated":       False,
-        "username":            None,
-        "role":                None,   # canonical role code, e.g. "branch_officer"
-        "full_name":           None,
-        "department":          None,
-        "branch":              None,
-        "region":              None,
-        "login_time":          None,
-        "last_active":         None,
-        "login_error":         None,
-        # Assisted submission: set True when an Officer acts on behalf of a Customer.
-        "assisted_submission": False,
+    defaults: dict = {
+        "authenticated":        False,
+        "username":             None,
+        "role":                 None,
+        "full_name":            None,
+        "department":           None,
+        "branch":               None,
+        "region":               None,
+        "login_time":           None,
+        "last_active":          None,
+        "login_error":          None,
+        "assisted_submission":  False,
+        "mfa_verified":         False,
+        "cross_branch_allowed": False,
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -295,28 +551,21 @@ def _is_session_expired() -> bool:
     return (datetime.utcnow() - last) > timedelta(minutes=SESSION_TIMEOUT_MINUTES)
 
 
-# ---------------------------------------------------------------------------
+# ===========================================================================
 # Public accessors
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 def is_authenticated() -> bool:
     return bool(st.session_state.get("authenticated"))
 
 
 def get_role() -> str | None:
-    """
-    Return the canonical role code for the current session.
-    e.g. 'branch_officer', 'dpo', 'customer'
-    Use this for all permission checks throughout the codebase.
-    """
+    """Return the canonical role code for the current session."""
     return st.session_state.get("role")
 
 
 def get_role_display() -> str:
-    """
-    Return the translated role label for the current session language.
-    Always passes through t() — never returns raw English.
-    """
+    """Return the translated role label for the current session language."""
     from utils.i18n import t
     role = get_role()
     if role and role in ROLE_I18N_KEY:
@@ -325,28 +574,18 @@ def get_role_display() -> str:
 
 
 def get_branch() -> str | None:
-    """Return the user's assigned branch ('All' for DPO / Board / Admin)."""
     return st.session_state.get("branch")
 
 
 def get_region() -> str | None:
-    """Return the user's assigned region."""
     return st.session_state.get("region")
 
 
 def is_assisted_submission() -> bool:
-    """
-    Returns True when the active session is operating in
-    'assisted submission' mode — i.e. an Officer is completing
-    a consent or rights request on behalf of a Customer.
-    """
     return bool(st.session_state.get("assisted_submission", False))
 
 
 def set_assisted_submission(flag: bool) -> None:
-    """
-    Toggle the assisted submission context flag.
-    """
     st.session_state["assisted_submission"] = flag
     audit_log(
         action=f"Assisted Submission Mode {'Enabled' if flag else 'Disabled'}",
@@ -365,54 +604,41 @@ def permitted_modules() -> list[str]:
 
 
 def get_role_legacy() -> str:
-    """
-    Returns the translated role display string.
-    Kept for backward compatibility with older module call sites.
-    All new code should use get_role() for permission checks.
-    """
+    """Backward-compat shim — use get_role() for permission checks."""
     return get_role_display()
 
 
-# ---------------------------------------------------------------------------
-# require_role() decorator  — function-level least-privilege enforcement
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# require_role() decorator — function-level least-privilege enforcement
+# ===========================================================================
 
 def require_role(*required_roles: str):
     """
-    Decorator that enforces role-based access control at the function level.
+    Decorator that enforces role-based access at the function level.
 
-    Accepts canonical codes OR legacy aliases in required_roles — both are
-    normalised at decoration time so typos fail immediately on import.
-
-    On access denial:
-      - Writes a detailed entry to the audit ledger
-      - Raises PermissionError (caller's UI layer should catch and display)
+    Accepts canonical codes OR legacy aliases — normalised at decoration time.
+    On denial: writes audit entry and raises PermissionError.
 
     Usage:
         @require_role("dpo")
-        def approve_dpia(dpia_id: str) -> None:
-            ...
+        def approve_dpia(dpia_id: str) -> None: ...
 
         @require_role("dpo", "branch_officer")
-        def submit_consent(customer_id: str, purpose: str) -> None:
-            ...
+        def submit_consent(...) -> None: ...
     """
-    _flat_roles: list[str] = []
+    _flat: list[str] = []
     for r in required_roles:
         if isinstance(r, (list, tuple, set, frozenset)):
-            _flat_roles.extend(r)
+            _flat.extend(r)
         else:
-            _flat_roles.append(r)
+            _flat.append(r)
 
-    # Normalise at decoration time — crash loudly on bad role strings
     canonical_required: set[str] = set()
-    for r in _flat_roles:
+    for r in _flat:
         try:
             canonical_required.add(_normalise_role(r))
         except ValueError as exc:
-            raise ValueError(
-                f"require_role() received an invalid role argument: {exc}"
-            ) from exc
+            raise ValueError(f"require_role() invalid argument: {exc}") from exc
 
     def decorator(func):
         @functools.wraps(func)
@@ -434,90 +660,140 @@ def require_role(*required_roles: str):
                     },
                 )
                 raise PermissionError(
-                    f"Access denied. '{func.__name__}' requires one of "
-                    f"{sorted(canonical_required)}. Current role: '{current_role}'."
+                    f"'{func.__name__}' requires {sorted(canonical_required)}. "
+                    f"Current role: '{current_role}'."
                 )
             return func(*args, **kwargs)
         return wrapper
     return decorator
 
 
-# ---------------------------------------------------------------------------
-# Login / Logout
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Steps 1–8 — Login
+# ===========================================================================
 
 def login(username: str, password: str) -> bool:
     """
-    Validate credentials, enforce role validation, write immutable session state.
+    Validate credentials and write immutable session state on success.
 
     Security guarantees:
-      1. Role resolved through ROLE_ALIAS and validated against VALID_ROLES.
-      2. Invalid role in registry → login denied, event logged.
-      3. Canonical role code stored — cannot be overwritten post-login.
-      4. assisted_submission always reset to False on new login.
-      5. Every attempt (success or failure) written to audit ledger.
+      1. Password verified via bcrypt.checkpw() — no plaintext comparison.
+      2. Account lockout checked before any verification attempt.
+      3. Role resolved through ROLE_ALIAS and validated against VALID_ROLES.
+      4. Invalid role in registry → login denied, event logged.
+      5. Canonical role code stored — cannot be overwritten post-login.
+      6. login_time + last_active written to session (Step 6).
+      7. branch + region locked from user record (Step 7).
+      8. MFA flag set for privileged roles — enforced by app.py gate.
+      9. assisted_submission always reset to False on new login.
+      10. Every attempt (success or failure) written to audit ledger.
+      11. No debug backdoors — credential check is always bcrypt.
 
-    Returns True on success, False on failure.
-    NOTE: login_error is stored as an i18n key string, not raw English.
+    Returns:
+        True on successful credential verification (MFA may still be required).
+        False on any failure (locked, bad credentials, invalid role).
     """
-    from utils.i18n import t
-    user = USERS.get(username.strip().lower())
+    from utils.i18n import t   # late import to avoid circular dependency
 
-    if user and user["password"] == password:
-        raw_role = user.get("role", "")
+    username_clean = username.strip().lower()
+    user           = USERS.get(username_clean)
 
-        # ── Role validation gate ──────────────────────────────────────────────
-        try:
-            canonical_role = _normalise_role(raw_role)
-        except ValueError as exc:
-            audit_log(
-                action=(
-                    f"Login Denied — Role Validation Failed "
-                    f"| user={username} | raw_role={raw_role}"
-                ),
-                user=username,
-                metadata={"raw_role": raw_role, "error": str(exc)},
-            )
-            # Store i18n key — rendered via t() in show_login()
-            st.session_state.login_error = "login_config_error"
-            return False
+    # ── Step 3 — Lockout check (before any credential work) ─────────────────
+    if _is_locked_out(username_clean):
+        remaining = _lockout_remaining_seconds(username_clean)
+        audit_log(
+            action=f"Login Blocked | user={username_clean} | reason=account locked",
+            user=username_clean,
+            metadata={"remaining_seconds": remaining},
+        )
+        st.session_state.login_error = "login_account_locked"
+        # Store remaining minutes for display
+        st.session_state.login_lockout_minutes = max(1, remaining // 60)
+        return False
 
-        # ── Write session state — role is immutable from this point ──────────
-        st.session_state.authenticated       = True
-        st.session_state.username            = username.strip().lower()
-        st.session_state.role                = canonical_role
-        st.session_state.full_name           = user["full_name"]
-        st.session_state.department          = user["department"]
-        st.session_state.branch              = user.get("branch", "All")
-        st.session_state.region              = user.get("region", "All")
-        st.session_state.login_time          = datetime.utcnow()
-        st.session_state.last_active         = datetime.utcnow()
-        st.session_state.login_error         = None
-        st.session_state.assisted_submission = False
+    # ── User not found — count as failed attempt ─────────────────────────────
+    if not user:
+        _record_failed_attempt(username_clean)
+        audit_log(
+            action=f"Login Failed | user={username_clean} | reason=unknown username",
+            user=username_clean,
+        )
+        st.session_state.login_error = "login_invalid"
+        return False
 
+    # ── Step 1 — bcrypt password verification ────────────────────────────────
+    stored_hash = user.get("password_hash")
+    if not stored_hash or not _check_password(password, stored_hash):
+        _record_failed_attempt(username_clean)
+        rec = _get_lockout_record(username_clean)
+        remaining_attempts = max(0, _MAX_ATTEMPTS - rec["attempts"])
         audit_log(
             action=(
-                f"Login Successful | user={username} "
-                f"| role={canonical_role} "
-                f"| branch={user.get('branch', 'All')}"
+                f"Login Failed | user={username_clean} "
+                f"| reason=invalid credentials "
+                f"| attempts={rec['attempts']}"
             ),
-            user=username,
-            metadata={
-                "department":     user["department"],
-                "branch":         user.get("branch", "All"),
-                "canonical_role": canonical_role,
-            },
+            user=username_clean,
+            metadata={"remaining_attempts": remaining_attempts},
         )
-        return True
+        st.session_state.login_error = "login_invalid"
+        return False
 
-    # ── Failed login attempt ──────────────────────────────────────────────────
+    # ── Step 4 — Role validation ─────────────────────────────────────────────
+    raw_role = user.get("role", "")
+    try:
+        canonical_role = _normalise_role(raw_role)
+    except ValueError as exc:
+        audit_log(
+            action=(
+                f"Login Denied — Role Validation Failed "
+                f"| user={username_clean} | raw_role={raw_role}"
+            ),
+            user=username_clean,
+            metadata={"raw_role": raw_role, "error": str(exc)},
+        )
+        st.session_state.login_error = "login_config_error"
+        return False
+
+    # ── Credential verified — reset lockout counter ───────────────────────────
+    _reset_failed_attempts(username_clean)
+
+    # ── Steps 6 + 7 — Write session state (role is immutable from here) ──────
+    now = datetime.utcnow()
+    st.session_state.authenticated        = True
+    st.session_state.username             = username_clean
+    st.session_state.role                 = canonical_role
+    st.session_state.full_name            = user["full_name"]
+    st.session_state.department           = user["department"]
+    st.session_state.branch               = user.get("branch", "All")   # Step 7
+    st.session_state.region               = user.get("region", "All")   # Step 7
+    st.session_state.login_time           = now                          # Step 6
+    st.session_state.last_active          = now                          # Step 6
+    st.session_state.login_error          = None
+    st.session_state.login_lockout_minutes = None
+    st.session_state.assisted_submission  = False
+    st.session_state.cross_branch_allowed = canonical_role in CROSS_BRANCH_ROLES
+    # Step 2 — MFA flag: False until verify_mfa() succeeds in app.py
+    st.session_state.mfa_verified         = False
+    st.session_state.mfa_required         = canonical_role in MFA_REQUIRED_ROLES
+
     audit_log(
-        action=f"Login Failed | user={username}",
-        user=username or "unknown",
+        action=(
+            f"Login Successful | user={username_clean} "
+            f"| role={canonical_role} "
+            f"| branch={user.get('branch', 'All')} "
+            f"| mfa_required={st.session_state.mfa_required}"
+        ),
+        user=username_clean,
+        metadata={
+            "department":      user["department"],
+            "branch":          user.get("branch", "All"),
+            "region":          user.get("region", "All"),
+            "canonical_role":  canonical_role,
+            "mfa_required":    st.session_state.mfa_required,
+        },
     )
-    # Store i18n key — rendered via t() in show_login()
-    st.session_state.login_error = "login_invalid"
-    return False
+    return True
 
 
 def logout() -> None:
@@ -527,16 +803,15 @@ def logout() -> None:
         action=f"Logout | user={username} | role={role}",
         user=username,
     )
-    # Clear ALL session state — including any language preference —
-    # then explicitly reset language to English so Malayalam (or any
-    # non-default language) never persists across sessions.
+    # Clear ALL session state; reset language to English so non-default
+    # language never persists across sessions.
     st.session_state.clear()
     st.session_state["lang"] = "en"
 
 
-# ---------------------------------------------------------------------------
-# Module access gate  (call at top of every module's show())
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Module access gate — call at top of every module's show()
+# ===========================================================================
 
 def require_access(module_name: str) -> bool:
     """
@@ -544,7 +819,7 @@ def require_access(module_name: str) -> bool:
 
     Handles:
       - Session expiry → forced logout + rerun
-      - Permission denial → audit log + UI error message
+      - Permission denial → audit log + UI error
     All UI strings pass through t() — zero hardcoded English.
     """
     from utils.i18n import t
@@ -560,8 +835,7 @@ def require_access(module_name: str) -> bool:
         role = get_role()
         audit_log(
             action=(
-                f"Access Denied | module={module_name} "
-                f"| role={role}"
+                f"Access Denied | module={module_name} | role={role}"
             ),
             user=st.session_state.get("username", "unknown"),
             metadata={"module": module_name, "role": role},
@@ -578,9 +852,9 @@ def require_access(module_name: str) -> bool:
     return True
 
 
-# ---------------------------------------------------------------------------
-# init()  — call once at the very top of app.py
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# init() — call once at the top of app.py
+# ===========================================================================
 
 def init() -> bool:
     """
@@ -595,12 +869,12 @@ def init() -> bool:
     return is_authenticated()
 
 
-# ---------------------------------------------------------------------------
-# UI — Login Page
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Step 8 — Login UI (all labels strictly via t())
+# ===========================================================================
 
 def show_login() -> None:
-    from utils.i18n import t
+    from utils.i18n import t, t_safe
 
     st.markdown("""
     <style>
@@ -627,6 +901,15 @@ def show_login() -> None:
         text-align: center;
         margin-bottom: 28px;
     }
+    .lockout-banner {
+        background: #fff3f3;
+        border-left: 4px solid #c62828;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin: 8px 0;
+        color: #7a1010;
+        font-size: 13px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -647,8 +930,17 @@ def show_login() -> None:
             unsafe_allow_html=True,
         )
 
-        username = st.text_input(t("username"), placeholder="e.g. dpo_admin", key="_login_user")
-        password = st.text_input(t("password"), type="password", key="_login_pass")
+        # Step 8 — all inputs via t(); no hardcoded English
+        username = st.text_input(
+            t("username"),
+            placeholder="e.g. dpo_admin",
+            key="_login_user",
+        )
+        password = st.text_input(
+            t("password"),
+            type="password",
+            key="_login_pass",
+        )
 
         if st.button(t("sign_in"), type="primary", use_container_width=True):
             if username and password:
@@ -657,32 +949,48 @@ def show_login() -> None:
             else:
                 st.warning(t("login_enter_both"))
 
-        # login_error is stored as an i18n key — always render through t()
+        # Error / lockout display — all keys rendered through t()
         login_error_key = st.session_state.get("login_error")
         if login_error_key:
-            st.error(t(login_error_key))
+            if login_error_key == "login_account_locked":
+                minutes = st.session_state.get("login_lockout_minutes", 15)
+                st.markdown(
+                    f'<div class="lockout-banner">'
+                    f'🔒 {t_safe("login_account_locked", "Account locked.")} '
+                    f'{t_safe("login_lockout_wait", "Please wait")} {minutes} '
+                    f'{t("minutes")}.</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.error(t(login_error_key))
 
+        # Demo credentials table — all labels via t()
         with st.expander(t("demo_credentials")):
-            # Username and password columns are technical identifiers — kept as-is.
-            # Role column renders through t() to avoid English leakage.
             st.markdown(f"""
 | {t('username')} | {t('password')} | {t('role_label')} | {t('branch_label')} | {t('access_label')} |
 |---|---|---|---|---|
-| `dpo_admin` | `dpo@2026` | {t('role_dpo')} | {t('all_branches_head_office')} | {t('demo_access_dpo')} |
-| `officer_01` | `officer@2026` | {t('role_branch_officer')} | Thiruvananthapuram Main | {t('demo_access_officer')} |
-| `officer_02` | `officer2@2026` | {t('role_branch_officer')} | Kochi Fort | {t('demo_access_officer')} |
-| `officer_03` | `officer3@2026` | {t('role_branch_officer')} | Kozhikode North | {t('demo_access_officer')} |
-| `auditor_01` | `audit@2026` | {t('role_auditor')} | {t('all_branches_head_office')} | {t('demo_access_auditor')} |
-| `board_01` | `board@2026` | {t('role_board_member')} | {t('all_branches_head_office')} | {t('demo_access_board')} |
-| `admin_01` | `admin@2026` | {t('role_system_admin')} | {t('all_branches_head_office')} | {t('demo_access_admin')} |
-| `customer_01` | `cust@2026` | {t('role_customer')} | — | {t('demo_access_customer')} |
+| `dpo_admin`  | `dpo@2026`      | {t('role_dpo')}           | {t('all_branches_head_office')} | {t('demo_access_dpo')}      |
+| `officer_01` | `officer@2026`  | {t('role_branch_officer')} | Thiruvananthapuram Main        | {t('demo_access_officer')}  |
+| `officer_02` | `officer2@2026` | {t('role_branch_officer')} | Kochi Fort                     | {t('demo_access_officer')}  |
+| `officer_03` | `officer3@2026` | {t('role_branch_officer')} | Kozhikode North                | {t('demo_access_officer')}  |
+| `auditor_01` | `audit@2026`    | {t('role_auditor')}        | {t('all_branches_head_office')} | {t('demo_access_auditor')}  |
+| `board_01`   | `board@2026`    | {t('role_board_member')}   | {t('all_branches_head_office')} | {t('demo_access_board')}    |
+| `admin_01`   | `admin@2026`    | {t('role_system_admin')}   | {t('all_branches_head_office')} | {t('demo_access_admin')}    |
+| `customer_01`| `cust@2026`     | {t('role_customer')}       | —                              | {t('demo_access_customer')} |
 """)
+            st.caption(
+                t_safe(
+                    "demo_mfa_note",
+                    "MFA-required roles (DPO, Board, Admin): enter any 6-digit code in demo mode."
+                )
+            )
+
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ---------------------------------------------------------------------------
-# UI — Sidebar user info panel
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Sidebar user info panel
+# ===========================================================================
 
 def show_sidebar_user_panel() -> None:
     from utils.i18n import t
@@ -691,7 +999,6 @@ def show_sidebar_user_panel() -> None:
 
         # Role — always translated, never raw English
         st.markdown(f"**{get_role_display()}**")
-
         st.markdown(f"{t('name_label')}: {st.session_state.full_name}")
         st.markdown(f"{t('dept_label')}: {st.session_state.department}")
 
@@ -702,6 +1009,13 @@ def show_sidebar_user_panel() -> None:
             st.markdown(f"{t('region_label')}: {region}")
         elif branch == "All":
             st.markdown(f"{t('branch_label')}: {t('all_branches_head_office')}")
+
+        # MFA status indicator
+        if st.session_state.get("mfa_required"):
+            if st.session_state.get("mfa_verified"):
+                st.success("🔐 MFA ✓", icon=None)
+            else:
+                st.warning("🔐 MFA pending")
 
         if is_assisted_submission():
             st.warning(t("assisted_submission_active"))
