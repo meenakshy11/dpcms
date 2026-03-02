@@ -1251,6 +1251,87 @@ def compute_compliance_dashboard() -> Dict[str, Any]:
     return compute_compliance()
 
 
+def get_compliance_history() -> List[dict]:
+    """
+    Public API — return the full list of historical compliance snapshots
+    for the trend chart in modules/compliance.py.
+
+    Wraps load_snapshot_history(). Each entry is a dict produced by
+    compute_compliance() with at minimum:
+        timestamp     : ISO-8601 string (used as snapshot_at fallback)
+        overall_score : float
+        clause_results: dict
+
+    The UI also reads optional keys ``snapshot_at``, ``compliant_count``,
+    ``partial_count``, ``non_compliant_count``, and ``triggered_by``;
+    these are enriched here so callers never have to post-process.
+    """
+    history = load_snapshot_history()
+    enriched = []
+    for entry in history:
+        row = dict(entry)
+        # Normalise timestamp key — compliance.py expects "snapshot_at"
+        if "snapshot_at" not in row:
+            row["snapshot_at"] = row.get("timestamp", "")
+        # Derive per-status counts from clause_results if not already present
+        if "compliant_count" not in row:
+            clause_results = row.get("clause_results", {})
+            statuses = list(clause_results.values()) if isinstance(clause_results, dict) else []
+            row["compliant_count"]     = statuses.count("compliant")
+            row["partial_count"]       = statuses.count("partial")
+            row["non_compliant_count"] = statuses.count("non_compliant")
+        if "triggered_by" not in row:
+            row["triggered_by"] = "system"
+        enriched.append(row)
+    return enriched
+
+
+def get_compliance_drift(threshold: float = DRIFT_THRESHOLD) -> dict:
+    """
+    Public API — return a drift summary dict for modules/compliance.py.
+
+    Compares the two most recent snapshots and returns:
+        drift_detected : bool
+        delta          : float  — points dropped (positive = regression)
+        from_score     : float  — older snapshot score
+        to_score       : float  — newer snapshot score
+        snapshot_at    : str    — ISO date of the newer snapshot
+        threshold      : float  — threshold used
+
+    Returns ``{"drift_detected": False, ...}`` when fewer than two
+    snapshots exist or when no regression has occurred.
+    """
+    history = load_snapshot_history()
+
+    empty: Dict[str, Any] = {
+        "drift_detected": False,
+        "delta":          0.0,
+        "from_score":     None,
+        "to_score":       None,
+        "snapshot_at":    None,
+        "threshold":      threshold,
+    }
+
+    if len(history) < 2:
+        return empty
+
+    prev    = history[-2]
+    current = history[-1]
+
+    from_score = float(prev.get("overall_score", 0.0))
+    to_score   = float(current.get("overall_score", 0.0))
+    delta      = round(from_score - to_score, 2)
+
+    return {
+        "drift_detected": delta > threshold,
+        "delta":          delta,
+        "from_score":     from_score,
+        "to_score":       to_score,
+        "snapshot_at":    current.get("timestamp", ""),
+        "threshold":      threshold,
+    }
+
+
 def compliance_engine() -> Dict[str, Any]:
     """
     Alias for compute_compliance() — resolves:
