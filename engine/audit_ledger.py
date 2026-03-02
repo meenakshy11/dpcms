@@ -375,30 +375,15 @@ def verify_ledger_integrity() -> tuple[bool, str]:
     return True, f"Ledger integrity verified. {len(ledger)} block(s) checked."
 
 
-def verify_chain() -> dict:
+def verify_chain() -> tuple[bool, str]:
     """
     Backward-compatible wrapper around verify_ledger_integrity().
-    Returns the same dict structure as the pre-Step-11 verify_chain().
+
+    Returns a (bool, str) tuple so callers can unpack as:
+        chain_valid, chain_message = verify_chain()
     """
-    ledger  = _load_ledger()
     valid, message = verify_ledger_integrity()
-
-    first_breach = None
-    if not valid:
-        # Extract block index from message if present
-        match = re.search(r"block (\d+)", message)
-        if match:
-            idx = int(match.group(1))
-            if idx < len(ledger):
-                # Return 1-based id if available, otherwise 0-based index
-                first_breach = ledger[idx].get("index", idx)
-
-    return {
-        "valid":        valid,
-        "total":        len(ledger),
-        "first_breach": first_breach,
-        "message":      message,
-    }
+    return valid, message
 
 
 # ---------------------------------------------------------------------------
@@ -488,6 +473,31 @@ def verify_root_hash() -> tuple[bool, str]:
         f"append_audit_log(). Stored={stored_root[:16]}… "
         f"Live={live_root[:16]}…"
     )
+
+
+def get_root_hash() -> str:
+    """
+    Return the stored root hash string from ``storage/ledger_root.hash``.
+
+    This is the SHA-256 of the entire serialised ledger as of the last write,
+    and serves as a governance transparency signal in the audit UI.
+
+    Returns
+    -------
+    str — the hex root hash, or a descriptive message if the file is absent
+          or unreadable.
+
+    Raises
+    ------
+    Does NOT raise — callers should handle missing/unreadable state gracefully.
+    """
+    if not ROOT_HASH_PATH.exists():
+        return "Root hash not yet generated (no writes recorded)."
+    try:
+        stored_meta = json.loads(ROOT_HASH_PATH.read_text(encoding="utf-8"))
+        return stored_meta.get("root_hash", "Root hash field missing.")
+    except (json.JSONDecodeError, IOError) as exc:
+        return f"Root hash file unreadable: {exc}"
 
 
 def _lock_writes_on_corruption(reason: str) -> None:
