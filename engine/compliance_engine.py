@@ -1251,6 +1251,18 @@ def compute_compliance_dashboard() -> Dict[str, Any]:
     return compute_compliance()
 
 
+def compliance_engine() -> Dict[str, Any]:
+    """
+    Alias for compute_compliance() — resolves:
+        from engine.compliance_engine import compliance_engine
+
+    Retained for callers (e.g. modules/dashboard.py) that reference
+    the module's original entry-point name before the Step 14 refactor
+    renamed the primary function to compute_compliance().
+    """
+    return compute_compliance()
+
+
 # ---------------------------------------------------------------------------
 # Regulation-matrix scoring - retained for heatmap / UI rendering only.
 # Uses feature-flag state as proxy for per-feature display.
