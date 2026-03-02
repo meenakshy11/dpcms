@@ -46,10 +46,10 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
 from auth import get_role, get_branch, get_region
-from engine.compliance_engine import compliance_engine
-from modules.sla_engine import sla_engine
-from modules.audit_ledger import audit_ledger
-from modules.orchestration import orchestration
+import engine.compliance_engine as compliance_engine
+import engine.sla_engine as sla_engine
+import engine.audit_ledger as audit_ledger
+import engine.orchestration as orchestration
 from utils.dpdp_clauses import get_clause
 from utils.export_utils import export_data
 from utils.i18n import t
