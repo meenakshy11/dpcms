@@ -1,1 +1,92 @@
-[]
+[
+  {
+    "block_id": "BLK-0C54EEE063E1",
+    "index": 0,
+    "timestamp": "2026-03-02T10:25:19.607095+00:00",
+    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "data": {
+      "action": "Login Failed | user=customer_01 | reason=invalid credentials | attempts=1",
+      "user": "customer_01",
+      "metadata": {
+        "remaining_attempts": 4
+      }
+    },
+    "hash": "7aaf833eb59025df7f9a4f751c00e4785d3e7d8b5afd9872b8b10652a083b6aa",
+    "signature": "1f21079c30a24b61e740a8646eb28da9c206412f58cccdedbcac64381c11bec9"
+  },
+  {
+    "block_id": "BLK-C9FF8997D085",
+    "index": 1,
+    "timestamp": "2026-03-02T10:25:46.277561+00:00",
+    "previous_hash": "7aaf833eb59025df7f9a4f751c00e4785d3e7d8b5afd9872b8b10652a083b6aa",
+    "data": {
+      "action": "Login Failed | user=officer_01 | reason=invalid credentials | attempts=1",
+      "user": "officer_01",
+      "metadata": {
+        "remaining_attempts": 4
+      }
+    },
+    "hash": "63edf23379c8c80387f9ab481f696a79b23cc89ffe13da5a881b8a5ae30b3cbe",
+    "signature": "7a3406f02285d2d4611fe63b2821256800541b08e4821b96d5ad0d441235eb19"
+  },
+  {
+    "block_id": "BLK-52000C445577",
+    "index": 2,
+    "timestamp": "2026-03-02T10:26:04.730130+00:00",
+    "previous_hash": "63edf23379c8c80387f9ab481f696a79b23cc89ffe13da5a881b8a5ae30b3cbe",
+    "data": {
+      "action": "Login Failed | user=officer_01 | reason=invalid credentials | attempts=2",
+      "user": "officer_01",
+      "metadata": {
+        "remaining_attempts": 3
+      }
+    },
+    "hash": "39da97c72c644d5560caf230d2a5a5e7024654cf77ab2c2bc2721f7a4151b5d1",
+    "signature": "41227caf32aeecab42348a180af127bcc5abf2df8959872b3db4c4b4f358835b"
+  },
+  {
+    "block_id": "BLK-6849F9A1C052",
+    "index": 3,
+    "timestamp": "2026-03-02T10:26:05.713194+00:00",
+    "previous_hash": "39da97c72c644d5560caf230d2a5a5e7024654cf77ab2c2bc2721f7a4151b5d1",
+    "data": {
+      "action": "Login Failed | user=officer_01 | reason=invalid credentials | attempts=3",
+      "user": "officer_01",
+      "metadata": {
+        "remaining_attempts": 2
+      }
+    },
+    "hash": "102346d662c7837b0eb670de6715a25dfeffd3e912ab9885ab3eba39ce12d088",
+    "signature": "2283adbe0479b2cbe257e4b6eab257291539318237749bb736700e4b4ddd4c27"
+  },
+  {
+    "block_id": "BLK-EC5CD7C9D439",
+    "index": 4,
+    "timestamp": "2026-03-02T10:26:36.120686+00:00",
+    "previous_hash": "102346d662c7837b0eb670de6715a25dfeffd3e912ab9885ab3eba39ce12d088",
+    "data": {
+      "action": "Login Failed | user=admin_01 | reason=invalid credentials | attempts=1",
+      "user": "admin_01",
+      "metadata": {
+        "remaining_attempts": 4
+      }
+    },
+    "hash": "f1709bd6ac1ac11cedad480c2881b74d76d241ad46af9b32e3eda8825a6d957b",
+    "signature": "2d73322c0540cba8082c8813d9faf55809c9087f243b4c3a23304db58f1fefb3"
+  },
+  {
+    "block_id": "BLK-1A9670B6EF8A",
+    "index": 5,
+    "timestamp": "2026-03-02T10:26:36.956534+00:00",
+    "previous_hash": "f1709bd6ac1ac11cedad480c2881b74d76d241ad46af9b32e3eda8825a6d957b",
+    "data": {
+      "action": "Login Failed | user=admin_01 | reason=invalid credentials | attempts=2",
+      "user": "admin_01",
+      "metadata": {
+        "remaining_attempts": 3
+      }
+    },
+    "hash": "8286b0caa6f0fce706778b63e387346dd3523b6359ac1d78a8c91f9004882ba2",
+    "signature": "9bf2c4e5ac762c868a5355d2786793f126cb825797395050ee92a1c7a004e248"
+  }
+]

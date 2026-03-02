@@ -90,19 +90,34 @@ def _hash_password(plaintext: str) -> bytes:
     return _bcrypt.hashpw(plaintext.encode("utf-8"), _bcrypt.gensalt(rounds=12))
 
 
-def _check_password(plaintext: str, hashed: bytes) -> bool:
+def _check_password(plaintext: str, hashed: bytes | None, username: str = "") -> bool:
     """
-    Verify a plaintext password against a stored bcrypt hash.
-    Constant-time comparison — safe against timing attacks.
+    Verify a plaintext password.
+
+    Priority:
+      1. If hashed is a valid bcrypt bytes literal and bcrypt is installed
+         → use bcrypt.checkpw() (production path).
+      2. If hashed is None OR bcrypt is not installed AND DEMO_MODE is True
+         → fall back to plaintext comparison against _DEMO_PLAINTEXT.
+         This path exists only for local development when hashes have not
+         yet been generated. Set DEMO_MODE = False in production.
+      3. Otherwise → return False (fail closed).
     """
-    if not _BCRYPT_AVAILABLE:
-        # Fallback for development environments without bcrypt.
-        # NEVER use in production — always install bcrypt.
-        return False
-    try:
-        return _bcrypt.checkpw(plaintext.encode("utf-8"), hashed)
-    except Exception:
-        return False
+    # ── Production path: bcrypt hash present and library available ───────────
+    if hashed is not None and _BCRYPT_AVAILABLE:
+        try:
+            return _bcrypt.checkpw(plaintext.encode("utf-8"), hashed)
+        except Exception:
+            return False
+
+    # ── Demo fallback: no hash or no bcrypt ──────────────────────────────────
+    if DEMO_MODE and username:
+        expected = _DEMO_PLAINTEXT.get(username)
+        if expected is not None:
+            return plaintext == expected
+
+    # Fail closed — no hash, not demo mode, or unknown username
+    return False
 
 
 # ===========================================================================
@@ -229,16 +244,47 @@ ALL_BRANCHES: list[str] = [
 
 # Pre-computed bcrypt hashes for demo passwords (rounds=12).
 # Generated from: bcrypt.hashpw(b"<password>", bcrypt.gensalt(12))
-# Replace with freshly generated hashes before production deployment.
+#
+# ─── HOW TO REGENERATE ────────────────────────────────────────────────────────
+#   import bcrypt
+#   print(bcrypt.hashpw(b"dpo@2026", bcrypt.gensalt(12)))   # → paste as _H_DPO
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# The constants below are LEFT AS None so that the _DEMO_PLAINTEXT fallback
+# is used automatically until you generate real hashes and paste them here.
+# Once bcrypt hashes are pasted, the plaintext map is NEVER consulted.
+#
+# Replace each None with a b"$2b$12$..." literal after running the generator.
 
-_H_DPO      = b"$2b$12$K8z2qT9XvR3mN5pJ7cL0WOaP1dFgHiJkLmNoQrStUvWxYzAbCdEf"
-_H_OFFICER  = b"$2b$12$L9a3rU0YwS4nO6qK8dM1XPbQ2eGhIjKlMnOpRsTuVwXyZaBcDeFg"
-_H_OFFICER2 = b"$2b$12$M0b4sV1ZxT5oP7rL9eN2YQcR3fHiJkLmNoPqStUvWxYzAbCdEfGh"
-_H_OFFICER3 = b"$2b$12$N1c5tW2AyU6pQ8sM0fO3ZRdS4gIjKlMnOpQrStUvWxYzAbCdEfGhI"
-_H_AUDIT    = b"$2b$12$O2d6uX3BzV7qR9tN1gP4ARe T5hJkLmNoPqRsTuVwXyZaBcDeFgHi"
-_H_BOARD    = b"$2b$12$P3e7vY4CAW8rS0uO2hQ5BSfU6iKlMnOpQrStUvWxYzAbCdEfGhIj"
-_H_ADMIN    = b"$2b$12$Q4f8wZ5DBX9sT1vP3iR6CTgV7jLmNoPqRsTuVwXyZaBcDeFgHiJk"
-_H_CUST     = b"$2b$12$R5g9xA6ECY0tU2wQ4jS7DUhW8kMnOpQrStUvWxYzAbCdEfGhIjKl"
+_H_DPO      = None   # bcrypt hash of "dpo@2026"
+_H_OFFICER  = None   # bcrypt hash of "officer@2026"
+_H_OFFICER2 = None   # bcrypt hash of "officer2@2026"
+_H_OFFICER3 = None   # bcrypt hash of "officer3@2026"
+_H_AUDIT    = None   # bcrypt hash of "audit@2026"
+_H_BOARD    = None   # bcrypt hash of "board@2026"
+_H_ADMIN    = None   # bcrypt hash of "admin@2026"
+_H_CUST     = None   # bcrypt hash of "cust@2026"
+
+# ---------------------------------------------------------------------------
+# Demo plaintext fallback map — ONLY consulted when:
+#   (a) bcrypt is not installed, OR
+#   (b) the password_hash field is None (hash not yet generated)
+#
+# REMOVE this map and set DEMO_MODE = False before any production deployment.
+# ---------------------------------------------------------------------------
+
+DEMO_MODE: bool = True   # flip to False to disable plaintext fallback
+
+_DEMO_PLAINTEXT: dict[str, str] = {
+    "dpo_admin":   "dpo@2026",
+    "officer_01":  "officer@2026",
+    "officer_02":  "officer2@2026",
+    "officer_03":  "officer3@2026",
+    "auditor_01":  "audit@2026",
+    "board_01":    "board@2026",
+    "admin_01":    "admin@2026",
+    "customer_01": "cust@2026",
+}
 
 # Demo MFA secrets — replace with pyotp.random_base32() per user before production
 _MFA_DPO      = "JBSWY3DPEHPK3PXP"   # demo only
@@ -565,6 +611,38 @@ def get_role() -> str | None:
 
 
 def get_role_display() -> str:
+    """
+    Return the legacy display-name for the current session role.
+
+    This is what modules compare against their _ALLOWED_ROLES sets
+    (e.g. "DPO", "Officer", "Auditor", "Board", "SystemAdmin", "Customer").
+    It is NOT translated — use get_role_translated() for UI labels.
+
+    Canonical code  →  legacy display name
+      dpo            →  DPO
+      branch_officer →  Officer
+      regional_officer → Regional
+      privacy_steward  → Regional     (shares Regional gate)
+      auditor        →  Auditor
+      board_member   →  Board
+      system_admin   →  SystemAdmin
+      customer       →  Customer
+    """
+    _CANONICAL_TO_DISPLAY: dict[str, str] = {
+        "dpo":              "DPO",
+        "branch_officer":   "Officer",
+        "regional_officer": "Regional",
+        "privacy_steward":  "Regional",
+        "auditor":          "Auditor",
+        "board_member":     "Board",
+        "system_admin":     "SystemAdmin",
+        "customer":         "Customer",
+    }
+    role = get_role()
+    return _CANONICAL_TO_DISPLAY.get(role, role or "Unknown")
+
+
+def get_role_translated() -> str:
     """Return the translated role label for the current session language."""
     from utils.i18n import t
     role = get_role()
@@ -723,7 +801,7 @@ def login(username: str, password: str) -> bool:
 
     # ── Step 1 — bcrypt password verification ────────────────────────────────
     stored_hash = user.get("password_hash")
-    if not stored_hash or not _check_password(password, stored_hash):
+    if not _check_password(password, stored_hash, username_clean):
         _record_failed_attempt(username_clean)
         rec = _get_lockout_record(username_clean)
         remaining_attempts = max(0, _MAX_ATTEMPTS - rec["attempts"])
@@ -842,7 +920,7 @@ def require_access(module_name: str) -> bool:
         )
         st.error(
             t("access_denied_role").format(
-                role=get_role_display(),
+                role=get_role_translated(),
                 module=module_name,
             )
         )
@@ -998,7 +1076,7 @@ def show_sidebar_user_panel() -> None:
         st.markdown("---")
 
         # Role — always translated, never raw English
-        st.markdown(f"**{get_role_display()}**")
+        st.markdown(f"**{get_role_translated()}**")
         st.markdown(f"{t('name_label')}: {st.session_state.full_name}")
         st.markdown(f"{t('dept_label')}: {st.session_state.department}")
 
