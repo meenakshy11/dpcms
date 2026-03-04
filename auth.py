@@ -193,9 +193,12 @@ ROLE_ALIAS: dict[str, str] = {
     "PrivacySteward":    "privacy_steward",
     "PrivacyOperations": "privacy_operations",
     "SOC":               "soc_analyst",
+    "SOCAnalyst":        "soc_analyst",
     "Auditor":           "auditor",
     "Board":             "board_member",
     "Customer":          "customer",
+    "SystemAdmin":       "auditor",    # SystemAdmin → auditor (closest read-only role)
+    "system_admin":      "auditor",
     # Canonical codes (idempotent)
     "customer":           "customer",
     "branch_officer":     "branch_officer",
@@ -325,7 +328,7 @@ USERS: dict[str, dict] = {
         # Step 1 — bcrypt hash; plaintext was "dpo@2026" (demo only)
         "password_hash": _H_DPO,
         # Step 5 — plaintext field removed
-        "role":          "DPO",
+        "role":          "dpo",
         "full_name":     "Priya Menon",
         "department":    "Data Protection Office",
         # Step 7 — branch/region for hierarchy enforcement
@@ -337,7 +340,7 @@ USERS: dict[str, dict] = {
     },
     "officer_01": {
         "password_hash": _H_OFFICER,
-        "role":          "Officer",
+        "role":          "branch_officer",
         "full_name":     "Rahul Nair",
         "department":    "Retail Banking",
         "branch":        "Thiruvananthapuram Main",
@@ -347,7 +350,7 @@ USERS: dict[str, dict] = {
     },
     "officer_02": {
         "password_hash": _H_OFFICER2,
-        "role":          "Officer",
+        "role":          "branch_officer",
         "full_name":     "Arun Kumar",
         "department":    "Retail Banking",
         "branch":        "Kochi Fort",
@@ -357,7 +360,7 @@ USERS: dict[str, dict] = {
     },
     "officer_03": {
         "password_hash": _H_OFFICER3,
-        "role":          "Officer",
+        "role":          "branch_officer",
         "full_name":     "Sreeja Pillai",
         "department":    "Retail Banking",
         "branch":        "Kozhikode North",
@@ -367,7 +370,7 @@ USERS: dict[str, dict] = {
     },
     "auditor_01": {
         "password_hash": _H_AUDIT,
-        "role":          "Auditor",
+        "role":          "auditor",
         "full_name":     "Anitha Krishnan",
         "department":    "Internal Audit",
         "branch":        "All",
@@ -377,7 +380,7 @@ USERS: dict[str, dict] = {
     },
     "board_01": {
         "password_hash": _H_BOARD,
-        "role":          "Board",
+        "role":          "board_member",
         "full_name":     "Thomas Varghese",
         "department":    "Board of Directors",
         "branch":        "All",
@@ -387,7 +390,7 @@ USERS: dict[str, dict] = {
     },
     "admin_01": {
         "password_hash": _H_ADMIN,
-        "role":          "SystemAdmin",
+        "role":          "auditor",     # was SystemAdmin — remapped to auditor (no SystemAdmin in VALID_ROLES)
         "full_name":     "IT Administrator",
         "department":    "IT Operations",
         "branch":        "All",
@@ -397,7 +400,7 @@ USERS: dict[str, dict] = {
     },
     "customer_01": {
         "password_hash": _H_CUST,
-        "role":          "Customer",
+        "role":          "customer",
         "full_name":     "Lakshmi Pillai",
         "department":    "-",
         "branch":        "-",
@@ -407,7 +410,7 @@ USERS: dict[str, dict] = {
     },
     "privacy_ops_01": {
         "password_hash": _H_OPS,
-        "role":          "PrivacyOperations",
+        "role":          "privacy_operations",
         "full_name":     "Operations Manager",
         "department":    "Privacy Operations",
         "branch":        "All",
@@ -417,7 +420,7 @@ USERS: dict[str, dict] = {
     },
     "soc_analyst_01": {
         "password_hash": _H_SOC,
-        "role":          "SOC",
+        "role":          "soc_analyst",
         "full_name":     "SOC Analyst",
         "department":    "Security Operations",
         "branch":        "All",
@@ -558,11 +561,12 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "Data Principal Rights",
     ],
 
-    # Branch Officer — operational consent + rights management
+    # Branch Officer — operational consent + rights management + breach reporting
     "branch_officer": [
         "Executive Dashboard",
         "Consent Management",
         "Data Principal Rights",
+        "Data Breach Management",
     ],
 
     # Privacy Steward — compliance oversight, no breach or audit
@@ -573,33 +577,38 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "Compliance & SLA Monitoring",
     ],
 
-    # Regional Officer — same scope as Privacy Steward (MFA required)
+    # Regional Officer — cross-branch compliance + breach (MFA required)
     "regional_officer": [
         "Executive Dashboard",
         "Consent Management",
         "Data Principal Rights",
+        "Data Breach Management",
         "Compliance & SLA Monitoring",
     ],
 
-    # Privacy Operations — breach + full operational scope (MFA required)
+    # Privacy Operations — full operational scope + DPIA + audit (MFA required)
     "privacy_operations": [
         "Executive Dashboard",
         "Consent Management",
         "Data Principal Rights",
+        "DPIA & Privacy Assessments",
         "Data Breach Management",
         "Privacy Notices",
+        "Audit Logs",
         "Compliance & SLA Monitoring",
     ],
 
-    # SOC Analyst — breach monitoring only; no consent or rights access
+    # SOC Analyst — breach monitoring + audit logs; no consent or rights access
     "soc_analyst": [
         "Executive Dashboard",
         "Data Breach Management",
+        "Audit Logs",
     ],
 
-    # Auditor — read-only compliance and audit view
+    # Auditor — full read-only oversight: dashboard, audit logs, compliance
     "auditor": [
         "Executive Dashboard",
+        "Audit Logs",
         "Compliance & SLA Monitoring",
     ],
 
@@ -613,8 +622,10 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "Executive Dashboard",
         "Consent Management",
         "Data Principal Rights",
+        "DPIA & Privacy Assessments",
         "Data Breach Management",
         "Privacy Notices",
+        "Audit Logs",
         "Compliance & SLA Monitoring",
     ],
 }
@@ -979,10 +990,12 @@ def logout() -> None:
         action=f"Logout | user={username} | role={role}",
         user=username,
     )
-    # Clear ALL session state; reset language to English so non-default
-    # language never persists across sessions.
-    st.session_state.clear()
-    st.session_state["lang"] = "en"
+    # Explicitly delete all session keys so Streamlit doesn't retain stale
+    # widget state across login sessions (st.session_state.clear() can miss
+    # widget keys in some Streamlit versions).
+    for _key in list(st.session_state.keys()):
+        del st.session_state[_key]
+    st.session_state["lang"] = "en"   # reset language to English
 
 
 # ===========================================================================
@@ -1236,14 +1249,15 @@ def show_sidebar_user_panel() -> None:
             if region and region not in ("-", "All", ""):
                 st.markdown(f"**{t('region_label')}:** {region}")
 
-        # ── MFA status indicator ──────────────────────────────────────────────
+        # ── MFA status indicator — i18n strings via t_safe() ─────────────────
+        from utils.i18n import t_safe as _t_safe
         if mfa_required:
             if mfa_verified:
-                st.success("🔐 MFA Enabled")
+                st.success(f"🔐 {_t_safe('mfa_verified', 'MFA Verified')}")
             else:
-                st.warning("⚠️ MFA Pending")
+                st.warning(f"⚠️ {_t_safe('mfa_required', 'MFA Required — Pending Verification')}")
         else:
-            st.warning("⚠️ MFA Disabled")
+            st.warning(f"⚠️ {_t_safe('mfa_disabled', 'MFA Disabled — Contact Administrator')}")
 
         # ── Assisted submission mode banner ───────────────────────────────────
         if is_assisted_submission():

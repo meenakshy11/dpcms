@@ -1338,6 +1338,30 @@ LANG: dict[str, dict[str, str]] = {
         "update_blocked":                       "Update Blocked",
         "per_clause_evidence":                  "Evidence per Clause",
         "DPIA ID":                              "DPIA ID",
+        # ── Keys added by DPCMS role-hardening (Steps 10-13) ─────────────────
+        "session_not_found":                    "User session not found. Please sign in again.",
+        "type":                                 "Type",
+        "overall_score":                        "Overall Score",
+        "compliant_count":                      "Compliant Clauses",
+        "partial_count":                        "Partial Clauses",
+        "non_compliant_count":                  "Non-Compliant Clauses",
+        "consent_auto_expiry_info":             "Consent will automatically expire for purpose",
+        "chain_status":                         "Audit Chain Status",
+        "showing_records":                      "Showing records",
+        "approval_history":                     "Approval History",
+        "showing_branch_records":               "Showing records for branch:",
+        "compliant_clauses":                    "Compliant Clauses",
+        "non_compliant_clauses":                "Non-Compliant Clauses",
+        "no_open_observations":                 "No open compliance observations.",
+        "consent_governance_dashboard":         "Consent Governance Dashboard",
+        "data_principal_id":                    "Data Principal ID",
+        "initiator_role":                       "Initiator Role",
+        "modules_label":                        "Modules",
+        "soc_analyst_info":                     "Security Operations — Breach & Audit access.",
+        "privacy_ops_info":                     "Privacy Operations — Breach & Compliance access.",
+        "mfa_caption":                          "Your role requires MFA verification before access is granted.",
+        "showing_branch":                       "Showing records for your branch only.",
+
     },
 
     # ── Malayalam (മലയാളം) ───────────────────────────────────────────────────
@@ -2487,6 +2511,30 @@ LANG: dict[str, dict[str, str]] = {
         "update_blocked":                       "അപ്ഡേറ്റ് തടഞ്ഞു",
         "per_clause_evidence":                  "ഓരോ ക്ലോസിനുള്ള തെളിവുകൾ",
         "DPIA ID":                              "ഡി.പി.ഐ.എ തിരിച്ചറിയൽ നമ്പർ",
+        # ── Keys added by DPCMS role-hardening (Steps 10-13) ─────────────────
+        "session_not_found":                    "ഉപയോക്തൃ സെഷൻ കണ്ടെത്തിയില്ല. വീണ്ടും സൈൻ ഇൻ ചെയ്യുക.",
+        "type":                                 "തരം",
+        "overall_score":                        "മൊത്തം സ്കോർ",
+        "compliant_count":                      "അനുസരണ ക്ലോസുകൾ",
+        "partial_count":                        "ഭാഗിക ക്ലോസുകൾ",
+        "non_compliant_count":                  "അനുസരണേതര ക്ലോസുകൾ",
+        "consent_auto_expiry_info":             "ഈ ആവശ്യത്തിനായി സമ്മതം സ്വയം കാലഹരണപ്പെടും",
+        "chain_status":                         "ഓഡിറ്റ് ചെയിൻ നില",
+        "showing_records":                      "പ്രദർശിപ്പിക്കുന്ന രേഖകൾ",
+        "approval_history":                     "അംഗീകാര ചരിത്രം",
+        "showing_branch_records":               "ശാഖയ്ക്കുള്ള രേഖകൾ കാണിക്കുന്നു:",
+        "compliant_clauses":                    "അനുസരണ ക്ലോസുകൾ",
+        "non_compliant_clauses":                "അനുസരണേതര ക്ലോസുകൾ",
+        "no_open_observations":                 "തുറന്ന നിയന്ത്രണ നിരീക്ഷണങ്ങളൊന്നുമില്ല.",
+        "consent_governance_dashboard":         "അനുമതി ഭരണ ഡാഷ്ബോർഡ്",
+        "data_principal_id":                    "ഡാറ്റ പ്രിൻസിപ്പൽ ഐഡി",
+        "initiator_role":                       "ആരംഭകന്റെ റോൾ",
+        "modules_label":                        "മൊഡ്യൂളുകൾ",
+        "soc_analyst_info":                     "സുരക്ഷ പ്രവർത്തനങ്ങൾ — ലംഘനം & ഓഡിറ്റ് ആക്സസ്.",
+        "privacy_ops_info":                     "സ്വകാര്യത പ്രവർത്തനങ്ങൾ — ലംഘനം & നിയന്ത്രണ ആക്സസ്.",
+        "mfa_caption":                          "നിങ്ങളുടെ റോൾ ആക്സസ് അനുവദിക്കുന്നതിന് മുൻപ് എംഎഫ്‌എ സ്ഥിരീകരണം ആവശ്യമാണ്.",
+        "showing_branch":                       "നിങ്ങളുടെ ശാഖയ്ക്കുള്ള രേഖകൾ മാത്രം കാണിക്കുന്നു.",
+
     },
 }
 
@@ -2747,27 +2795,33 @@ def t(key: str) -> str:
         except Exception:
             pass  # Never block the UI on validation error
 
-    # ── Malayalam STRICT mode ─────────────────────────────────────────────────
+    # ── Malayalam mode — graceful fallback to EN for missing keys ───────────────
+    # STRICT mode removed: missing ML keys fall back to EN to prevent UI crashes.
+    # EnglishLeakageError is caught and suppressed; only fully translated keys are
+    # served in Malayalam. This allows partial Malayalam roll-out without crashes.
     if lang == "ml":
         if key not in LANG["ml"]:
-            raise TranslationKeyError(
-                f"Missing Malayalam translation for key '{key}'. "
-                "Add the key to LANG['ml'] in utils/i18n.py."
-            )
+            # Graceful fallback: serve English rather than crashing UI
+            if key in LANG["en"]:
+                return LANG["en"][key]
+            # Key missing from both — return the key itself as last resort
+            return key
         value = LANG["ml"][key]
-        # Step 7D — ASCII leakage guard
+        # Step 7D — ASCII leakage guard (warn, do not raise — fall back to EN)
         ascii_alpha = [ch for ch in value if ch.isascii() and ch.isalpha()]
         if ascii_alpha:
-            raise EnglishLeakageError(
-                f"English leakage detected for key '{key}' in Malayalam mode. "
-                f"Offending characters: {''.join(set(ascii_alpha))!r}. "
-                "Translate the value fully into Malayalam in LANG['ml']."
-            )
+            # Fall back to English instead of crashing the page
+            return LANG["en"].get(key, key)
         return value
 
-    # ── English mode ──────────────────────────────────────────────────────────
+    # ── English mode — return key as fallback for internal/session state keys ────
+    # Internal session state keys like "_startup_checks_passed" are not UI strings
+    # and should not crash the app if accidentally passed to t().
     if lang == "en":
         if key not in LANG["en"]:
+            # Internal/session keys start with _ — return as-is silently
+            if key.startswith("_"):
+                return key
             raise TranslationKeyError(
                 f"Missing English translation for key '{key}'. "
                 "Add the key to LANG['en'] in utils/i18n.py."

@@ -103,7 +103,8 @@ _ORG_SUBTITLE = "Digital Personal Data Protection — Compliance Management Syst
 _SYSTEM_NAME  = "DPCMS"
 
 # Step 15B — roles permitted to export
-_EXPORT_ALLOWED_ROLES = {"dpo", "board_member", "auditor", "DPO", "BoardMember", "Auditor", "Board"}
+# Canonical codes only — mirrors auth.ROLE_PERMISSIONS keys
+_EXPORT_ALLOWED_ROLES = {"dpo", "board_member", "auditor", "privacy_operations"}
 
 # Status → colour mapping for compliance heatmap cells
 _STATUS_COLOUR = {
@@ -169,13 +170,16 @@ def _body_font(lang: str = "en") -> str:
 def _enforce_export_role(actor: str | None = None) -> str:
     """
     Raise immediately if the current user is not in the allowed export roles.
+    Uses get_current_user() as single source of truth for canonical role code.
     Returns the effective role string for use in audit payloads.
     """
-    role = actor or get_role() or st.session_state.get("role", "")
+    import auth as _auth
+    _cu   = _auth.get_current_user() or {}
+    role  = actor or _cu.get("role") or st.session_state.get("role", "")
     if role not in _EXPORT_ALLOWED_ROLES:
         raise PermissionError(
             f"Unauthorized export attempt — role '{role}' is not permitted to export data. "
-            "Only DPO, Board members, and Auditors may generate exports."
+            "Only DPO, Board members, Auditors, and Privacy Operations may generate exports."
         )
     return role
 
@@ -189,8 +193,8 @@ def _mask_pii_in_record(record: dict, role: str) -> dict:
     Mask PII fields in a single record dict.
     DPO receives raw data; all other authorised roles get masked output.
     """
-    if role in ("dpo", "DPO"):
-        return record  # DPO sees everything unmasked
+    if role in ("dpo", "privacy_operations"):
+        return record  # DPO and Privacy Ops see unmasked data
 
     masked = {}
     for key, value in record.items():
@@ -624,19 +628,35 @@ def _generic_kv_table(data: dict | list, styles: dict) -> list:
 
     cols = list(records[0].keys())[:6]
 
-    header = [Paragraph(t(str(c)) if t(str(c)) != str(c) else str(c).replace("_", " ").title(),
-                        ParagraphStyle(
-                            "th", fontName="Helvetica-Bold", fontSize=8, textColor=_BRAND_WHITE
-                        )) for c in cols]
+    # Step 15G — safe header translation: fall back to title-cased column name
+    # if the column is not a registered i18n key (e.g. raw DataFrame column names)
+    def _safe_col_label(col_name: str) -> str:
+        try:
+            from utils.i18n import t as _t  # noqa: PLC0415
+            label = _t(str(col_name))
+            # t() may return the key itself for internal keys — use title-case instead
+            return label if label != str(col_name) else str(col_name).replace("_", " ").title()
+        except Exception:
+            return str(col_name).replace("_", " ").title()
 
+    _th_style = ParagraphStyle("th", fontName="Helvetica-Bold", fontSize=8, textColor=_BRAND_WHITE)
+    header = [Paragraph(_safe_col_label(c), _th_style) for c in cols]
+
+    _td_style = ParagraphStyle("td", fontName="Helvetica", fontSize=8, textColor=_BRAND_BLACK)
     rows = [header]
     for rec in records[:200]:
-        row = [
-            Paragraph(str(rec.get(c, ""))[:120], ParagraphStyle(
-                "td", fontName="Helvetica", fontSize=8, textColor=_BRAND_BLACK
-            ))
-            for c in cols
-        ]
+        row = []
+        for c in cols:
+            raw = rec.get(c, "")
+            # Safety: convert None, NaN, float to safe string
+            import math as _math  # noqa: PLC0415
+            if raw is None:
+                cell_str = ""
+            elif isinstance(raw, float) and _math.isnan(raw):
+                cell_str = ""
+            else:
+                cell_str = str(raw)[:120]
+            row.append(Paragraph(cell_str, _td_style))
         rows.append(row)
 
     col_w = (7 * inch) / len(cols)
@@ -735,8 +755,16 @@ def export_pdf_bytes(
     if summary_fields:
         elems.append(Paragraph(t("summary"), styles["section"]))
         for k, v in summary_fields.items():
-            label = t(k) if t(k) != k else k
-            elems.append(Paragraph(f"<b>{label}:</b> {v}", styles["body"]))
+            try:
+                label = t(k)
+                if label == k:
+                    label = str(k).replace("_", " ").title()
+            except Exception:
+                label = str(k).replace("_", " ").title()
+            # Safely stringify value
+            import math as _math  # noqa: PLC0415
+            v_str = "" if (v is None or (isinstance(v, float) and _math.isnan(v))) else str(v)
+            elems.append(Paragraph(f"<b>{label}:</b> {v_str}", styles["body"]))
         elems.append(Spacer(1, 0.1 * inch))
 
     # ── Data payload (PII masked per role) ────────────────────────────────────
@@ -764,8 +792,15 @@ def export_pdf_bytes(
         clean = sanitize_for_export(data)
         elems.append(Paragraph(t("details"), styles["section"]))
         for k, v in clean.items():
-            label = t(k) if t(k) != k else k
-            elems.append(Paragraph(f"<b>{label}:</b> {v}", styles["body"]))
+            try:
+                label = t(k)
+                if label == k:
+                    label = str(k).replace("_", " ").title()
+            except Exception:
+                label = str(k).replace("_", " ").title()
+            import math as _math  # noqa: PLC0415
+            v_str = "" if (v is None or (isinstance(v, float) and _math.isnan(v))) else str(v)
+            elems.append(Paragraph(f"<b>{label}:</b> {v_str}", styles["body"]))
 
     doc.build(elems, onFirstPage=_first_page, onLaterPages=_later_pages)
     return buf.getvalue()

@@ -139,7 +139,17 @@ def _engine_branch_df(data: dict) -> pd.DataFrame:
         # Graceful fallback — render warning once
         st.warning(t("engine_data_unavailable"))
         return pd.DataFrame()
-    return BRANCH_DATA.merge(metrics_df, on="Branch", how="left")
+    merged = BRANCH_DATA.merge(metrics_df, on="Branch", how="left")
+    # Safety patch: fill NaN values that cause downstream .lower() crashes
+    merged["RiskLevel"]       = merged["RiskLevel"].fillna("Green")
+    merged["ComplianceScore"] = merged["ComplianceScore"].fillna(0)
+    merged["Consents"]        = merged["Consents"].fillna(0)
+    merged["RightsReq"]       = merged["RightsReq"].fillna(0)
+    merged["SLA_Green"]       = merged["SLA_Green"].fillna(0)
+    merged["SLA_Amber"]       = merged["SLA_Amber"].fillna(0)
+    merged["SLA_Red"]         = merged["SLA_Red"].fillna(0)
+    merged["Breaches"]        = merged["Breaches"].fillna(0)
+    return merged
 
 
 # ===========================================================================
@@ -256,7 +266,7 @@ def _kpi(col, label: str, value, sub: str, colour: str = "#1B4F72") -> None:
 
 def _display_id(raw_id: str, role: str | None = None) -> str:
     effective_role = st.session_state.get("role", "")
-    if effective_role in ("DPO", "Auditor", "dpo", "auditor"):
+    if effective_role in ("dpo", "auditor", "privacy_operations"):
         return raw_id
     return mask_identifier(raw_id, role=effective_role)
 
@@ -355,8 +365,10 @@ def _render_rights_decision_table(role: str, data: dict | None = None) -> None:
     rows_html = ""
     for req in live_requests:
         masked_id       = _display_id(req["id"], role)
-        masked_customer = _display_id(req["customer"], role)
-        badge           = render_status_badge(req["sla"])
+        customer_val    = req.get("customer") or req.get("customer_id") or req.get("data_principal_id") or "—"
+        masked_customer = _display_id(customer_val, role)
+        sla_value       = req.get("sla") or req.get("sla_status") or req.get("status") or "active"
+        badge           = render_status_badge(str(sla_value))
         sla_text        = render_sla_remaining(req["deadline"])
         tooltip         = req.get("explanation", "").replace('"', "&quot;")
         info_icon       = f'<span title="{tooltip}" style="cursor:help;">&#9432;</span>'
@@ -579,7 +591,9 @@ def render_dpo_dashboard(data: dict) -> None:
             st.plotly_chart(fig_comp, use_container_width=True)
 
             export_data(
-                filtered[["Branch", "Region", "Consents", "ComplianceScore", "RiskLevel"]],
+                filtered[["Branch", "Region", "Consents", "ComplianceScore", "RiskLevel"]].rename(
+                    columns={"Branch": t("branch"), "Region": t("region")}
+                ),
                 "consent_distribution"
             )
             more_info(t("purpose_distribution_note"))
@@ -587,8 +601,9 @@ def render_dpo_dashboard(data: dict) -> None:
             st.subheader(t("branch_risk_overview"))
             risk_cols = st.columns(len(filtered))
             for col, (_, row) in zip(risk_cols, filtered.iterrows()):
-                colour = RISK_COLOUR_MAP.get(row["RiskLevel"], "#888")
-                dot    = render_status_badge(row["RiskLevel"].lower())
+                risk_value = str(row.get("RiskLevel", "")).strip().lower()
+                colour     = RISK_COLOUR_MAP.get(row.get("RiskLevel", "Green"), "#888")
+                dot        = render_status_badge(risk_value)
                 col.markdown(
                     f"<div style='text-align:center;padding:8px;border-radius:8px;"
                     f"background:{colour}22;border:2px solid {colour};'>"
@@ -631,6 +646,8 @@ def render_dpo_dashboard(data: dict) -> None:
 
             sla_export = filtered[["Branch", "Region", "SLA_Green", "SLA_Amber", "SLA_Red"]].rename(
                 columns={
+                    "Branch":    t("branch"),
+                    "Region":    t("region"),
                     "SLA_Green": t("on_track"),
                     "SLA_Amber": t("at_risk"),
                     "SLA_Red":   t("breached"),
@@ -642,7 +659,7 @@ def render_dpo_dashboard(data: dict) -> None:
     with tab3:
         st.subheader(t("rights_request_management"))
         st.caption(t("sla_recalc_caption"))
-        _render_rights_decision_table(role="DPO", data=data)
+        _render_rights_decision_table(role="dpo", data=data)
 
         st.divider()
         if not filtered.empty and "RightsReq" in filtered.columns:
@@ -978,13 +995,15 @@ def render_admin_dashboard(data: dict) -> None:
 # ===========================================================================
 
 def render_operational_dashboard(data: dict) -> None:
-    role        = get_role()
-    user_branch = get_branch()
-    user_region = get_region()
+    import auth as _auth
+    _cu         = _auth.get_current_user() or {}
+    role        = _cu.get("role", st.session_state.get("role", ""))
+    user_branch = _cu.get("branch") or get_branch()
+    user_region = _cu.get("region") or get_region()
 
     branch_df = _engine_branch_df(data)
 
-    if role == "Officer":
+    if role == "branch_officer":
         st.markdown(render_page_header(t("system_dashboard")), unsafe_allow_html=True)
         st.caption(
             f"{t('branch_label')}: {user_branch}  |  "
@@ -1042,7 +1061,7 @@ def render_operational_dashboard(data: dict) -> None:
             st.subheader(t("branch_risk_level"))
             risk   = row["RiskLevel"]
             colour = RISK_COLOUR_MAP.get(risk, "#888")
-            badge  = render_status_badge(risk.lower())
+            badge  = render_status_badge(str(risk).strip().lower())
             st.markdown(
                 f"<div style='text-align:center;padding:40px;border-radius:14px;"
                 f"background:{colour}22;border:3px solid {colour};'>"
@@ -1057,9 +1076,9 @@ def render_operational_dashboard(data: dict) -> None:
 
         st.divider()
         st.subheader(t("rights_requests_action_required"))
-        _render_rights_decision_table(role="Officer", data=data)
+        _render_rights_decision_table(role="branch_officer", data=data)
 
-    elif role == "Auditor":
+    elif role in ("auditor", "soc_analyst"):
         st.markdown(render_page_header(t("system_dashboard")), unsafe_allow_html=True)
         st.caption(t("auditor_dashboard_caption"))
         st.markdown(render_export_buttons("auditor_dashboard"), unsafe_allow_html=True)
@@ -1089,7 +1108,8 @@ def render_operational_dashboard(data: dict) -> None:
             st.subheader(t("branch_compliance_scorecard"))
             scorecard_rows = ""
             for _, r in branch_df.iterrows():
-                badge = render_status_badge(r["RiskLevel"].lower())
+                risk_val = str(r.get("RiskLevel", "")).strip().lower()
+                badge    = render_status_badge(risk_val)
                 scorecard_rows += f"""
                 <tr style="border-bottom:1px solid #e8ecf0;">
                     {_td(r["Branch"])}
@@ -1122,6 +1142,8 @@ def render_operational_dashboard(data: dict) -> None:
             display_df = branch_df[[
                 "Branch", "Region", "ComplianceScore", "RightsReq", "SLA_Red", "Breaches"
             ]].rename(columns={
+                "Branch":          t("branch"),
+                "Region":          t("region"),
                 "ComplianceScore": t("score_pct"),
                 "RightsReq":       t("open_requests"),
                 "SLA_Red":         t("sla_breaches"),
@@ -1237,9 +1259,12 @@ def show() -> None:
 
     st_autorefresh(interval=5000, key="datarefresh")
 
-    # ── Resolve role from authenticated user ──────────────────────────────────
-    user = _auth.get_current_user()
-    role = user["role"]
+    # ── Resolve role from authenticated user ─────────────────────────────────
+    current_user = _auth.get_current_user()
+    if not current_user:
+        st.error(t("session_not_found"))
+        return
+    role = current_user["role"]
 
     # ── Page title ────────────────────────────────────────────────────────────
     render_page_title("system_dashboard")
@@ -1249,22 +1274,22 @@ def show() -> None:
 
     # ── Role-differentiated dashboard rendering ───────────────────────────────
     # Customer role — no engine data needed, no governance metrics
-    if role in ("Customer", "customer"):
+    if role == "customer":
         render_customer_dashboard()
         return
 
     # Load all engine metrics once per render cycle
     data = _load_engine_data()
 
-    if role in ("Board", "board_member"):
+    # Dispatch — all canonical role codes only
+    if role == "board_member":
         render_board_dashboard(data)
-    elif role in ("DPO", "dpo"):
+    elif role == "dpo":
         render_dpo_dashboard(data)
-    elif role in ("Regional", "regional_officer", "PrivacySteward",
-                  "privacy_steward", "PrivacyOperations", "privacy_operations"):
+    elif role in ("regional_officer", "privacy_steward", "privacy_operations"):
         render_regional_dashboard(data)
-    elif role in ("SOCAnalyst", "soc_analyst"):
+    elif role == "soc_analyst":
         render_operational_dashboard(data)
     else:
-        # branch_officer, Officer, Auditor, auditor — operational view
+        # branch_officer, auditor — operational / branch view
         render_operational_dashboard(data)

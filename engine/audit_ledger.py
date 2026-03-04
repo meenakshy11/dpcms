@@ -151,7 +151,31 @@ def _load_ledger() -> list[dict]:
     raw = LEDGER_PATH.read_text(encoding="utf-8").strip()
     if not raw:
         return []
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        # File was truncated mid-write (e.g. process killed during flush).
+        # Back up the corrupt file so it can be inspected, then reset to a
+        # clean empty ledger so the application can continue running.
+        backup_path = LEDGER_PATH.with_suffix(".corrupt.json")
+        try:
+            import shutil
+            shutil.copy2(str(LEDGER_PATH), str(backup_path))
+            LEDGER_PATH.write_text("[]", encoding="utf-8")
+            logger.critical(
+                f"[AUDIT LEDGER] audit_ledger.json is corrupted "
+                f"(JSONDecodeError: {exc}). "
+                f"Corrupt file backed up to '{backup_path}'. "
+                "Ledger has been reset to empty. "
+                "Restore from backup if required."
+            )
+        except OSError as backup_err:
+            logger.critical(
+                f"[AUDIT LEDGER] audit_ledger.json is corrupted and could not "
+                f"be backed up ({backup_err}). Resetting to empty."
+            )
+            LEDGER_PATH.write_text("[]", encoding="utf-8")
+        return []
     if not isinstance(data, list):
         _save_ledger([])
         return []

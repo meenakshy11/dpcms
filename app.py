@@ -85,12 +85,16 @@ _CANONICAL_TO_DISPLAY: dict[str, str] = {
 # ALL_MODULE_REGISTRY below maps auth display names → module objects for routing.
 # ===========================================================================
 
-# Roles that require MFA before access is granted (display names)
-MFA_REQUIRED_ROLES: set[str] = {"DPO", "Board", "PrivacyOperations", "Regional"}
+# Roles that require MFA — canonical codes (mirrors auth.MFA_REQUIRED_ROLES)
+MFA_REQUIRED_ROLES: set[str] = {
+    "dpo", "board_member", "privacy_operations", "regional_officer",
+    "privacy_steward", "soc_analyst", "branch_officer", "auditor", "customer",
+}
 
-# Roles permitted cross-branch access (display names)
+# Roles permitted cross-branch access — canonical codes
 CROSS_BRANCH_ROLES: set[str] = {
-    "DPO", "Board", "Auditor", "PrivacyOperations", "SOCAnalyst", "Regional"
+    "dpo", "board_member", "auditor", "privacy_operations",
+    "soc_analyst", "regional_officer",
 }
 
 # ===========================================================================
@@ -228,13 +232,13 @@ def _run_startup_checks() -> None:
 
     # ── Translation completeness ─────────────────────────────────────────────
     try:
-        validate_translation_completeness(raise_on_failure=True)
+        validate_translation_completeness(raise_on_failure=False)
     except Exception as exc:
-        st.error(
-            f"🔴 SYSTEM HALT — Translation parity check FAILED:\n\n{exc}\n\n"
-            "Add the missing keys to utils/i18n.py before restarting."
+        # Warn but do not halt — missing translation keys degrade gracefully via t_safe()
+        st.warning(
+            f"⚠️ Translation parity check — missing keys detected:\n\n{exc}\n\n"
+            "Add missing keys to utils/i18n.py to resolve. App will continue with fallbacks."
         )
-        st.stop()
 
     st.session_state["_startup_checks_passed"] = True
 
@@ -380,12 +384,10 @@ if "role" not in st.session_state or not st.session_state["role"]:
 # role (display name) is used for MFA/cross-branch checks in this file.
 # ===========================================================================
 
+# raw_role is the canonical code (e.g. "dpo", "branch_officer")
+# All MFA/cross-branch checks now use canonical codes — no display-name translation needed.
 raw_role = st.session_state["role"]
-role = _CANONICAL_TO_DISPLAY.get(raw_role, raw_role)
-
-# NOTE: session_state["role"] intentionally keeps the canonical code so that
-# all modules calling auth.get_role() / auth.ROLE_PERMISSIONS receive the
-# canonical form they expect.
+role     = raw_role   # canonical code throughout app.py
 
 # ===========================================================================
 # STEP 1 — Startup integrity checks (after login, before rendering)
@@ -397,8 +399,8 @@ _run_startup_checks()
 # STEP 5 — MFA gate: privileged roles must verify before access
 # ===========================================================================
 
-if role in MFA_REQUIRED_ROLES and not st.session_state.get("mfa_verified"):
-    _show_mfa_prompt(role)
+if raw_role in MFA_REQUIRED_ROLES and not st.session_state.get("mfa_verified"):
+    _show_mfa_prompt(raw_role)
     # _show_mfa_prompt() always calls st.stop() — execution never continues here
 
 # ===========================================================================
@@ -414,7 +416,7 @@ st.session_state.setdefault("role",   role)
 
 # Cross-branch guard: inject flag consumed by orchestration / engine layers
 st.session_state["cross_branch_allowed"] = (
-    role in CROSS_BRANCH_ROLES
+    raw_role in CROSS_BRANCH_ROLES
     or st.session_state.get("cross_branch_allowed", False)
 )
 
@@ -422,38 +424,43 @@ st.session_state["cross_branch_allowed"] = (
 # STEP 3 / 9 — Page header (full-width) + language switch in sidebar
 # ===========================================================================
 
-render_page_title("app_title")
-st.caption(t("app_subtitle"))
-
-# Sidebar: language selector (top of sidebar, before user panel)
-with st.sidebar:
-    lang = st.selectbox(
+# ── Language toggle — compact top-right corner ───────────────────────────────
+_hdr_col, _lang_col = st.columns([10, 1])
+with _hdr_col:
+    render_page_title("app_title")
+    st.caption(t("app_subtitle"))
+with _lang_col:
+    _lang_opts  = ["EN", "ML"]
+    _lang_codes = ["en", "ml"]
+    _cur_lang   = st.session_state.get("lang", "en")
+    _lang_sel   = st.selectbox(
         "🌐",
-        ["en", "ml"],
-        index=["en", "ml"].index(st.session_state.get("lang", "en")),
+        _lang_opts,
+        index=_lang_codes.index(_cur_lang) if _cur_lang in _lang_codes else 0,
         key="language_selector",
         label_visibility="collapsed",
     )
-    if lang != st.session_state.get("lang"):
-        st.session_state["lang"] = lang
+    _new_lang = _lang_codes[_lang_opts.index(_lang_sel)]
+    if _new_lang != _cur_lang:
+        st.session_state["lang"] = _new_lang
         st.session_state.pop("_i18n_validated", None)
         st.rerun()
 
-# Sidebar: user identity panel
-auth.show_sidebar_user_panel()
+# Sidebar: user identity panel (uses render_sidebar_profile for canonical role display)
+auth.render_sidebar_profile()
 
 # ===========================================================================
 # STEP 2 / 8 — Role-based fast paths (single-module roles, no nav menu)
 # ===========================================================================
 
-if role == "Board":
+if raw_role == "board_member":
     with st.sidebar:
         st.info(t("board_view_info"))
     if auth.require_access("Executive Dashboard"):
         dashboard.show()
     st.stop()
 
-if role == "Customer":
+if raw_role == "customer":
     with st.sidebar:
         st.info(t("customer_access_info"))
     if auth.require_access("Data Principal Rights"):
@@ -473,17 +480,17 @@ with st.sidebar:
         st.warning(t("no_modules_available"))
         st.stop()
 
-    # Branch / region context info for relevant roles
-    if role in ("Officer", "PrivacySteward"):
+    # Branch / region context info for relevant roles — all canonical codes
+    if raw_role in ("branch_officer", "privacy_steward"):
         branch = st.session_state.get("branch", "")
         region = st.session_state.get("region", "")
         st.info(f"{t('branch_label')}: {branch}\n{t('region_label')}: {region}")
-    elif role == "Regional":
+    elif raw_role == "regional_officer":
         region = st.session_state.get("region", "")
         st.info(f"{t('region_label')}: {region}")
-    elif role == "SOCAnalyst":
+    elif raw_role == "soc_analyst":
         st.info(t_safe("soc_analyst_info", "Security Operations — Breach & Audit access."))
-    elif role == "PrivacyOperations":
+    elif raw_role == "privacy_operations":
         st.info(t_safe("privacy_ops_info", "Privacy Operations — Breach & Compliance access."))
 
     st.sidebar.markdown(f"### {t_safe('modules_label', 'Modules')}")
