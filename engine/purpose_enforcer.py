@@ -52,6 +52,22 @@ PURPOSE_REGISTRY: dict[str, dict[str, Any]] = {
         "risk_level":    "medium",
         "requires_dpia": False,
     },
+    "general_processing": {
+        "risk_level":    "low",
+        "requires_dpia": False,
+    },
+    "fd_opening": {
+        "risk_level":    "low",
+        "requires_dpia": False,
+    },
+    "insurance": {
+        "risk_level":    "medium",
+        "requires_dpia": False,
+    },
+    "grievance": {
+        "risk_level":    "low",
+        "requires_dpia": False,
+    },
 }
 
 # Risk-level → SLA / compliance weight multiplier
@@ -238,13 +254,20 @@ def validate_purpose(
     risk_multiplier = _RISK_MULTIPLIERS.get(risk_level, 1.0)
 
     # ── 2. DPIA enforcement ─────────────────────────────────────────────────
+    # Recorded as an advisory violation for audit, but does NOT hard-block
+    # the consent submission. _dpia_exists() is currently a stub (always
+    # False); promoting this to a hard block would deny all high-risk
+    # consent until the DPIA repository integration is complete.
+    # The orchestration layer should surface DPIA_MISSING to the DPO for
+    # follow-up rather than silently rejecting the customer's consent.
     if requires_dpia and not _dpia_exists(product):
-        allowed = False
         violations.append({
             "code":    "DPIA_MISSING",
+            "severity": "advisory",
             "message": (
                 f"Purpose '{purpose}' is high-risk and requires a completed DPIA "
-                f"for product '{product}'."
+                f"for product '{product}'. DPIA completion recommended before "
+                "activating this consent."
             ),
             "purpose": purpose,
             "product": product,

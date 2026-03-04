@@ -129,27 +129,35 @@ def _check_password(plaintext: str, hashed: bytes | None, username: str = "") ->
 
 VALID_ROLES: frozenset[str] = frozenset({
     "customer",
+    "customer_support",
     "branch_officer",
+    "branch_privacy_coordinator",   # governance alias for branch_officer
     "regional_officer",
+    "regional_compliance_officer",  # governance alias for regional_officer
     "privacy_steward",
     "privacy_operations",
     "soc_analyst",
     "dpo",
     "board_member",
     "auditor",
+    "internal_auditor",             # governance alias for auditor
 })
 
 # Roles that require MFA before access is granted
 MFA_REQUIRED_ROLES: frozenset[str] = frozenset({
     "customer",
+    "customer_support",
     "branch_officer",
+    "branch_privacy_coordinator",
     "regional_officer",
+    "regional_compliance_officer",
     "privacy_steward",
     "privacy_operations",
     "soc_analyst",
     "dpo",
     "board_member",
     "auditor",
+    "internal_auditor",
 })
 
 # Confirm: MFA_REQUIRED_ROLES == VALID_ROLES (all roles require MFA)
@@ -159,9 +167,11 @@ CROSS_BRANCH_ROLES: frozenset[str] = frozenset({
     "dpo",
     "board_member",
     "auditor",
+    "internal_auditor",
     "privacy_operations",
     "soc_analyst",
     "regional_officer",
+    "regional_compliance_officer",
 })
 
 # ---------------------------------------------------------------------------
@@ -170,10 +180,13 @@ CROSS_BRANCH_ROLES: frozenset[str] = frozenset({
 # ---------------------------------------------------------------------------
 
 ROLE_I18N_KEY: dict[str, str] = {
-    "customer":           "role_customer",
-    "branch_officer":     "role_branch_officer",
-    "regional_officer":   "role_regional_officer",
-    "privacy_steward":    "role_privacy_steward",
+    "customer":                      "role_customer",
+    "customer_support":              "role_customer_support",
+    "branch_officer":                "role_branch_officer",
+    "branch_privacy_coordinator":    "role_branch_officer",
+    "regional_officer":              "role_regional_officer",
+    "regional_compliance_officer":   "role_regional_officer",
+    "privacy_steward":               "role_privacy_steward",
     "privacy_operations": "role_privacy_operations",
     "soc_analyst":        "role_soc_analyst",
     "dpo":                "role_dpo",
@@ -287,6 +300,9 @@ _H_ADMIN    = None   # bcrypt hash of "admin@2026"
 _H_CUST     = None   # bcrypt hash of "cust@2026"
 _H_OPS      = None   # bcrypt hash of "ops@2026"
 _H_SOC      = None   # bcrypt hash of "soc@2026"
+_H_SUPPORT  = None   # bcrypt hash of "support@2026"
+_H_BPC      = None   # bcrypt hash of "branch@2026"
+_H_RCO      = None   # bcrypt hash of "region@2026"
 
 # ---------------------------------------------------------------------------
 # Demo plaintext fallback map — ONLY consulted when:
@@ -309,6 +325,10 @@ _DEMO_PLAINTEXT: dict[str, str] = {
     "customer_01":     "cust@2026",
     "privacy_ops_01":  "ops@2026",
     "soc_analyst_01":  "soc@2026",
+    # Step 6 — governance role additions
+    "support_01":      "support@2026",
+    "branch_01":       "branch@2026",
+    "region_01":       "region@2026",
 }
 
 # Demo MFA secrets — replace with pyotp.random_base32() per user before production
@@ -426,6 +446,37 @@ USERS: dict[str, dict] = {
         "branch":        "All",
         "region":        "All",
         "mfa_secret":    _MFA_SOC,
+        "mfa_required":  True,
+    },
+    # ── Step 6: Governance role additions ────────────────────────────────────
+    "support_01": {
+        "password_hash": _H_SUPPORT,
+        "role":          "customer_support",
+        "full_name":     "Divya Thomas",
+        "department":    "Customer Services",
+        "branch":        "Thiruvananthapuram Main",
+        "region":        "South Zone",
+        "mfa_secret":    _MFA_OFFICER1,
+        "mfa_required":  True,
+    },
+    "branch_01": {
+        "password_hash": _H_BPC,
+        "role":          "branch_privacy_coordinator",
+        "full_name":     "Suresh Babu",
+        "department":    "Branch Compliance",
+        "branch":        "Ernakulam Central",
+        "region":        "Central Zone",
+        "mfa_secret":    _MFA_OFFICER2,
+        "mfa_required":  True,
+    },
+    "region_01": {
+        "password_hash": _H_RCO,
+        "role":          "regional_compliance_officer",
+        "full_name":     "Meera Varma",
+        "department":    "Regional Compliance",
+        "branch":        "All",
+        "region":        "Central Zone",
+        "mfa_secret":    _MFA_REGIONAL,
         "mfa_required":  True,
     },
 }
@@ -625,6 +676,34 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "DPIA & Privacy Assessments",
         "Data Breach Management",
         "Privacy Notices",
+        "Audit Logs",
+        "Compliance & SLA Monitoring",
+    ],
+    # Customer Support — intake rights requests, view consent status
+    "customer_support": [
+        "Data Principal Rights",
+        "Consent Management",
+    ],
+    # Branch Privacy Coordinator — branch DPIA, consent, compliance
+    "branch_privacy_coordinator": [
+        "Executive Dashboard",
+        "Consent Management",
+        "Data Principal Rights",
+        "DPIA & Privacy Assessments",
+        "Data Breach Management",
+        "Compliance & SLA Monitoring",
+    ],
+    # Regional Compliance Officer — regional oversight (alias of regional_officer)
+    "regional_compliance_officer": [
+        "Executive Dashboard",
+        "Consent Management",
+        "Data Principal Rights",
+        "Data Breach Management",
+        "Compliance & SLA Monitoring",
+    ],
+    # Internal Auditor — full read-only oversight (alias of auditor)
+    "internal_auditor": [
+        "Executive Dashboard",
         "Audit Logs",
         "Compliance & SLA Monitoring",
     ],
@@ -1158,15 +1237,18 @@ def show_login() -> None:
             st.markdown(f"""
 | {t('username')} | {t('password')} | {t('role_label')} | {t('branch_label')} | {t('access_label')} |
 |---|---|---|---|---|
-| `dpo_admin`        | `dpo@2026`      | {t('role_dpo')}               | {t('all_branches_head_office')} | {t('demo_access_dpo')}      |
-| `officer_01`       | `officer@2026`  | {t('role_branch_officer')}    | Thiruvananthapuram Main        | {t('demo_access_officer')}  |
-| `officer_02`       | `officer2@2026` | {t('role_branch_officer')}    | Kochi Fort                     | {t('demo_access_officer')}  |
-| `officer_03`       | `officer3@2026` | {t('role_branch_officer')}    | Kozhikode North                | {t('demo_access_officer')}  |
-| `auditor_01`       | `audit@2026`    | {t('role_auditor')}           | {t('all_branches_head_office')} | {t('demo_access_auditor')}  |
-| `board_01`         | `board@2026`    | {t('role_board_member')}      | {t('all_branches_head_office')} | {t('demo_access_board')}    |
-| `privacy_ops_01`   | `ops@2026`      | {t('role_privacy_operations')}| {t('all_branches_head_office')} | {t('role_privacy_operations')} |
-| `soc_analyst_01`   | `soc@2026`      | {t('role_soc_analyst')}       | {t('all_branches_head_office')} | {t('role_soc_analyst')}        |
-| `customer_01`      | `cust@2026`     | {t('role_customer')}          | —                              | {t('demo_access_customer')} |
+| `customer_01`      | `cust@2026`     | {t('role_customer')}                | —                              | {t('demo_access_customer')}    |
+| `support_01`       | `support@2026`  | Customer Support                    | Thiruvananthapuram Main        | Rights intake, consent view    |
+| `officer_01`       | `officer@2026`  | {t('role_branch_officer')}          | Thiruvananthapuram Main        | {t('demo_access_officer')}     |
+| `officer_02`       | `officer2@2026` | {t('role_branch_officer')}          | Kochi Fort                     | {t('demo_access_officer')}     |
+| `officer_03`       | `officer3@2026` | {t('role_branch_officer')}          | Kozhikode North                | {t('demo_access_officer')}     |
+| `branch_01`        | `branch@2026`   | Branch Privacy Coordinator          | Ernakulam Central              | Branch DPIA, compliance        |
+| `region_01`        | `region@2026`   | Regional Compliance Officer         | Central Zone                   | Regional oversight             |
+| `privacy_ops_01`   | `ops@2026`      | {t('role_privacy_operations')}      | {t('all_branches_head_office')} | {t('role_privacy_operations')} |
+| `soc_analyst_01`   | `soc@2026`      | {t('role_soc_analyst')}             | {t('all_branches_head_office')} | {t('role_soc_analyst')}        |
+| `auditor_01`       | `audit@2026`    | {t('role_auditor')}                 | {t('all_branches_head_office')} | {t('demo_access_auditor')}     |
+| `board_01`         | `board@2026`    | {t('role_board_member')}            | {t('all_branches_head_office')} | {t('demo_access_board')}       |
+| `dpo_admin`        | `dpo@2026`      | {t('role_dpo')}                     | {t('all_branches_head_office')} | {t('demo_access_dpo')}         |
 """)
             st.caption(
                 t_safe(

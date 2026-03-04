@@ -30,6 +30,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
 import engine.orchestration as orchestration
+from engine.data_discovery import build_data_map
 from engine.consent_validator import (
     get_all_consents,
     get_consent_status,
@@ -246,6 +247,8 @@ def show():
                         "granted":     granted,
                         "metadata":    {"notes": notes, "branch": user_branch or "All"},
                     }
+                    # Step 9 — Data Discovery: scan payload for PII and attach data_map
+                    payload["data_map"] = build_data_map(payload)
                     result = orchestration.execute_action(
                         action_type="capture_consent",
                         payload=payload,

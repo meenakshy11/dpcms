@@ -36,7 +36,7 @@ Step 8 engine hardening:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import networkx as nx
 import pandas as pd
@@ -49,6 +49,8 @@ from auth import get_role, get_branch, get_region
 import engine.compliance_engine as compliance_engine
 import engine.sla_engine as sla_engine
 import engine.audit_ledger as audit_ledger
+from engine.data_discovery import get_discovery_summary
+from engine.consent_validator import get_consent_lifecycle_summary
 import engine.orchestration as orchestration
 from utils.dpdp_clauses import get_clause
 from utils.export_utils import export_data
@@ -324,6 +326,92 @@ def _render_dpia_summary(data: dict) -> None:
 
 
 # ===========================================================================
+# Step 9 — Data Discovery Panel
+# ===========================================================================
+
+def _render_data_discovery_panel() -> None:
+    """
+    Display a PII discovery summary drawn from consent records that carry
+    a ``data_map`` field (populated by engine/data_discovery.py at capture time).
+
+    Shows:
+      - KPI strip: total fields, sensitive count, personal count
+      - Purpose breakdown bar
+      - High-risk field list
+      - Consent lifecycle strip (active / expiring_soon / expired)
+    """
+    from engine.consent_validator import get_all_consents  # local import — avoids circular
+
+    try:
+        all_consents = get_all_consents()
+    except Exception:
+        all_consents = []
+
+    data_maps = [c.get("data_map", []) for c in all_consents if c.get("data_map")]
+    summary   = get_discovery_summary(data_maps)
+    lifecycle = get_consent_lifecycle_summary()
+
+    st.subheader(t_safe("data_discovery_title", "Personal Data Discovery"))
+
+    # ── KPI strip ──────────────────────────────────────────────────────────
+    kc1, kc2, kc3, kc4 = st.columns(4)
+    _kpi(kc1, t_safe("total_fields_detected",  "Fields Detected"),
+         summary["total_fields_detected"], t_safe("across_all_consents", "across all consents"), "#0A3D91")
+    _kpi(kc2, t_safe("sensitive_fields",       "Sensitive (SPD)"),
+         summary["sensitive_count"],       t_safe("dpdp_s2t",  "DPDP Act S.2(t)"),              "#d93025")
+    _kpi(kc3, t_safe("personal_fields",        "Personal Data"),
+         summary["personal_count"],        t_safe("dpdp_s2n",  "DPDP Act S.2(n)"),              "#F39C12")
+    _kpi(kc4, t_safe("high_risk_fields_kpi",   "High-Risk Fields"),
+         len(summary["high_risk_fields"]), t_safe("require_dpia", "may require DPIA"),           "#6C3483")
+
+    # ── Consent lifecycle strip ─────────────────────────────────────────────
+    st.markdown(f"**{t_safe('consent_lifecycle', 'Consent Lifecycle')}**")
+    lc1, lc2, lc3, lc4 = st.columns(4)
+    _kpi(lc1, t_safe("lifecycle_active",         "Active"),
+         lifecycle.get("active", 0),         t_safe("consents_valid",      "valid consents"),   "#1a9e5c")
+    _kpi(lc2, t_safe("lifecycle_expiring_soon",  "Expiring Soon"),
+         lifecycle.get("expiring_soon", 0),  t_safe("within_30_days",      "within 30 days"),   "#F39C12")
+    _kpi(lc3, t_safe("lifecycle_expired",        "Expired"),
+         lifecycle.get("expired", 0),        t_safe("requires_renewal",    "requires renewal"), "#d93025")
+    _kpi(lc4, t_safe("renewal_backlog",          "Renewal Backlog"),
+         lifecycle.get("renewal_backlog", 0), t_safe("needs_action",       "needs action"),      "#7B241C")
+
+    if lifecycle.get("expiring_soon", 0) > 0:
+        st.warning(
+            f"⚠ {lifecycle['expiring_soon']} {t_safe('consent_expiry_warning', 'consent(s) expiring within 30 days — renewal required.')}"
+        )
+    if lifecycle.get("expired", 0) > 0:
+        st.error(
+            f"🔴 {lifecycle['expired']} {t_safe('consent_expired_alert', 'consent(s) expired — processing blocked until renewed.')}"
+        )
+
+    # ── Purpose breakdown ───────────────────────────────────────────────────
+    if summary["by_purpose"]:
+        st.markdown(f"**{t_safe('purpose_breakdown', 'Data by Processing Purpose')}**")
+        import plotly.graph_objects as _go  # noqa
+        fig = _go.Figure(_go.Bar(
+            x=list(summary["by_purpose"].values()),
+            y=list(summary["by_purpose"].keys()),
+            orientation="h",
+            marker_color="#0A3D91",
+        ))
+        fig.update_layout(
+            height=max(200, 40 * len(summary["by_purpose"])),
+            margin=dict(l=10, r=10, t=10, b=10),
+            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+            font=dict(color="#0A3D91", size=13),
+            xaxis_title=t_safe("field_count", "Field Count"),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ── High-risk fields ────────────────────────────────────────────────────
+    if summary["high_risk_fields"]:
+        with st.expander(t_safe("high_risk_fields_detail", "High-Risk Fields Detected"), expanded=False):
+            for field in summary["high_risk_fields"]:
+                st.markdown(f"- `{field}`")
+
+
+# ===========================================================================
 # Shared decision table — Step 7F/G/H/I/J + engine-sourced requests
 # ===========================================================================
 
@@ -364,6 +452,12 @@ def _render_rights_decision_table(role: str, data: dict | None = None) -> None:
 
     rows_html = ""
     for req in live_requests:
+        req.setdefault("sla", "active")
+        req.setdefault("deadline", datetime.now(timezone.utc) + timedelta(days=30))
+        req.setdefault("id", "—")
+        req.setdefault("decision", t("pending"))
+        req.setdefault("branch", "—")
+        req.setdefault("type", "—")
         masked_id       = _display_id(req["id"], role)
         customer_val    = req.get("customer") or req.get("customer_id") or req.get("data_principal_id") or "—"
         masked_customer = _display_id(customer_val, role)
@@ -786,6 +880,7 @@ def render_dpo_dashboard(data: dict) -> None:
         _render_escalation_overview(data)
         st.divider()
         _render_dpia_summary(data)
+        _render_data_discovery_panel()
 
 
 # ===========================================================================

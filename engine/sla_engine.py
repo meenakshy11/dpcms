@@ -1085,6 +1085,208 @@ def status_badge(status: str) -> str:
     return STATUS_BADGE.get(status, status)
 
 
+# ===========================================================================
+# ── STEP 14I — Tiered time-based SLA status for rights requests ─────────────
+# ===========================================================================
+#
+# Rights requests have a 30-day SLA (DPDP Act, Section 13).
+# Within that window we surface three escalation tiers:
+#
+#   0-48 h  → green   — on track, branch officer responsible
+#   48-96 h → yellow  — warning,  regional_compliance_officer notified
+#   >96 h   → red     — critical, dpo escalated
+#
+# This is independent of the deadline-based evaluate_sla() path, which fires
+# only when the full deadline expires. The tiered status gives visibility
+# within the active window so escalations happen proactively.
+# ===========================================================================
+
+# Tier thresholds (configurable)
+_TIER_YELLOW_HOURS: int = 48    # escalate to regional_compliance_officer
+_TIER_RED_HOURS:    int = 96    # escalate to dpo
+
+# RAG labels used by render_status_badge() in dashboard.py
+_TIER_LABELS = {
+    "green":  "active",
+    "yellow": "warning",
+    "red":    "breached",
+}
+
+
+def get_request_sla_status(entity_id: str) -> dict:
+    """
+    Return the current tiered SLA status for a single entity.
+
+    Uses the *created_at* timestamp of the entity's SLA record to compute
+    elapsed time and map it to a green / yellow / red tier.
+
+    Tiers (rights requests):
+        0  – 48 h : green  → branch_officer responsible (on track)
+        48 – 96 h : yellow → regional_compliance_officer (warning)
+        > 96 h    : red    → dpo (critical — escalate immediately)
+
+    Parameters
+    ----------
+    entity_id : The rights request / consent / breach ID.
+
+    Returns
+    -------
+    dict:
+        entity_id        : str
+        tier             : "green" | "yellow" | "red"
+        sla_status       : "active" | "warning" | "breached"  (badge-compatible)
+        elapsed_hours    : float
+        escalated_to     : str | None
+        sla_id           : str | None
+        deadline         : str | None
+        registered_status: str | None  — status in the SLA registry
+    """
+    slas: List[dict] = load_json(SLA_FILE, default=[])
+    record = next(
+        (s for s in slas if s.get("entity_id") == entity_id and s.get("status") in ("active", "breached")),
+        None,
+    )
+
+    # Fallback: any matching record regardless of status
+    if record is None:
+        record = next((s for s in slas if s.get("entity_id") == entity_id), None)
+
+    now = _utc_now()
+
+    if record is None:
+        return {
+            "entity_id":         entity_id,
+            "tier":              "green",
+            "sla_status":        "active",
+            "elapsed_hours":     0.0,
+            "escalated_to":      None,
+            "sla_id":            None,
+            "deadline":          None,
+            "registered_status": None,
+        }
+
+    # Use registered_at for elapsed time calculation; fall back to deadline back-calculation
+    registered_at_raw = record.get("registered_at") or record.get("created_at")
+    if registered_at_raw:
+        try:
+            registered_at = _parse_dt(registered_at_raw)
+        except (ValueError, TypeError):
+            registered_at = now
+    else:
+        registered_at = now
+
+    elapsed_hours = (now - registered_at).total_seconds() / 3600
+
+    # Tiered escalation based on elapsed time
+    if elapsed_hours <= _TIER_YELLOW_HOURS:
+        tier         = "green"
+        escalated_to = None
+    elif elapsed_hours <= _TIER_RED_HOURS:
+        tier         = "yellow"
+        escalated_to = "regional_compliance_officer"
+    else:
+        tier         = "red"
+        escalated_to = "dpo"
+
+    # If the registry already shows a hard breach, promote to red regardless
+    if record.get("status") == "breached":
+        tier         = "red"
+        escalated_to = record.get("escalated_to") or "dpo"
+
+    return {
+        "entity_id":         entity_id,
+        "tier":              tier,
+        "sla_status":        _TIER_LABELS[tier],
+        "elapsed_hours":     round(elapsed_hours, 2),
+        "escalated_to":      escalated_to or record.get("escalated_to"),
+        "sla_id":            record.get("sla_id"),
+        "deadline":          record.get("deadline"),
+        "registered_status": record.get("status"),
+    }
+
+
+def get_branch_escalation_report() -> dict:
+    """
+    Branch-wise SLA escalation report for the dashboard compliance strip.
+
+    Iterates all active and breached SLA records, groups them by branch,
+    and returns per-branch escalation counts across all three tiers.
+
+    Returns
+    -------
+    dict:
+        branches   : dict[branch_name → { green, yellow, red, total }]
+        totals     : { green, yellow, red, total }
+        by_module  : dict[module → { green, yellow, red }]
+        escalated_to_dpo      : int
+        escalated_to_regional : int
+    """
+    slas: List[dict] = load_json(SLA_FILE, default=[])
+    now  = _utc_now()
+
+    branches: dict[str, dict] = {}
+    by_module: dict[str, dict] = {}
+    total_green = total_yellow = total_red = 0
+    esc_dpo = esc_regional = 0
+
+    for sla in slas:
+        if sla.get("status") not in ("active", "breached"):
+            continue
+
+        branch = sla.get("branch", "Unknown") or "Unknown"
+        module = sla.get("module", "unknown") or "unknown"
+
+        # Compute elapsed hours from registered_at
+        raw_ts = sla.get("registered_at") or sla.get("created_at")
+        try:
+            registered = _parse_dt(raw_ts) if raw_ts else now
+        except (ValueError, TypeError):
+            registered = now
+
+        elapsed_hours = (now - registered).total_seconds() / 3600
+
+        if sla.get("status") == "breached" or elapsed_hours > _TIER_RED_HOURS:
+            tier = "red"
+            esc_dpo += 1
+        elif elapsed_hours > _TIER_YELLOW_HOURS:
+            tier = "yellow"
+            esc_regional += 1
+        else:
+            tier = "green"
+
+        # Branch accumulation
+        if branch not in branches:
+            branches[branch] = {"green": 0, "yellow": 0, "red": 0, "total": 0}
+        branches[branch][tier] += 1
+        branches[branch]["total"] += 1
+
+        # Module accumulation
+        if module not in by_module:
+            by_module[module] = {"green": 0, "yellow": 0, "red": 0}
+        by_module[module][tier] += 1
+
+        # Totals
+        if tier == "green":
+            total_green += 1
+        elif tier == "yellow":
+            total_yellow += 1
+        else:
+            total_red += 1
+
+    return {
+        "branches":             branches,
+        "totals": {
+            "green":  total_green,
+            "yellow": total_yellow,
+            "red":    total_red,
+            "total":  total_green + total_yellow + total_red,
+        },
+        "by_module":                by_module,
+        "escalated_to_dpo":         esc_dpo,
+        "escalated_to_regional":    esc_regional,
+    }
+
+
 def get_escalation_summary() -> dict:
     """
     Return a summary of all escalated SLA records.

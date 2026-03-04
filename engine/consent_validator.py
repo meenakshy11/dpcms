@@ -1349,6 +1349,236 @@ def get_consents_by_status(status: str) -> List[dict]:
 
 
 # ===========================================================================
+# ── Consent Lifecycle Monitor — expiry status + renewal notifications ────────
+# ===========================================================================
+#
+# Step 8 — Dashboard-facing helpers for consent expiry enforcement.
+#
+# The core engine already handles:
+#   - expires_at stamped on every record (validate_consent_capture)
+#   - auto_expire_all() transitions Active → Expired when deadline passes
+#   - validate_consent() blocks processing if record is Expired
+#
+# These new functions add:
+#   compute_expiry_status()   — classify a single record into the lifecycle tier
+#   check_consent_expiry()    — mutate a payload dict (dashboard loop helper)
+#   get_expiring_soon()       — query all records approaching expiry
+#   get_consent_lifecycle_summary() — KPI counts for the dashboard strip
+# ===========================================================================
+
+# Warning window (days before expiry where status becomes "expiring_soon")
+EXPIRY_WARNING_DAYS: int = 30
+
+
+def compute_expiry_status(record: dict) -> dict:
+    """
+    Classify a single consent record into its lifecycle tier and attach
+    enriched expiry metadata without mutating the stored record.
+
+    Tiers
+    -----
+    active        — expires_at is > EXPIRY_WARNING_DAYS away
+    expiring_soon — expires_at is within EXPIRY_WARNING_DAYS
+    expired       — expires_at has passed OR status == "Expired"
+
+    Parameters
+    ----------
+    record : A consent dict from _load_all() / get_all_consents().
+
+    Returns
+    -------
+    A shallow copy of the record with these extra keys added:
+        lifecycle_status : "active" | "expiring_soon" | "expired"
+        days_until_expiry: int  (negative if already expired)
+        renewal_required : bool
+        expiry_alert     : str | None  — human-readable message for UI display
+    """
+    out = dict(record)
+    now = _now_dt()
+
+    # If the record status is already terminal / revoked — pass through unchanged
+    if record.get("status") in ("Revoked", "Pending"):
+        out["lifecycle_status"]  = record["status"].lower()
+        out["days_until_expiry"] = None
+        out["renewal_required"]  = False
+        out["expiry_alert"]      = None
+        return out
+
+    raw_exp = record.get("expires_at")
+    if not raw_exp:
+        out["lifecycle_status"]  = "active"
+        out["days_until_expiry"] = None
+        out["renewal_required"]  = False
+        out["expiry_alert"]      = None
+        return out
+
+    try:
+        exp_dt = datetime.fromisoformat(str(raw_exp))
+        if exp_dt.tzinfo is None:
+            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        out["lifecycle_status"]  = "active"
+        out["days_until_expiry"] = None
+        out["renewal_required"]  = False
+        out["expiry_alert"]      = None
+        return out
+
+    days_left = (exp_dt - now).days
+
+    if record.get("status") == "Expired" or now > exp_dt:
+        lifecycle = "expired"
+        alert     = f"Consent expired — processing blocked. Expired {abs(days_left)} day(s) ago."
+    elif days_left <= EXPIRY_WARNING_DAYS:
+        lifecycle = "expiring_soon"
+        alert     = f"Consent expires in {days_left} day(s). Renewal required."
+    else:
+        lifecycle = "active"
+        alert     = None
+
+    out["lifecycle_status"]  = lifecycle
+    out["days_until_expiry"] = days_left
+    out["renewal_required"]  = lifecycle in ("expiring_soon", "expired")
+    out["expiry_alert"]      = alert
+    return out
+
+
+def check_consent_expiry(consent: dict) -> dict:
+    """
+    Dashboard loop helper — enriches a consent dict with lifecycle status
+    and sets the top-level ``status`` field to the lifecycle tier so that
+    existing badge renderers (render_status_badge) work without changes.
+
+    Usage
+    -----
+    In dashboard.py consent loop:
+
+        from engine.consent_validator import check_consent_expiry
+
+        for consent in consents:
+            consent = check_consent_expiry(consent)
+            badge   = render_status_badge(consent["status"])
+
+    Parameters
+    ----------
+    consent : A consent payload dict (not mutated in storage — in-memory only).
+
+    Returns
+    -------
+    Enriched copy with lifecycle_status, days_until_expiry, renewal_required,
+    expiry_alert, and updated status field.
+    """
+    enriched = compute_expiry_status(consent)
+    # Map lifecycle tier to badge-compatible status string
+    tier_to_badge = {
+        "active":        "active",
+        "expiring_soon": "warning",
+        "expired":       "breached",
+    }
+    lc = enriched.get("lifecycle_status", "active")
+    if lc in tier_to_badge:
+        enriched["status"] = tier_to_badge[lc]
+    return enriched
+
+
+def get_expiring_soon(
+    warning_days: int = EXPIRY_WARNING_DAYS,
+    include_expired: bool = False,
+) -> List[dict]:
+    """
+    Return all Active/Renewed consent records that will expire within
+    ``warning_days`` days (and optionally those already Expired).
+
+    Parameters
+    ----------
+    warning_days    : Lookforward window in days (default: EXPIRY_WARNING_DAYS).
+    include_expired : If True, also return records already in Expired state.
+
+    Returns
+    -------
+    List of enriched consent dicts (see compute_expiry_status).
+    Sorted by days_until_expiry ascending (soonest-expiring first).
+    """
+    now      = _now_dt()
+    cutoff   = now + timedelta(days=warning_days)
+    results  = []
+
+    for record in _load_all():
+        status = record.get("status", "")
+
+        if include_expired and status == "Expired":
+            results.append(compute_expiry_status(record))
+            continue
+
+        if status not in ("Active", "Renewed"):
+            continue
+
+        raw_exp = record.get("expires_at")
+        if not raw_exp:
+            continue
+        try:
+            exp_dt = datetime.fromisoformat(str(raw_exp))
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            continue
+
+        if exp_dt <= cutoff:
+            results.append(compute_expiry_status(record))
+
+    results.sort(key=lambda r: (r.get("days_until_expiry") or 0))
+    return results
+
+
+def get_consent_lifecycle_summary() -> dict:
+    """
+    KPI summary for the dashboard consent lifecycle strip.
+
+    Counts all consent records by lifecycle tier, plus total and renewal backlog.
+
+    Returns
+    -------
+    dict:
+        active           : int
+        expiring_soon    : int
+        expired          : int
+        revoked          : int
+        total            : int
+        renewal_backlog  : int  — expiring_soon + expired (need action)
+        by_purpose       : dict[purpose → {active, expiring_soon, expired}]
+    """
+    records  = _load_all()
+    counts   = {"active": 0, "expiring_soon": 0, "expired": 0, "revoked": 0}
+    by_purpose: dict[str, dict] = {}
+
+    for record in records:
+        enriched = compute_expiry_status(record)
+        lc       = enriched.get("lifecycle_status", "active")
+        purpose  = record.get("purpose", "unknown")
+
+        if lc == "active":
+            counts["active"] += 1
+        elif lc == "expiring_soon":
+            counts["expiring_soon"] += 1
+        elif lc == "expired":
+            counts["expired"] += 1
+        elif record.get("status") in ("Revoked",):
+            counts["revoked"] += 1
+            lc = "revoked"
+        else:
+            counts["active"] += 1
+
+        if purpose not in by_purpose:
+            by_purpose[purpose] = {"active": 0, "expiring_soon": 0, "expired": 0}
+        bp_key = lc if lc in by_purpose[purpose] else "active"
+        by_purpose[purpose][bp_key] += 1
+
+    counts["total"]           = sum(counts.values())
+    counts["renewal_backlog"] = counts["expiring_soon"] + counts["expired"]
+    counts["by_purpose"]      = by_purpose
+    return counts
+
+
+# ===========================================================================
 # ── Smoke test — run directly: AUDIT_ENV=dev python engine/consent_validator.py
 # ===========================================================================
 if __name__ == "__main__":

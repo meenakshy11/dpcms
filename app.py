@@ -43,6 +43,7 @@ from modules import dashboard
 from modules import dpia
 from modules import notices
 from modules import rights_portal
+from modules import cookie_consent
 
 from utils.i18n import (
     t,
@@ -369,6 +370,12 @@ auth.init()
 _check_session_timeout()
 
 # ===========================================================================
+# STEP 1B — Cookie consent banner (shown to all visitors, pre-login)
+# Only displayed until the user makes a preference choice.
+# ===========================================================================
+cookie_consent.show_cookie_banner()
+
+# ===========================================================================
 # STEP 2 — Login gate: no role → show login and stop
 # ===========================================================================
 
@@ -448,6 +455,21 @@ with _lang_col:
 
 # Sidebar: user identity panel (uses render_sidebar_profile for canonical role display)
 auth.render_sidebar_profile()
+
+# ── Sign Out ────────────────────────────────────────────────────────────────
+# Placed immediately after profile so it is visible to every role.
+# Clears the entire session so no role/permission/cache state persists.
+with st.sidebar:
+    st.markdown("---")
+    if st.button(
+        t_safe("sign_out", "Sign Out"),
+        key="global_sign_out_btn",
+        use_container_width=True,
+    ):
+        for _k in list(st.session_state.keys()):
+            del st.session_state[_k]
+        st.rerun()
+    st.markdown("---")
 
 # ===========================================================================
 # STEP 2 / 8 — Role-based fast paths (single-module roles, no nav menu)

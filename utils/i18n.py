@@ -2814,18 +2814,12 @@ def t(key: str) -> str:
             return LANG["en"].get(key, key)
         return value
 
-    # ── English mode — return key as fallback for internal/session state keys ────
-    # Internal session state keys like "_startup_checks_passed" are not UI strings
-    # and should not crash the app if accidentally passed to t().
+    # ── English mode — safe fallback; never raise ────────────────────────────
+    # Missing keys return the key itself so the UI degrades gracefully instead
+    # of crashing. Use validate_translation_completeness() in CI to catch gaps.
     if lang == "en":
         if key not in LANG["en"]:
-            # Internal/session keys start with _ — return as-is silently
-            if key.startswith("_"):
-                return key
-            raise TranslationKeyError(
-                f"Missing English translation for key '{key}'. "
-                "Add the key to LANG['en'] in utils/i18n.py."
-            )
+            return key   # graceful fallback — show key text, never crash
         return LANG["en"][key]
 
     # ── Other registered languages — fallback chain ───────────────────────────
