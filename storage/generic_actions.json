@@ -200,5 +200,835 @@
     "request_type": "Access My Data",
     "notes": "",
     "assisted": false
+  },
+  {
+    "transaction_id": "TX-F140D710C063",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:36:46.669173+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-1C8F60E77E26",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:36:51.305569+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-055BE03FA609",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T09:36:51.382484+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Access My Data",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-C36B9407DA63",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:37:00.196993+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-15DB1F6421E4",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:37:04.369397+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-6775E648C6FC",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T09:37:04.454123+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Raise Grievance",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-B1D78672D81A",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:46:01.356116+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-A60DC94B8894",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:46:14.571698+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-1E6FC962FD40",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:46:15.614590+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-C3B98AFB1C31",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:46:19.352882+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-13A8C90EE7A5",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:47:03.623862+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-D620C82E9963",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T09:47:03.686888+00:00",
+    "customer_id": "C234",
+    "request_type": "Revoke Consent",
+    "notes": "",
+    "assisted": true,
+    "verification_mode": "physical_id_verified",
+    "identity_verified": false
+  },
+  {
+    "transaction_id": "TX-410012C43417",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:47:41.790077+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-D87AFD44C919",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:47:43.172163+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-6E7FE4AA8F52",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-04T09:47:47.004031+00:00"
+  },
+  {
+    "transaction_id": "TX-16CF5ABEFFD0",
+    "action_type": "query_notices",
+    "timestamp": "2026-03-04T09:48:03.922332+00:00"
+  },
+  {
+    "transaction_id": "TX-9D1631FBF804",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:48:46.366322+00:00",
+    "branch": "Kozhikode North"
+  },
+  {
+    "transaction_id": "TX-410F1B6B2C90",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-04T09:48:48.240994+00:00"
+  },
+  {
+    "transaction_id": "TX-8B6FE25A32CB",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-04T09:49:01.398932+00:00"
+  },
+  {
+    "transaction_id": "TX-66C5729A87AC",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:49:27.432055+00:00",
+    "branch": "Kochi Fort"
+  },
+  {
+    "transaction_id": "TX-1111133207D0",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-04T09:49:28.345602+00:00"
+  },
+  {
+    "transaction_id": "TX-27D380721770",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:49:29.327905+00:00",
+    "branch": "Kochi Fort"
+  },
+  {
+    "transaction_id": "TX-AA277716406B",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-04T09:49:33.220232+00:00"
+  },
+  {
+    "transaction_id": "TX-A84C8523EA6E",
+    "action_type": "query_notices",
+    "timestamp": "2026-03-04T09:49:33.975374+00:00"
+  },
+  {
+    "transaction_id": "TX-B6507FEE4BFA",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:49:37.426300+00:00",
+    "branch": "Kochi Fort"
+  },
+  {
+    "transaction_id": "TX-BEF80AB509D3",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:49:46.226040+00:00",
+    "branch": "Kochi Fort"
+  },
+  {
+    "transaction_id": "TX-9B6CA65FFF2E",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T09:50:10.787942+00:00"
+  },
+  {
+    "transaction_id": "TX-BE8C81C6E612",
+    "action_type": "query_dpias",
+    "timestamp": "2026-03-04T09:50:13.331691+00:00"
+  },
+  {
+    "transaction_id": "TX-55D5D0279095",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-04T09:50:52.804814+00:00"
+  },
+  {
+    "transaction_id": "TX-C35F69AF856A",
+    "action_type": "query_notices",
+    "timestamp": "2026-03-04T09:50:56.220288+00:00"
+  },
+  {
+    "transaction_id": "TX-5846B93CB58F",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T10:53:33.222728+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-715C58D5F4DA",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T10:58:16.598178+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-D78F1E6FE580",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T10:59:13.980485+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-42F57A008400",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T10:59:20.460559+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-533186A80C58",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T10:59:21.111195+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-198E37F31B22",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T10:59:21.187698+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Raise Grievance",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-FFEFD60FE8E8",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:20:44.083805+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-357D56196C4A",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:20:47.475259+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-DC1901BF601B",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:20:48.512456+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-B32DAE0A62D6",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:20:48.609155+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Raise Grievance",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-AB9A1F057B32",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:20:54.550222+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-19D4EE5AC506",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:20:54.687481+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-2DD006B69C31",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:20:54.775062+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Raise Grievance",
+    "notes": "nil",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-65A457C5316E",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:21:01.927279+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-895BF6245578",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:21:09.840776+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-88D3864F6211",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:21:09.928252+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Access My Data",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-D30219F69FA8",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:21:48.711191+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-854E79B44941",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:23:49.055071+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:23 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-85FAE3D87C0B",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:23:49.311964+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:23 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-7F3F5E8D31B3",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:23:49.398984+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "76b245455139b32afa6d35616ab6ecafd26657841d157af023e44f28e6988dc2",
+    "generated_at": "2026-03-04 11:23 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-676FFAC3DD10",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:26.896588+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-8C8CA8BA092E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:26.956957+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "64ebf85629338feeea9a719e149626578028f93a0b6c16b0f2897c83516af30b",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-8ACBA72CD329",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:30.002974+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-B880A81441C4",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:30.067832+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "64ebf85629338feeea9a719e149626578028f93a0b6c16b0f2897c83516af30b",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-44FE83BD2C21",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:34.999732+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-D7F791402A22",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:35.071029+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "64ebf85629338feeea9a719e149626578028f93a0b6c16b0f2897c83516af30b",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-317405AD725C",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:39.988000+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-FFE8DC3D43D7",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:40.046021+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "64ebf85629338feeea9a719e149626578028f93a0b6c16b0f2897c83516af30b",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-5B4C7C29F00E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:44.989457+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-05ABB049BBD7",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:45.056629+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "64ebf85629338feeea9a719e149626578028f93a0b6c16b0f2897c83516af30b",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-AB029F9EC76B",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:49.993973+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-3D89E47719AD",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:50.046226+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "64ebf85629338feeea9a719e149626578028f93a0b6c16b0f2897c83516af30b",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-6E6B85E1D7B5",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:54.992080+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-153F1327534E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:24:55.063459+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "64ebf85629338feeea9a719e149626578028f93a0b6c16b0f2897c83516af30b",
+    "generated_at": "2026-03-04 11:24 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-14247994FC1C",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:25:19.177081+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:25 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-ACDB417C5568",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:25:19.252534+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "830954d97401cc5fa3cd2d3df7cde31e6e5607601eeffcfea697f871c9e11ba3",
+    "generated_at": "2026-03-04 11:25 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-F2754FC079DE",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:26:19.201277+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:26 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-2713F4BBDCD5",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:26:19.297126+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9880a08859a971611ec151657097bee50295dee2c2ca322c99b5e9de42226a81",
+    "generated_at": "2026-03-04 11:26 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-D7CC365A4EC8",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:27:19.186004+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9fc6c2275cf9988e032f4545ffe56b6b2e766be9f914917958a893e76afd1cc3",
+    "generated_at": "2026-03-04 11:27 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-9FB4BCD3A4DD",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-04T11:27:19.246339+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "3a788951058343980fe79129064a5ab9053ee5be32b009c4d36b3c420823de02",
+    "generated_at": "2026-03-04 11:27 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-DBB7903AABB6",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:26.307454+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-FB3373EA9B34",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:30.389021+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-36DE8027D27E",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:32.346381+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-A5E99E6DC0F5",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:33.094315+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-8292F6F4366A",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:30:33.190618+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Revoke Consent",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-6035D2F39A6A",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:35.221800+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-ACFF606D8830",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:35.802896+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-8794ACAC11BE",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:30:35.902629+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Raise Grievance",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-A8E40F651AB7",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:37.542930+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-90D4AE296220",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:38.518695+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-2D54C7C2E69C",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:30:38.610965+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Access My Data",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-880D0804A4A4",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:40.277232+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-2C2D1DB0EB0C",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:41.716342+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-6EB42C10263A",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:42.359160+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-D1AD218CF8E2",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:30:42.448570+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Nominate Representative",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-B12F013EFE40",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:48.431453+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-622A3C40BC10",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:50.362154+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-DD6B9A38D20E",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:30:50.440102+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Access My Data",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-B965E8EF8AFC",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:56.919027+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-C12B174018D0",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:30:57.836278+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-BFD52E327C27",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:30:57.923990+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Raise Grievance",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-9F59115FED11",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:31:00.884232+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-55D02A536612",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:34:20.715790+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-9D59C9275DB9",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:34:24.135009+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-C6D5BC4919AE",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:34:24.738556+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-01BD67AB06B6",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:34:24.833140+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Revoke Consent",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-E19400FFEDD7",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:34:31.164591+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-BA689EE1C029",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:34:32.339077+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-06E03E47E0E6",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:34:32.439909+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Raise Grievance",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-F37DD4E05999",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:34:36.684281+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-DF7E344E2DE6",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:34:56.550523+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-0102BC35D166",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:35:29.308728+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-BF611170FFD5",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:35:51.704776+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-E7ED5F9D1E6B",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:50:19.536331+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-88294360AF36",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:50:21.983831+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-33F03B8C79AA",
+    "action_type": "create_rights_request",
+    "timestamp": "2026-03-04T11:50:22.065994+00:00",
+    "customer_id": "customer_01",
+    "request_type": "Access My Data",
+    "notes": "",
+    "assisted": false
+  },
+  {
+    "transaction_id": "TX-E49B2453127F",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:50:28.245769+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-156264BA6042",
+    "action_type": "query_rights_requests",
+    "timestamp": "2026-03-04T11:50:32.147993+00:00",
+    "customer_id": "customer_01"
+  },
+  {
+    "transaction_id": "TX-F44BCEB51543",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-04T11:51:08.458986+00:00"
   }
 ]

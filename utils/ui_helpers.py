@@ -8,16 +8,41 @@ No English fallback strings exist anywhere in this module.
 If a translation key is missing, t() raises TranslationKeyError immediately —
 this is intentional: broken UI is caught at render time, not silently swallowed.
 
+PAGE TITLE CONTRACT (enforced across all modules):
+  ✅ DO:    from utils.ui_helpers import render_page_title
+            render_page_title("consent_management")
+
+  ❌ NEVER: st.header("Consent Management")   # hardcoded English
+  ❌ NEVER: st.title("Dashboard")              # bypasses i18n + branding
+  ❌ NEVER: st.markdown("# My Module")         # no gradient box, no i18n
+
+  render_page_title() is the single replacement for ALL st.header() and
+  st.title() calls across every module. It resolves the display text through
+  t(key) (Malayalam / English) and wraps it in the Kerala Bank gradient box.
+
+  Module key reference:
+    "audit"                  — Audit Logs
+    "breach"                 — Data Breach Management
+    "compliance"             — Compliance & SLA Monitoring
+    "consent_management"     — Consent Management
+    "dpia"                   — DPIA & Privacy Assessments
+    "notices"                — Privacy Notices
+    "rights_portal"          — Data Principal Rights Portal
+    "system_dashboard"       — Executive Dashboard
+    "governance_console"     — DPO Governance Console
+    "admin_console"          — System Administration Console
+
 Components:
-  more_info(content, title)         — Collapsible expander
-  info_panel(title, body)           — Styled informational panel
-  clause_box(old, new, note)        — Regulatory clause display
-  warning_box(message)              — Amber warning strip
-  risk_badge(level)                 — Colour-coded risk chip
-  render_page_title(key)            — Gradient page header (Step 5)
+  render_page_title(key)             — Gradient page header — replaces ALL
+                                       st.header() / st.title() calls (Step 5)
+  more_info(content, title)          — Collapsible expander
+  info_panel(title, body)            — Styled informational panel
+  clause_box(old, new, note)         — Regulatory clause display
+  warning_box(message)               — Amber warning strip
+  risk_badge(level)                  — Colour-coded risk chip
   render_kpi(title_key, value, ...)  — Standardised KPI card (Step 8)
-  responsive_columns(n)             — Layout helper (Step 6)
-  mask_identifier(value, role)      — PII masking
+  responsive_columns(n)              — Layout helper (Step 6)
+  mask_identifier(value, role)       — PII masking
   display_masked(label, value, role) — Labelled masked field
 """
 
@@ -174,15 +199,34 @@ def render_page_title(key: str) -> None:
     """
     Render the module page title inside a branded gradient box.
 
+    This is the ONLY permitted way to render a page-level heading across the
+    entire DPCMS codebase. All st.header() and st.title() calls must be
+    replaced with this function.
+
     The title text is resolved strictly through t(key). If the key is missing,
     t() raises TranslationKeyError — this surfaces broken i18n at render time.
 
-    Usage (replaces all bare st.header() / st.markdown() title calls):
-        render_page_title("system_dashboard")
-        render_page_title("governance_console")
-
     Args:
-        key: i18n translation key for the page title.
+        key: i18n translation key for the page title. Must exist in both
+             LANG["en"] and LANG["ml"] in utils/i18n.py.
+
+    Usage (replaces ALL bare st.header() / st.title() calls):
+        from utils.ui_helpers import render_page_title
+
+        render_page_title("system_dashboard")      # Executive Dashboard
+        render_page_title("consent_management")    # Consent Management
+        render_page_title("audit")                 # Audit Logs
+        render_page_title("breach")                # Data Breach Management
+        render_page_title("compliance")            # Compliance & SLA Monitoring
+        render_page_title("dpia")                  # DPIA & Privacy Assessments
+        render_page_title("notices")               # Privacy Notices
+        render_page_title("rights_portal")         # Data Principal Rights Portal
+        render_page_title("governance_console")    # DPO Governance Console
+        render_page_title("admin_console")         # System Administration Console
+
+    Never use:
+        st.header("...")   # hardcoded English, no branding
+        st.title("...")    # bypasses i18n and Kerala Bank gradient box
     """
     _inject_css()
     title_text = t(key)

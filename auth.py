@@ -20,11 +20,13 @@ Security Model (Step 15 hardening):
 Role Hierarchy:
   Customer         Data Principal — rights submission, own records only
   Officer          Branch-level operations — consent, rights (own branch)
-  Regional         Cross-branch compliance operations
+  PrivacySteward   Privacy compliance and DPIA within branch/region scope
+  Regional         Cross-branch compliance operations (MFA required)
+  PrivacyOps       Privacy operations team — breach + compliance (MFA required)
+  SOCAnalyst       Security operations — breach monitoring + audit logs
   DPO              Full governance authority (MFA required)
   Board            Executive read-only — dashboard only (MFA required)
   Auditor          Read-only oversight across all modules
-  SystemAdmin      Technical layer only (MFA required)
 
 PASSWORD HASH REGENERATION:
   Run once to regenerate hashes when rotating passwords:
@@ -130,24 +132,36 @@ VALID_ROLES: frozenset[str] = frozenset({
     "branch_officer",
     "regional_officer",
     "privacy_steward",
+    "privacy_operations",
+    "soc_analyst",
     "dpo",
     "board_member",
     "auditor",
-    "system_admin",
 })
 
 # Roles that require MFA before access is granted
 MFA_REQUIRED_ROLES: frozenset[str] = frozenset({
+    "customer",
+    "branch_officer",
+    "regional_officer",
+    "privacy_steward",
+    "privacy_operations",
+    "soc_analyst",
     "dpo",
     "board_member",
-    "system_admin",
-    "regional_officer",
+    "auditor",
 })
+
+# Confirm: MFA_REQUIRED_ROLES == VALID_ROLES (all roles require MFA)
 
 # Roles permitted cross-branch access
 CROSS_BRANCH_ROLES: frozenset[str] = frozenset({
     "dpo",
     "board_member",
+    "auditor",
+    "privacy_operations",
+    "soc_analyst",
+    "regional_officer",
 })
 
 # ---------------------------------------------------------------------------
@@ -156,14 +170,15 @@ CROSS_BRANCH_ROLES: frozenset[str] = frozenset({
 # ---------------------------------------------------------------------------
 
 ROLE_I18N_KEY: dict[str, str] = {
-    "customer":         "role_customer",
-    "branch_officer":   "role_branch_officer",
-    "regional_officer": "role_privacy_steward",   # reuses existing key
-    "privacy_steward":  "role_privacy_steward",
-    "dpo":              "role_dpo",
-    "board_member":     "role_board_member",
-    "auditor":          "role_auditor",
-    "system_admin":     "role_system_admin",
+    "customer":           "role_customer",
+    "branch_officer":     "role_branch_officer",
+    "regional_officer":   "role_regional_officer",
+    "privacy_steward":    "role_privacy_steward",
+    "privacy_operations": "role_privacy_operations",
+    "soc_analyst":        "role_soc_analyst",
+    "dpo":                "role_dpo",
+    "board_member":       "role_board_member",
+    "auditor":            "role_auditor",
 }
 
 # ---------------------------------------------------------------------------
@@ -172,22 +187,25 @@ ROLE_I18N_KEY: dict[str, str] = {
 
 ROLE_ALIAS: dict[str, str] = {
     # Display names used in USERS registry
-    "DPO":         "dpo",
-    "Officer":     "branch_officer",
-    "Regional":    "regional_officer",
-    "Auditor":     "auditor",
-    "Board":       "board_member",
-    "SystemAdmin": "system_admin",
-    "Customer":    "customer",
+    "DPO":               "dpo",
+    "Officer":           "branch_officer",
+    "Regional":          "regional_officer",
+    "PrivacySteward":    "privacy_steward",
+    "PrivacyOperations": "privacy_operations",
+    "SOC":               "soc_analyst",
+    "Auditor":           "auditor",
+    "Board":             "board_member",
+    "Customer":          "customer",
     # Canonical codes (idempotent)
-    "customer":         "customer",
-    "branch_officer":   "branch_officer",
-    "regional_officer": "regional_officer",
-    "privacy_steward":  "privacy_steward",
-    "dpo":              "dpo",
-    "board_member":     "board_member",
-    "auditor":          "auditor",
-    "system_admin":     "system_admin",
+    "customer":           "customer",
+    "branch_officer":     "branch_officer",
+    "regional_officer":   "regional_officer",
+    "privacy_steward":    "privacy_steward",
+    "privacy_operations": "privacy_operations",
+    "soc_analyst":        "soc_analyst",
+    "dpo":                "dpo",
+    "board_member":       "board_member",
+    "auditor":            "auditor",
 }
 
 # Backward-compatibility shims
@@ -264,6 +282,8 @@ _H_AUDIT    = None   # bcrypt hash of "audit@2026"
 _H_BOARD    = None   # bcrypt hash of "board@2026"
 _H_ADMIN    = None   # bcrypt hash of "admin@2026"
 _H_CUST     = None   # bcrypt hash of "cust@2026"
+_H_OPS      = None   # bcrypt hash of "ops@2026"
+_H_SOC      = None   # bcrypt hash of "soc@2026"
 
 # ---------------------------------------------------------------------------
 # Demo plaintext fallback map — ONLY consulted when:
@@ -276,14 +296,16 @@ _H_CUST     = None   # bcrypt hash of "cust@2026"
 DEMO_MODE: bool = True   # flip to False to disable plaintext fallback
 
 _DEMO_PLAINTEXT: dict[str, str] = {
-    "dpo_admin":   "dpo@2026",
-    "officer_01":  "officer@2026",
-    "officer_02":  "officer2@2026",
-    "officer_03":  "officer3@2026",
-    "auditor_01":  "audit@2026",
-    "board_01":    "board@2026",
-    "admin_01":    "admin@2026",
-    "customer_01": "cust@2026",
+    "dpo_admin":       "dpo@2026",
+    "officer_01":      "officer@2026",
+    "officer_02":      "officer2@2026",
+    "officer_03":      "officer3@2026",
+    "auditor_01":      "audit@2026",
+    "board_01":        "board@2026",
+    "admin_01":        "admin@2026",
+    "customer_01":     "cust@2026",
+    "privacy_ops_01":  "ops@2026",
+    "soc_analyst_01":  "soc@2026",
 }
 
 # Demo MFA secrets — replace with pyotp.random_base32() per user before production
@@ -291,6 +313,12 @@ _MFA_DPO      = "JBSWY3DPEHPK3PXP"   # demo only
 _MFA_BOARD    = "JBSWY3DPEHPK3PXQ"   # demo only
 _MFA_ADMIN    = "JBSWY3DPEHPK3PXR"   # demo only
 _MFA_REGIONAL = "JBSWY3DPEHPK3PXS"   # demo only
+_MFA_OFFICER1 = "JBSWY3DPEHPK3PXT"   # demo only
+_MFA_OFFICER2 = "JBSWY3DPEHPK3PXU"   # demo only
+_MFA_OFFICER3 = "JBSWY3DPEHPK3PXV"   # demo only
+_MFA_AUDIT    = "JBSWY3DPEHPK3PXW"   # demo only
+_MFA_CUST     = "JBSWY3DPEHPK3PXX"   # demo only
+_MFA_SOC      = "JBSWY3DPEHPK3PXY"   # demo only
 
 USERS: dict[str, dict] = {
     "dpo_admin": {
@@ -314,8 +342,8 @@ USERS: dict[str, dict] = {
         "department":    "Retail Banking",
         "branch":        "Thiruvananthapuram Main",
         "region":        "South Zone",
-        "mfa_secret":    None,
-        "mfa_required":  False,
+        "mfa_secret":    _MFA_OFFICER1,
+        "mfa_required":  True,
     },
     "officer_02": {
         "password_hash": _H_OFFICER2,
@@ -324,8 +352,8 @@ USERS: dict[str, dict] = {
         "department":    "Retail Banking",
         "branch":        "Kochi Fort",
         "region":        "Central Zone",
-        "mfa_secret":    None,
-        "mfa_required":  False,
+        "mfa_secret":    _MFA_OFFICER2,
+        "mfa_required":  True,
     },
     "officer_03": {
         "password_hash": _H_OFFICER3,
@@ -334,8 +362,8 @@ USERS: dict[str, dict] = {
         "department":    "Retail Banking",
         "branch":        "Kozhikode North",
         "region":        "North Zone",
-        "mfa_secret":    None,
-        "mfa_required":  False,
+        "mfa_secret":    _MFA_OFFICER3,
+        "mfa_required":  True,
     },
     "auditor_01": {
         "password_hash": _H_AUDIT,
@@ -344,8 +372,8 @@ USERS: dict[str, dict] = {
         "department":    "Internal Audit",
         "branch":        "All",
         "region":        "All",
-        "mfa_secret":    None,
-        "mfa_required":  False,
+        "mfa_secret":    _MFA_AUDIT,
+        "mfa_required":  True,
     },
     "board_01": {
         "password_hash": _H_BOARD,
@@ -374,8 +402,28 @@ USERS: dict[str, dict] = {
         "department":    "-",
         "branch":        "-",
         "region":        "-",
-        "mfa_secret":    None,
-        "mfa_required":  False,
+        "mfa_secret":    _MFA_CUST,
+        "mfa_required":  True,
+    },
+    "privacy_ops_01": {
+        "password_hash": _H_OPS,
+        "role":          "PrivacyOperations",
+        "full_name":     "Operations Manager",
+        "department":    "Privacy Operations",
+        "branch":        "All",
+        "region":        "All",
+        "mfa_secret":    _MFA_ADMIN,
+        "mfa_required":  True,
+    },
+    "soc_analyst_01": {
+        "password_hash": _H_SOC,
+        "role":          "SOC",
+        "full_name":     "SOC Analyst",
+        "department":    "Security Operations",
+        "branch":        "All",
+        "region":        "All",
+        "mfa_secret":    _MFA_SOC,
+        "mfa_required":  True,
     },
 }
 
@@ -505,57 +553,69 @@ def _normalise_role(raw_role: str) -> str:
 # ===========================================================================
 
 ROLE_PERMISSIONS: dict[str, list[str]] = {
-    "dpo": [
-        "Executive Dashboard",
-        "Consent Management",
+    # Customer — rights submission only; no governance modules
+    "customer": [
         "Data Principal Rights",
-        "DPIA & Privacy Assessments",
-        "Data Breach Management",
-        "Privacy Notices",
-        "Audit Logs",
-        "Compliance & SLA Monitoring",
     ],
+
+    # Branch Officer — operational consent + rights management
     "branch_officer": [
         "Executive Dashboard",
         "Consent Management",
         "Data Principal Rights",
-        "Data Breach Management",
-        "Privacy Notices",
     ],
-    "regional_officer": [
-        "Executive Dashboard",
-        "Consent Management",
-        "Data Principal Rights",
-        "DPIA & Privacy Assessments",
-        "Data Breach Management",
-        "Privacy Notices",
-        "Audit Logs",
-        "Compliance & SLA Monitoring",
-    ],
+
+    # Privacy Steward — compliance oversight, no breach or audit
     "privacy_steward": [
         "Executive Dashboard",
         "Consent Management",
         "Data Principal Rights",
-        "DPIA & Privacy Assessments",
-        "Privacy Notices",
-        "Audit Logs",
+        "Compliance & SLA Monitoring",
     ],
+
+    # Regional Officer — same scope as Privacy Steward (MFA required)
+    "regional_officer": [
+        "Executive Dashboard",
+        "Consent Management",
+        "Data Principal Rights",
+        "Compliance & SLA Monitoring",
+    ],
+
+    # Privacy Operations — breach + full operational scope (MFA required)
+    "privacy_operations": [
+        "Executive Dashboard",
+        "Consent Management",
+        "Data Principal Rights",
+        "Data Breach Management",
+        "Privacy Notices",
+        "Compliance & SLA Monitoring",
+    ],
+
+    # SOC Analyst — breach monitoring only; no consent or rights access
+    "soc_analyst": [
+        "Executive Dashboard",
+        "Data Breach Management",
+    ],
+
+    # Auditor — read-only compliance and audit view
     "auditor": [
         "Executive Dashboard",
-        "Audit Logs",
         "Compliance & SLA Monitoring",
-        "DPIA & Privacy Assessments",
     ],
+
+    # Board Member — executive dashboard only (MFA required)
     "board_member": [
         "Executive Dashboard",
-        "Compliance & SLA Monitoring",
     ],
-    "system_admin": [
+
+    # DPO — full governance access across all modules (MFA required)
+    "dpo": [
         "Executive Dashboard",
-        "Audit Logs",
-    ],
-    "customer": [
+        "Consent Management",
         "Data Principal Rights",
+        "Data Breach Management",
+        "Privacy Notices",
+        "Compliance & SLA Monitoring",
     ],
 }
 
@@ -629,14 +689,15 @@ def get_role_display() -> str:
       customer       →  Customer
     """
     _CANONICAL_TO_DISPLAY: dict[str, str] = {
-        "dpo":              "DPO",
-        "branch_officer":   "Officer",
-        "regional_officer": "Regional",
-        "privacy_steward":  "Regional",
-        "auditor":          "Auditor",
-        "board_member":     "Board",
-        "system_admin":     "SystemAdmin",
-        "customer":         "Customer",
+        "dpo":                "DPO",
+        "branch_officer":     "Officer",
+        "regional_officer":   "Regional",
+        "privacy_steward":    "PrivacySteward",
+        "privacy_operations": "PrivacyOperations",
+        "soc_analyst":        "SOC",
+        "auditor":            "Auditor",
+        "board_member":       "Board",
+        "customer":           "Customer",
     }
     role = get_role()
     return _CANONICAL_TO_DISPLAY.get(role, role or "Unknown")
@@ -679,6 +740,43 @@ def can_access(module: str) -> bool:
 
 def permitted_modules() -> list[str]:
     return ROLE_PERMISSIONS.get(get_role(), [])
+
+
+def get_current_user() -> dict | None:
+    """
+    Return a dict representing the currently authenticated user, built from
+    session state fields written by login().
+
+    Keys returned:
+        role         — canonical role code (e.g. "dpo", "branch_officer")
+        username     — login username
+        full_name    — display name
+        department   — department string
+        branch       — assigned branch ("All" for cross-branch roles)
+        region       — assigned region ("All" for cross-branch roles)
+        mfa_verified — bool
+        mfa_required — bool
+
+    Returns None if no authenticated session exists.
+
+    Usage:
+        user = auth.get_current_user()
+        role = user["role"]
+        modules = auth.ROLE_PERMISSIONS.get(role, [])
+    """
+    if not is_authenticated():
+        return None
+
+    return {
+        "role":         st.session_state.get("role", ""),
+        "username":     st.session_state.get("username", ""),
+        "full_name":    st.session_state.get("full_name", ""),
+        "department":   st.session_state.get("department", ""),
+        "branch":       st.session_state.get("branch", "All"),
+        "region":       st.session_state.get("region", "All"),
+        "mfa_verified": st.session_state.get("mfa_verified", False),
+        "mfa_required": st.session_state.get("mfa_required", False),
+    }
 
 
 def get_role_legacy() -> str:
@@ -1047,14 +1145,15 @@ def show_login() -> None:
             st.markdown(f"""
 | {t('username')} | {t('password')} | {t('role_label')} | {t('branch_label')} | {t('access_label')} |
 |---|---|---|---|---|
-| `dpo_admin`  | `dpo@2026`      | {t('role_dpo')}           | {t('all_branches_head_office')} | {t('demo_access_dpo')}      |
-| `officer_01` | `officer@2026`  | {t('role_branch_officer')} | Thiruvananthapuram Main        | {t('demo_access_officer')}  |
-| `officer_02` | `officer2@2026` | {t('role_branch_officer')} | Kochi Fort                     | {t('demo_access_officer')}  |
-| `officer_03` | `officer3@2026` | {t('role_branch_officer')} | Kozhikode North                | {t('demo_access_officer')}  |
-| `auditor_01` | `audit@2026`    | {t('role_auditor')}        | {t('all_branches_head_office')} | {t('demo_access_auditor')}  |
-| `board_01`   | `board@2026`    | {t('role_board_member')}   | {t('all_branches_head_office')} | {t('demo_access_board')}    |
-| `admin_01`   | `admin@2026`    | {t('role_system_admin')}   | {t('all_branches_head_office')} | {t('demo_access_admin')}    |
-| `customer_01`| `cust@2026`     | {t('role_customer')}       | —                              | {t('demo_access_customer')} |
+| `dpo_admin`        | `dpo@2026`      | {t('role_dpo')}               | {t('all_branches_head_office')} | {t('demo_access_dpo')}      |
+| `officer_01`       | `officer@2026`  | {t('role_branch_officer')}    | Thiruvananthapuram Main        | {t('demo_access_officer')}  |
+| `officer_02`       | `officer2@2026` | {t('role_branch_officer')}    | Kochi Fort                     | {t('demo_access_officer')}  |
+| `officer_03`       | `officer3@2026` | {t('role_branch_officer')}    | Kozhikode North                | {t('demo_access_officer')}  |
+| `auditor_01`       | `audit@2026`    | {t('role_auditor')}           | {t('all_branches_head_office')} | {t('demo_access_auditor')}  |
+| `board_01`         | `board@2026`    | {t('role_board_member')}      | {t('all_branches_head_office')} | {t('demo_access_board')}    |
+| `privacy_ops_01`   | `ops@2026`      | {t('role_privacy_operations')}| {t('all_branches_head_office')} | {t('role_privacy_operations')} |
+| `soc_analyst_01`   | `soc@2026`      | {t('role_soc_analyst')}       | {t('all_branches_head_office')} | {t('role_soc_analyst')}        |
+| `customer_01`      | `cust@2026`     | {t('role_customer')}          | —                              | {t('demo_access_customer')} |
 """)
             st.caption(
                 t_safe(
@@ -1071,33 +1170,86 @@ def show_login() -> None:
 # ===========================================================================
 
 def show_sidebar_user_panel() -> None:
+    """
+    Render the sidebar user profile panel, dynamically reflecting the
+    currently authenticated user's role, name, department, branch, and
+    MFA status.
+
+    All profile fields are sourced from get_current_user() (session state
+    written by login()) so the panel is always consistent with the active
+    session — never static or hardcoded.
+
+    Role-aware display logic:
+      - Customer:           name only; branch row suppressed (no branch scope)
+      - Branch Officer:     name, department, branch, region
+      - Regional Officer:   name, department, region, cross-branch note
+      - Privacy Operations / DPO / Auditor / Board:
+                            name, department, "All Branches (Head Office)"
+      - All roles:          MFA verified / pending indicator + session timer
+    """
     from utils.i18n import t
+
+    user = get_current_user()
+    if not user:
+        return
+
+    role         = user.get("role", "")
+    name         = user.get("full_name", "Unknown")
+    dept         = user.get("department", "")
+    branch       = user.get("branch", "")
+    region       = user.get("region", "")
+    mfa_required = user.get("mfa_required", False)
+    mfa_verified = user.get("mfa_verified", False)
+
     with st.sidebar:
         st.markdown("---")
 
-        # Role — always translated, never raw English
-        st.markdown(f"**{get_role_translated()}**")
-        st.markdown(f"{t('name_label')}: {st.session_state.full_name}")
-        st.markdown(f"{t('dept_label')}: {st.session_state.department}")
+        # ── Role title ───────────────────────────────────────────────────────
+        # Displayed as a formatted header; always translated via get_role_translated()
+        role_label = get_role_translated()
+        st.markdown(
+            f"<div style='font-size:0.78rem;font-weight:700;color:#0A3D91;"
+            f"letter-spacing:0.04em;text-transform:uppercase;margin-bottom:6px'>"
+            f"{role_label}</div>",
+            unsafe_allow_html=True,
+        )
 
-        branch = st.session_state.get("branch")
-        region = st.session_state.get("region")
-        if branch and branch not in ("-", "All"):
-            st.markdown(f"{t('branch_label')}: {branch}")
-            st.markdown(f"{t('region_label')}: {region}")
-        elif branch == "All":
-            st.markdown(f"{t('branch_label')}: {t('all_branches_head_office')}")
+        # ── Name ─────────────────────────────────────────────────────────────
+        st.markdown(f"**{t('name_label')}:** {name}")
 
-        # MFA status indicator
-        if st.session_state.get("mfa_required"):
-            if st.session_state.get("mfa_verified"):
-                st.success("🔐 MFA ✓", icon=None)
+        # ── Department (suppressed for customers who have no dept) ───────────
+        if dept and dept not in ("-", ""):
+            st.markdown(f"**{t('dept_label')}:** {dept}")
+
+        # ── Branch / Region — role-aware ──────────────────────────────────────
+        if role == "customer":
+            # Customers have no branch scope — suppress the row entirely
+            pass
+        elif branch in ("All", "all", "") or branch is None:
+            # Cross-branch roles: DPO, Board, Auditor, Privacy Ops, SOC, Regional
+            st.markdown(
+                f"**{t('branch_label')}:** {t('all_branches_head_office')}"
+            )
+        else:
+            # Branch-scoped roles: Branch Officer, Privacy Steward
+            st.markdown(f"**{t('branch_label')}:** {branch}")
+            if region and region not in ("-", "All", ""):
+                st.markdown(f"**{t('region_label')}:** {region}")
+
+        # ── MFA status indicator ──────────────────────────────────────────────
+        if mfa_required:
+            if mfa_verified:
+                st.success("🔐 MFA Enabled")
             else:
-                st.warning("🔐 MFA pending")
+                st.warning("⚠️ MFA Pending")
+        else:
+            st.warning("⚠️ MFA Disabled")
 
+        # ── Assisted submission mode banner ───────────────────────────────────
         if is_assisted_submission():
             st.warning(t("assisted_submission_active"))
 
+        # ── Session duration & expiry warning ────────────────────────────────
         login_time = st.session_state.get("login_time")
         if login_time:
             elapsed = int((datetime.utcnow() - login_time).total_seconds() // 60)
@@ -1111,6 +1263,23 @@ def show_sidebar_user_panel() -> None:
                 st.warning(t("session_expiring_soon").format(minutes=timeout_in))
 
         st.markdown("---")
+
+        # ── Sign Out ─────────────────────────────────────────────────────────
         if st.button(t("sign_out"), use_container_width=True):
             logout()
             st.rerun()
+
+
+def render_sidebar_profile() -> None:
+    """
+    Public alias for show_sidebar_user_panel().
+
+    Provides the interface expected by app.py:
+
+        if auth.is_logged_in():
+            auth.render_sidebar_profile()
+
+    Delegates entirely to show_sidebar_user_panel() so there is a single
+    implementation — no duplicated logic.
+    """
+    show_sidebar_user_panel()

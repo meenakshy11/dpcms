@@ -194,7 +194,7 @@ def _td(content: str) -> str:
 
 def _mask_id(raw_id: str) -> str:
     role = st.session_state.get("role", "")
-    if role in ("DPO", "dpo", "Auditor", "auditor"):
+    if role in ("dpo", "auditor", "privacy_operations"):
         return raw_id
     return mask_identifier(raw_id, role=role)
 
@@ -238,6 +238,38 @@ def _handle_result(result: dict, success_msg: str, error_prefix: str) -> bool:
 # ===========================================================================
 
 def show() -> None:
+    import auth as _auth
+
+    # ── Session guard — canonical role from get_current_user() ───────────────
+    current_user = _auth.get_current_user()
+    if not current_user:
+        st.error(t("session_not_found"))
+        st.info(t("contact_dpo_access"))
+        return
+
+    role        = current_user["role"]      # canonical code always
+    user        = current_user["username"]
+    user_branch = current_user["branch"]
+
+    # ── Role-access gate ─────────────────────────────────────────────────────
+    ALLOWED_ROLES = {
+        "branch_officer", "regional_officer", "privacy_steward",
+        "privacy_operations", "soc_analyst", "dpo", "auditor",
+    }
+    if role not in ALLOWED_ROLES:
+        st.warning(t("access_restricted"))
+        st.info(t("contact_dpo_access"))
+        return
+
+    # ── Role convenience flags — 3-stage escalation workflow ─────────────────
+    is_soc         = role == "soc_analyst"
+    is_officer     = role in ("branch_officer", "regional_officer", "privacy_steward")
+    is_privacy_ops = role == "privacy_operations"
+    is_dpo         = role == "dpo"
+    is_auditor     = role == "auditor"
+    # Branch-scoped roles see only their branch records
+    is_branch_scoped = role == "branch_officer"
+
     _init_incidents()
 
     st.markdown(
@@ -254,14 +286,10 @@ def show() -> None:
     st.caption(t("breach_caption"))
     more_info(t("breach_more_info"))
 
-    role        = get_role()
-    user        = st.session_state.get("username", "unknown")
-    user_branch = get_branch()
-
     incidents = _load_incidents()
 
-    # Branch filter for officers
-    if role == "Officer":
+    # Branch filter — branch officers see only their branch; all others see all
+    if is_branch_scoped and user_branch and user_branch not in ("All", "-", None):
         view_incidents = [i for i in incidents if i["branch_id"] == user_branch]
     else:
         view_incidents = incidents
@@ -276,7 +304,7 @@ def show() -> None:
     k1.markdown(f'''<div class="kpi-card">
         <div style="font-size:14px;color:#555;">{t("total_incidents")}</div>
         <div style="font-size:24px;font-weight:600;color:#0d47a1;">{_total}</div>
-        <div style="font-size:13px;color:#6B7A90;">{t("this_branch") if role == "Officer" else t("all_branches")}</div>
+        <div style="font-size:13px;color:#6B7A90;">{t("this_branch") if is_branch_scoped else t("all_branches")}</div>
     </div>''', unsafe_allow_html=True)
     k2.markdown(f'''<div class="kpi-card">
         <div style="font-size:14px;color:#555;">{t("open_active")}</div>
@@ -294,6 +322,24 @@ def show() -> None:
         <div style="font-size:13px;color:#d93025;">{t("cert_notification_required")}</div>
     </div>''', unsafe_allow_html=True)
 
+    # ── Role context banner ──────────────────────────────────────────────────
+    if is_soc:
+        st.info(
+            f"🛡️ **SOC Analyst** — {t('breach_caption')}  |  "
+            f"{t('submit_request')}: {t('report_new_incident')}  |  "
+            f"{t('incident_register')}: read-only"
+        )
+    elif is_privacy_ops:
+        st.info(
+            f"🔍 **Privacy Operations** — {t('breach_caption')}  |  "
+            f"Scope: investigation, containment, status updates"
+        )
+    elif is_officer:
+        st.info(
+            f"📋 **{t('branch_label')}:** {user_branch}  |  "
+            f"{t('showing_branch_records')} **{user_branch}**"
+        )
+
     st.divider()
 
     tab1, tab2, tab3, tab4 = st.tabs([
@@ -308,7 +354,7 @@ def show() -> None:
     # =========================================================================
     with tab1:
         st.subheader(
-            f"{t('incidents')} — {t('all_branches') if role != 'Officer' else user_branch}"
+            f"{t('incidents')} — {user_branch if is_branch_scoped else t('all_branches')}"
         )
 
         if not view_incidents:
@@ -360,7 +406,7 @@ def show() -> None:
             export_data(pd.DataFrame(export_rows), "breach_register")
 
             # ── DPO: lifecycle status update + breach closure ─────────────────
-            if role in ("DPO", "dpo"):
+            if is_dpo or is_privacy_ops:
                 st.divider()
                 st.subheader(t("update_incident_status"))
 
@@ -451,14 +497,118 @@ def show() -> None:
 
     # =========================================================================
     # TAB 2 — Report New Incident
+    # SOC Analyst: streamlined security incident form
+    # Branch Officer / Privacy Ops / DPO: full regulatory breach report
+    # Auditor: read-only, blocked
     # =========================================================================
     with tab2:
         st.subheader(t("report_new_incident"))
         more_info(t("breach_reporting_more_info"))
 
-        # Role gate (Step 8A)
-        if role not in ("Officer", "branch_officer", "privacy_steward", "DPO", "dpo"):
+        if is_auditor:
             st.info(t("breach_role_restricted"))
+        elif is_soc:
+            # ── SOC Analyst: streamlined security incident detection form ──────
+            st.info(
+                "🛡️ **SOC Analyst View** — Log a detected security incident for "
+                "investigation by Privacy Operations. Severity is auto-classified by the engine."
+            )
+            soc_title = st.text_input(
+                t("incident_title"),
+                placeholder="e.g. Unauthorised access attempt on Loan Portal",
+            )
+            soc_type = st.selectbox(
+                "Incident Type",
+                [
+                    "Unauthorized Access",
+                    "Data Leakage",
+                    "Malware / Ransomware Activity",
+                    "Insider Threat",
+                    "Phishing / Social Engineering",
+                    "System Misconfiguration",
+                    "Third-Party Breach",
+                ],
+            )
+            soc_system = st.text_input(
+                "Affected System / Service",
+                placeholder="e.g. Mobile Banking API, Loan Portal, KYC Database",
+            )
+            soc_data_categories = st.multiselect(
+                t("affected_data_categories"),
+                DATA_CATEGORIES,
+            )
+            col_soc1, col_soc2 = st.columns(2)
+            with col_soc1:
+                soc_impact = st.number_input(
+                    t("estimated_affected_records"), min_value=0, value=0, step=1
+                )
+            with col_soc2:
+                soc_special = st.checkbox(t("special_category_data_check"))
+            soc_desc = st.text_area(
+                t("description"),
+                placeholder="Describe what was detected, when, and initial indicators.",
+                height=120,
+            )
+            soc_branch = st.selectbox(t("branch"), ALL_BRANCHES)
+
+            _prev_sev = _preview_severity(int(soc_impact), soc_special)
+            sev_badge = render_status_badge(
+                "breached" if _prev_sev in ("high", "critical") else
+                "warning"  if _prev_sev == "medium" else "active"
+            )
+            st.markdown(
+                f"<div style='font-size:14px;margin-top:8px;'>"
+                f"{t('predicted_severity')}: {sev_badge} "
+                f"<span style='color:#555;font-size:13px;'>({t('auto_classified')})</span>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            if st.button(t("submit_request"), type="primary", use_container_width=True, key="soc_submit"):
+                if not soc_title.strip():
+                    st.warning(t("provide_incident_title"))
+                elif not soc_data_categories:
+                    st.warning(t("select_data_category"))
+                else:
+                    result = orchestration.execute_action(
+                        action_type="report_breach",
+                        payload={
+                            "title":                    f"[{soc_type}] {soc_title.strip()}",
+                            "description":              f"System: " + soc_system + "\n\n" + soc_desc,
+                            "branch_id":                soc_branch,
+                            "affected_data_categories": soc_data_categories,
+                            "estimated_impact_count":   int(soc_impact),
+                            "special_category":         soc_special,
+                            "dpo_notified":             False,
+                        },
+                        actor=user,
+                    )
+                    if result.get("status") == "success":
+                        record = result["record"]
+                        clause = get_clause("security_safeguards")
+                        st.success(
+                            f"Incident **{record['breach_id']}** logged for investigation.  "
+                            f"{t('severity')}: **{t(record['severity'])}** ({t('auto_classified')})  |  "
+                            f"{t('sla_timer_started')}"
+                        )
+                        explain_dynamic(
+                            title=t("breach_logged"),
+                            reason=t("breach_logged_reason"),
+                            old_clause=clause["old"],
+                            new_clause=clause["new"],
+                        )
+                        if record.get("severity") in ("high", "critical"):
+                            escalation_badge = render_status_badge("breached")
+                            st.warning(
+                                f"{escalation_badge} {t('high_critical_detected')} — "
+                                "Privacy Operations and DPO notified automatically."
+                            )
+                        st.session_state.incidents.append(record)
+                        st.rerun()
+                    else:
+                        st.error(
+                            f"{t('breach_log_failed')}: "
+                            f"{result.get('message', t('unknown_error'))}"
+                        )
         else:
             title = st.text_input(
                 t("incident_title"),
@@ -470,7 +620,7 @@ def show() -> None:
                 DATA_CATEGORIES,
             )
 
-            if role == "Officer":
+            if is_branch_scoped and user_branch not in ("All", "-", None):
                 branch = user_branch
                 st.info(f"{t('branch')}: **{branch}** ({t('auto_assigned')})")
             else:
@@ -565,7 +715,7 @@ def show() -> None:
         st.subheader(t("containment_step_documentation"))
         more_info(t("containment_more_info"))
 
-        if role not in ("Officer", "branch_officer", "privacy_steward", "DPO", "dpo"):
+        if is_auditor:
             st.info(t("containment_role_restricted"))
         else:
             open_ids = [
@@ -688,7 +838,7 @@ def show() -> None:
                 )
                 st.plotly_chart(fig_st, use_container_width=True)
 
-            if role in ("DPO", "Auditor", "dpo", "auditor"):
+            if is_dpo or is_auditor or is_privacy_ops:
                 st.subheader(t("incidents_by_branch"))
                 branch_counts = df_all["branch_id"].value_counts().reset_index()
                 branch_counts.columns = ["Branch", "Count"]

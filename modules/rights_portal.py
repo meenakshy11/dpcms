@@ -111,7 +111,7 @@ def _t_status(internal: str) -> str:
 
 def _mask_id(raw_id: str) -> str:
     role = st.session_state.get("role", "")
-    if role in ("DPO", "dpo", "Auditor", "auditor"):
+    if role in ("dpo", "auditor", "privacy_operations"):
         return raw_id
     return mask_identifier(raw_id, role=role)
 
@@ -297,7 +297,7 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
                     },
                     actor=user,
                 )
-                if result["status"] == "success":
+                if result.get("status") == "success":
                     st.success(t("identity_marked_verified"))
                     st.rerun()
                 else:
@@ -319,7 +319,7 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
             },
             actor=user,
         )
-        if result["status"] == "success":
+        if result.get("status") == "success":
             if result.get("escalated"):
                 st.warning(t("flagged_for_dpo_review"))
             st.success(
@@ -418,7 +418,7 @@ def _handle_submission_result(result: dict, request_type: str) -> bool:
     Display success or error from orchestration submission result.
     Returns True if submission succeeded (caller should st.rerun()).
     """
-    if result["status"] == "success":
+    if result.get("status") == "success":
         record = result["record"]
         st.success(
             f"{t('request_submitted_success')} **{record['id']}**  \n"
@@ -459,7 +459,9 @@ def _handle_submission_result(result: dict, request_type: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def render_customer_view() -> None:
-    user        = st.session_state.get("username", "customer")
+    import auth as _auth
+    _cu      = _auth.get_current_user() or {}
+    user     = _cu.get("username", st.session_state.get("username", "customer"))
     customer_id = user
 
     st.header(t("rights_portal"))
@@ -600,8 +602,10 @@ def render_customer_view() -> None:
 # ---------------------------------------------------------------------------
 
 def render_officer_console() -> None:
-    user        = st.session_state.get("username", "officer")
-    user_branch = get_branch() or "All"
+    import auth as _auth
+    _cu         = _auth.get_current_user() or {}
+    user        = _cu.get("username", st.session_state.get("username", "officer"))
+    user_branch = _cu.get("branch") or get_branch() or "All"
 
     st.header(t("rights_portal"))
     st.caption(f"{t('branch')}: **{user_branch}** — {t('sla_recalc_caption')}")
@@ -741,7 +745,9 @@ def render_officer_console() -> None:
 # ---------------------------------------------------------------------------
 
 def render_dpo_console() -> None:
-    user = st.session_state.get("username", "dpo_admin")
+    import auth as _auth
+    _cu  = _auth.get_current_user() or {}
+    user = _cu.get("username", st.session_state.get("username", "dpo_admin"))
 
     st.header(t("rights_portal"))
     st.caption(t("sla_recalc_caption"))
@@ -913,7 +919,7 @@ def render_dpo_console() -> None:
                                 },
                                 actor=user,
                             )
-                            if result["status"] == "success":
+                            if result.get("status") == "success":
                                 st.success(f"{t('request')} {req['id']} {t('closed')}.")
                                 st.rerun()
                             else:
@@ -933,10 +939,12 @@ def render_dpo_console() -> None:
 # ---------------------------------------------------------------------------
 
 def render_auditor_console() -> None:
+    import auth as _auth
+    _cu  = _auth.get_current_user() or {}
+    user = _cu.get("username", st.session_state.get("username", "auditor"))
+
     st.header(t("rights_portal"))
     st.caption(t("auditor_rights_caption"))
-
-    user = st.session_state.get("username", "auditor")
 
     query_result = orchestration.execute_action(
         action_type="query_rights_requests",
@@ -980,13 +988,30 @@ def render_auditor_console() -> None:
 # ---------------------------------------------------------------------------
 
 def show() -> None:
-    role = get_role()
+    import auth as _auth
 
+    # ── Session guard — canonical role from get_current_user() ───────────────
+    current_user = _auth.get_current_user()
+    if not current_user:
+        st.error(t("session_not_found"))
+        st.info(t("contact_dpo_access"))
+        return
+
+    role = current_user["role"]   # always a canonical code
+
+    # ── Role dispatch — all canonical codes covered ───────────────────────────
+    # customer          → self-service rights submission
+    # branch_officer    → assisted submission + branch queue
+    # regional_officer  → assisted submission + regional scope (uses officer console)
+    # privacy_steward   → assisted submission + branch/region scope (uses officer console)
+    # privacy_operations→ full governance: all requests + status updates (uses dpo console)
+    # dpo               → full governance: all requests + escalations + analytics
+    # auditor           → read-only oversight
     if role == "customer":
         render_customer_view()
-    elif role in ("branch_officer", "privacy_steward"):
+    elif role in ("branch_officer", "regional_officer", "privacy_steward"):
         render_officer_console()
-    elif role == "dpo":
+    elif role in ("privacy_operations", "dpo"):
         render_dpo_console()
     elif role == "auditor":
         render_auditor_console()

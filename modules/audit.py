@@ -25,7 +25,7 @@ Design contract:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import streamlit as st
@@ -62,11 +62,11 @@ def _truncate_hash(h: str, chars: int = 16) -> str:
     return h[:chars] + "…" if h and len(h) > chars else (h or "—")
 
 
-def _parse_ts(ts_str: str) -> datetime:
-    try:
-        return datetime.fromisoformat(ts_str)
-    except Exception:
-        return datetime.min
+def _parse_ts(ts: str) -> datetime:
+    dt = datetime.fromisoformat(ts)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _block_user(block: dict) -> str:
@@ -239,7 +239,7 @@ def show() -> None:
 
     # Date filter
     if _date_key and _date_key in _DATE_CUTOFFS:
-        cutoff  = datetime.utcnow() - _DATE_CUTOFFS[_date_key]
+        cutoff = datetime.now(timezone.utc) - _DATE_CUTOFFS[_date_key]
         entries = [e for e in entries if _parse_ts(e["timestamp"]) >= cutoff]
 
     entries = entries[:int(limit)]

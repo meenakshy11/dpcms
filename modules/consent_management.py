@@ -96,9 +96,30 @@ def _mask_consent_for_display(consent: dict, role: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def show():
-    role = get_role()
+    import auth as _auth
 
-    ALLOWED_ROLES = ("DPO", "Officer", "branch_officer", "Auditor", "customer")
+    # ── Session guard — always use get_current_user() as source of truth ────
+    current_user = _auth.get_current_user()
+    if not current_user:
+        st.error(t("session_not_found"))
+        st.info(t("contact_dpo_access"))
+        return
+
+    role        = current_user["role"]          # canonical code, e.g. "branch_officer"
+    user        = current_user["username"]
+    user_branch = current_user["branch"]
+
+    # ── Role-access gate — all canonical codes ───────────────────────────────
+    # Mirrors ROLE_PERMISSIONS["Consent Management"] in auth.py
+    ALLOWED_ROLES = {
+        "customer",
+        "branch_officer",
+        "regional_officer",
+        "privacy_steward",
+        "privacy_operations",
+        "dpo",
+        "auditor",
+    }
     if role not in ALLOWED_ROLES:
         st.warning(t("access_restricted"))
         st.info(t("contact_dpo_access"))
@@ -109,18 +130,20 @@ def show():
 
     more_info(t("consent_lifecycle_info"))
 
-    user        = st.session_state.get("username", "system")
-    user_branch = get_branch()
-
-    is_auditor  = role == "Auditor"
-    is_officer  = role in ("Officer", "branch_officer")
-    is_dpo      = role == "DPO"
-    is_customer = role == "customer"
+    # ── Role convenience flags — all canonical codes, no legacy strings ──────
+    is_customer      = role == "customer"
+    is_officer       = role == "branch_officer"
+    is_regional      = role in ("regional_officer", "privacy_steward")
+    is_privacy_ops   = role == "privacy_operations"
+    is_dpo           = role == "dpo"
+    is_auditor       = role == "auditor"
+    # Branch-scoped: officer and regional/steward see only their branch records
+    is_branch_scoped = is_officer or is_regional
 
     # ── Load & branch-filter consents (read-only) ────────────────────────────
     all_consents_raw = get_all_consents()
 
-    if is_officer and user_branch and user_branch != "All":
+    if is_branch_scoped and user_branch and user_branch not in ("All", "-", None):
         all_consents = [
             c for c in all_consents_raw
             if c.get("branch", "All") == user_branch or c.get("branch") is None
@@ -141,7 +164,7 @@ def show():
         st.markdown(f'''<div class="kpi-card">
             <h4>{t("total_consents")}</h4>
             <h2>{_total}</h2>
-            <p style="color:#6B7A90;">{t("this_branch") if is_officer else t("all_records")}</p>
+            <p style="color:#6B7A90;">{t("this_branch") if is_branch_scoped else t("all_records")}</p>
         </div>''', unsafe_allow_html=True)
     with m2:
         st.markdown(f'''<div class="kpi-card">
@@ -306,7 +329,112 @@ def show():
                     else:
                         st.error(f"{t('error_capturing_consent')}: {result.get('message', t('unknown_error'))}")
 
-        # ── DPO / Auditor: cannot create consent ──────────────────────────────
+        # ── Regional Officer / Privacy Steward: branch-scoped read + governance ──
+        elif is_regional:
+            st.info(t("assisted_consent_info"))
+            st.info(
+                f"**{t('branch_label')}:** {user_branch}  |  "
+                f"**{t('region_label')}:** {current_user.get('region', 'All')}"
+            )
+            col1, col2 = st.columns(2)
+            with col1:
+                customer_id = st.text_input(t("customer_id"), placeholder="e.g. CUST001")
+                purpose     = st.selectbox(t("processing_purpose"), PURPOSE_LABELS)
+            with col2:
+                granted = st.radio(
+                    t("customer_decision"),
+                    [t("grant_consent"), t("deny_consent")]
+                ) == t("grant_consent")
+                notes = st.text_area(t("branch_notes"), height=100)
+
+            retention_days = PURPOSE_EXPIRY_DAYS.get(purpose, DEFAULT_RETENTION_DAYS)
+            expiry_preview = (datetime.utcnow() + timedelta(days=retention_days)).strftime("%Y-%m-%d")
+            st.info(
+                f"{t('consent_auto_expiry_info')} **{purpose}** — **{expiry_preview}** ({retention_days} {t('days')})."
+            )
+            st.warning(t("officer_consent_warning"))
+
+            if st.button(t("capture_assisted_consent"), type="primary", use_container_width=True):
+                if not customer_id.strip():
+                    st.error(t("customer_id_required"))
+                else:
+                    payload = {
+                        "customer_id": customer_id.strip(),
+                        "purpose":     purpose,
+                        "granted":     granted,
+                        "assisted":    True,
+                        "metadata":    {"notes": notes, "branch": user_branch or "All"},
+                    }
+                    result = orchestration.execute_action(
+                        action_type="capture_consent",
+                        payload=payload,
+                        actor=user,
+                    )
+                    if result["status"] == "success":
+                        record = result["record"]
+                        st.success(
+                            f"{t('assisted_consent_captured_success')} **{record['consent_id']}**  "
+                            f"{t('status')}: **{t(record['status'].lower())}** | "
+                            f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
+                        )
+                        st.rerun()
+                    else:
+                        st.error(f"{t('error_capturing_consent')}: {result.get('message', t('unknown_error'))}")
+
+        # ── Privacy Operations: governance dashboard + can record consents ────
+        elif is_privacy_ops:
+            st.subheader(t("consent_governance_dashboard") if "consent_governance_dashboard" in dir() else "Consent Governance Dashboard")
+            g1, g2, g3 = st.columns(3)
+            with g1:
+                st.metric(t("total_consents"), _total)
+            with g2:
+                st.metric(t("active"), _active)
+            with g3:
+                st.metric(t("revoked"), _revoked)
+
+            st.markdown("---")
+            st.markdown(f"#### {t('capture_assisted_consent')}")
+            st.info(t("assisted_consent_info"))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                customer_id = st.text_input(t("customer_id"), placeholder="e.g. CUST001", key="ops_cid")
+                purpose     = st.selectbox(t("processing_purpose"), PURPOSE_LABELS, key="ops_purpose")
+            with col2:
+                granted = st.radio(
+                    t("customer_decision"),
+                    [t("grant_consent"), t("deny_consent")],
+                    key="ops_granted",
+                ) == t("grant_consent")
+                notes = st.text_area(t("branch_notes"), height=100, key="ops_notes")
+
+            if st.button(t("capture_assisted_consent"), type="primary", use_container_width=True, key="ops_submit"):
+                if not customer_id.strip():
+                    st.error(t("customer_id_required"))
+                else:
+                    payload = {
+                        "customer_id": customer_id.strip(),
+                        "purpose":     purpose,
+                        "granted":     granted,
+                        "assisted":    True,
+                        "metadata":    {"notes": notes, "branch": "All"},
+                    }
+                    result = orchestration.execute_action(
+                        action_type="capture_consent",
+                        payload=payload,
+                        actor=user,
+                    )
+                    if result["status"] == "success":
+                        record = result["record"]
+                        st.success(
+                            f"{t('assisted_consent_captured_success')} **{record['consent_id']}**  "
+                            f"{t('status')}: **{t(record['status'].lower())}**"
+                        )
+                        st.rerun()
+                    else:
+                        st.error(f"{t('error_capturing_consent')}: {result.get('message', t('unknown_error'))}")
+
+        # ── DPO / Auditor: cannot create consent — governance view only ───────
         else:
             st.info(t("dpo_auditor_no_consent_creation"))
 
@@ -355,7 +483,7 @@ def show():
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
             _id_visibility = (
-                t("full_ids_visible") if is_dpo or is_auditor
+                t("full_ids_visible") if is_dpo or is_auditor or is_privacy_ops
                 else t("ids_masked_policy")
             )
             st.caption(
@@ -376,6 +504,8 @@ def show():
             st.info(t("auditor_no_revoke_renew"))
         elif is_customer:
             st.info(t("customer_revoke_info"))
+        elif not (is_officer or is_regional or is_privacy_ops or is_dpo):
+            st.info(t("access_restricted"))
         else:
             op_col1, op_col2 = st.columns(2)
 

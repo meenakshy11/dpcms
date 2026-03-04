@@ -81,7 +81,7 @@ from utils.ui_helpers import mask_identifier
 # ---------------------------------------------------------------------------
 
 def _get_orchestration():
-    from modules.orchestration import orchestration  # noqa: PLC0415
+    import engine.orchestration as orchestration  # noqa: PLC0415
     return orchestration
 
 

@@ -1162,30 +1162,109 @@ def render_customer_dashboard() -> None:
 
 
 # ===========================================================================
+# Module access panel — sidebar listing of permitted modules for this role
+# ===========================================================================
+
+# Maps display names used by get_role() back to auth canonical codes
+_DISPLAY_TO_CANONICAL: dict[str, str] = {
+    "DPO":              "dpo",
+    "Officer":          "branch_officer",
+    "Regional":         "regional_officer",
+    "PrivacySteward":   "privacy_steward",
+    "PrivacyOperations":"privacy_operations",
+    "SOCAnalyst":       "soc_analyst",
+    "Board":            "board_member",
+    "Auditor":          "auditor",
+    "Customer":         "customer",
+    # canonical codes pass through unchanged
+    "dpo":              "dpo",
+    "branch_officer":   "branch_officer",
+    "regional_officer": "regional_officer",
+    "privacy_steward":  "privacy_steward",
+    "privacy_operations":"privacy_operations",
+    "soc_analyst":      "soc_analyst",
+    "board_member":     "board_member",
+    "auditor":          "auditor",
+    "customer":         "customer",
+}
+
+# Module display icons — keyed by auth module name
+_MODULE_ICONS: dict[str, str] = {
+    "Executive Dashboard":         "📊",
+    "Consent Management":          "🛡️",
+    "Data Principal Rights":       "👤",
+    "DPIA & Privacy Assessments":  "📋",
+    "Data Breach Management":      "🚨",
+    "Privacy Notices":             "📄",
+    "Audit Logs":                  "🕐",
+    "Compliance & SLA Monitoring": "📈",
+}
+
+
+def _render_module_access_panel() -> None:
+    """
+    Render a sidebar expander listing every module the current role may access.
+    Uses auth.ROLE_PERMISSIONS as the single source of truth — same as app.py.
+    """
+    import auth as _auth
+
+    raw_role      = st.session_state.get("role", "")
+    canonical     = _DISPLAY_TO_CANONICAL.get(raw_role, raw_role)
+    allowed       = _auth.ROLE_PERMISSIONS.get(canonical, [])
+    role_label    = _auth.get_role_translated()
+
+    with st.sidebar:
+        with st.expander(f"🔑 {t('access_label')} — {role_label}", expanded=False):
+            if allowed:
+                for module_name in allowed:
+                    icon = _MODULE_ICONS.get(module_name, "•")
+                    st.markdown(
+                        f"<div style='padding:5px 0;font-size:13px;"
+                        f"color:#C8D8EA;'>{icon} {module_name}</div>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.caption(t("no_modules_available"))
+
+
+# ===========================================================================
 # Main entry point
 # ===========================================================================
 
 def show() -> None:
+    import auth as _auth
+    from utils.ui_helpers import render_page_title
+
     st_autorefresh(interval=5000, key="datarefresh")
 
-    role = get_role()
+    # ── Resolve role from authenticated user ──────────────────────────────────
+    user = _auth.get_current_user()
+    role = user["role"]
 
+    # ── Page title ────────────────────────────────────────────────────────────
+    render_page_title("system_dashboard")
+
+    # ── Sidebar: show permitted modules for the current role ──────────────────
+    _render_module_access_panel()
+
+    # ── Role-differentiated dashboard rendering ───────────────────────────────
     # Customer role — no engine data needed, no governance metrics
-    if role == "Customer":
+    if role in ("Customer", "customer"):
         render_customer_dashboard()
         return
 
     # Load all engine metrics once per render cycle
     data = _load_engine_data()
 
-    if role == "Board":
+    if role in ("Board", "board_member"):
         render_board_dashboard(data)
-    elif role == "DPO":
+    elif role in ("DPO", "dpo"):
         render_dpo_dashboard(data)
-    elif role == "SystemAdmin":
-        render_admin_dashboard(data)
-    elif role == "Regional":
+    elif role in ("Regional", "regional_officer", "PrivacySteward",
+                  "privacy_steward", "PrivacyOperations", "privacy_operations"):
         render_regional_dashboard(data)
+    elif role in ("SOCAnalyst", "soc_analyst"):
+        render_operational_dashboard(data)
     else:
-        # Officer, Auditor
+        # branch_officer, Officer, Auditor, auditor — operational view
         render_operational_dashboard(data)

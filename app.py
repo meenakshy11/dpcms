@@ -12,19 +12,19 @@ Architecture:
   4.  Startup integrity checks     — audit chain + translation parity
   5.  Login gate                   — if no role → show_login() + stop
   6.  MFA gate                     — privileged roles blocked until verified
-  7.  Page header + language switch
+  7.  Page header + language switch (language selector in sidebar)
   8.  Role-based fast paths        — Board / Customer single-module routes
-  9.  Filtered sidebar nav         — ROLE_MODULE_MAP drives visibility
+  9.  Filtered sidebar nav         — auth.ROLE_PERMISSIONS drives visibility
   10. Module routing               — require_access() before every render
 
 Security posture:
-  - ROLE_MODULE_MAP is the single source of truth for module access.
+  - auth.ROLE_PERMISSIONS is the single source of truth for module access.
   - No module renders without passing auth.require_access().
-  - MFA is enforced for DPO, Board, SystemAdmin, Regional roles.
+  - MFA is enforced for DPO, Board, PrivacyOperations, Regional roles.
   - Session expires after SESSION_TIMEOUT_MINUTES of inactivity.
   - Audit chain and translation parity are verified on every page load.
   - Branch/region context is locked to the authenticated user's profile.
-  - Cross-branch access is denied unless role is DPO or Board.
+  - Cross-branch access is denied unless role has CROSS_BRANCH_ROLES membership.
 """
 
 from __future__ import annotations
@@ -33,7 +33,6 @@ import time
 from datetime import datetime, timezone
 
 import streamlit as st
-from streamlit_option_menu import option_menu
 
 import auth
 from modules import audit
@@ -48,11 +47,9 @@ from modules import rights_portal
 from utils.i18n import (
     t,
     t_safe,
-    get_language_options,
-    get_language_code,
     validate_translation_completeness,
 )
-from utils.ui_helpers import render_page_title, responsive_columns
+from utils.ui_helpers import render_page_title
 
 
 # ===========================================================================
@@ -64,59 +61,37 @@ SESSION_TIMEOUT_MINUTES = 15
 
 # ===========================================================================
 # Role canonical code → display name mapping
-# auth.py stores canonical codes; ROLE_MODULE_MAP uses display names.
-# This map bridges the two systems.
+# auth.py stores canonical codes; MFA/cross-branch checks use display names.
+# This map bridges the two for in-app role checks only.
 # ===========================================================================
 
 _CANONICAL_TO_DISPLAY: dict[str, str] = {
-    "dpo":              "DPO",
-    "branch_officer":   "Officer",
-    "regional_officer": "Regional",
-    "privacy_steward":  "Regional",
-    "auditor":          "Auditor",
-    "board_member":     "Board",
-    "system_admin":     "SystemAdmin",
-    "customer":         "Customer",
+    "dpo":                "DPO",
+    "branch_officer":     "Officer",
+    "regional_officer":   "Regional",
+    "privacy_steward":    "PrivacySteward",
+    "privacy_operations": "PrivacyOperations",
+    "soc_analyst":        "SOCAnalyst",
+    "auditor":            "Auditor",
+    "board_member":       "Board",
+    "customer":           "Customer",
 }
 
 
 # ===========================================================================
-# Role → permitted module keys (single source of truth — Step 2)
-# All module keys must match ALL_MODULE_KEYS below.
+# Module access authority
+# auth.ROLE_PERMISSIONS (in auth.py) is the SINGLE source of truth for which
+# modules each canonical role may access. Do NOT duplicate that mapping here.
+# ALL_MODULE_REGISTRY below maps auth display names → module objects for routing.
 # ===========================================================================
 
-ROLE_MODULE_MAP: dict[str, list[str]] = {
-    # Customer: rights submission only
-    "Customer":     ["data_principal_rights"],
+# Roles that require MFA before access is granted (display names)
+MFA_REQUIRED_ROLES: set[str] = {"DPO", "Board", "PrivacyOperations", "Regional"}
 
-    # Branch Officer: consent operations + rights review
-    "Officer":      ["executive_dashboard", "consent_management", "data_principal_rights",
-                     "data_breach_management", "privacy_notices"],
-
-    # Regional Compliance Officer
-    "Regional":     ["executive_dashboard", "compliance_sla_monitoring",
-                     "data_breach_management", "consent_management"],
-
-    # DPO: full access
-    "DPO":          ["executive_dashboard", "consent_management", "data_principal_rights",
-                     "dpia_privacy_assessments", "data_breach_management",
-                     "privacy_notices", "audit_logs", "compliance_sla_monitoring"],
-
-    # Board: executive dashboard + compliance view only
-    "Board":        ["executive_dashboard", "compliance_sla_monitoring"],
-
-    # Auditor: audit + compliance read-only
-    "Auditor":      ["executive_dashboard", "audit_logs", "compliance_sla_monitoring"],
-
-    # System Administrator: technical modules only
-    "SystemAdmin":  ["executive_dashboard", "audit_logs"],
+# Roles permitted cross-branch access (display names)
+CROSS_BRANCH_ROLES: set[str] = {
+    "DPO", "Board", "Auditor", "PrivacyOperations", "SOCAnalyst", "Regional"
 }
-
-# Roles that require MFA before access is granted (Step 5)
-MFA_REQUIRED_ROLES: set[str] = {"DPO", "Board", "SystemAdmin", "Regional"}
-
-# Roles permitted cross-branch access (Step 4)
-CROSS_BRANCH_ROLES: set[str] = {"DPO", "Board"}
 
 # ===========================================================================
 # Module registry — maps i18n key → (auth name, module object, icon)
@@ -398,18 +373,19 @@ if "role" not in st.session_state or not st.session_state["role"]:
     st.stop()
 
 # ===========================================================================
-# ★ ROLE TRANSLATION FIX ★
+# ★ ROLE TRANSLATION ★
 # auth.py stores canonical role codes (e.g. "dpo", "branch_officer").
-# ROLE_MODULE_MAP uses display names (e.g. "DPO", "Officer").
-# Translate once here so every downstream check works correctly.
+# MFA_REQUIRED_ROLES and CROSS_BRANCH_ROLES use display names (e.g. "DPO").
+# raw_role (canonical) is used for auth.ROLE_PERMISSIONS lookups.
+# role (display name) is used for MFA/cross-branch checks in this file.
 # ===========================================================================
 
 raw_role = st.session_state["role"]
 role = _CANONICAL_TO_DISPLAY.get(raw_role, raw_role)
 
-# Write the display-name role back to session so all modules read it
-# consistently (modules compare against "DPO", "Officer" etc.)
-#st.session_state["role"] = role - COMMENTED TO CORRECT
+# NOTE: session_state["role"] intentionally keeps the canonical code so that
+# all modules calling auth.get_role() / auth.ROLE_PERMISSIONS receive the
+# canonical form they expect.
 
 # ===========================================================================
 # STEP 1 — Startup integrity checks (after login, before rendering)
@@ -437,38 +413,29 @@ st.session_state.setdefault("region", _user_region)
 st.session_state.setdefault("role",   role)
 
 # Cross-branch guard: inject flag consumed by orchestration / engine layers
-st.session_state["cross_branch_allowed"] = role in CROSS_BRANCH_ROLES
+st.session_state["cross_branch_allowed"] = (
+    role in CROSS_BRANCH_ROLES
+    or st.session_state.get("cross_branch_allowed", False)
+)
 
 # ===========================================================================
-# STEP 3 / 9 — Page header with language switch
+# STEP 3 / 9 — Page header (full-width) + language switch in sidebar
 # ===========================================================================
 
-col_main, col_lang = responsive_columns(2)
+render_page_title("app_title")
+st.caption(t("app_subtitle"))
 
-with col_main:
-    render_page_title("app_title")
-    st.caption(t("app_subtitle"))
-
-with col_lang:
-    lang_options = get_language_options()
-    current_lang_code  = st.session_state.get("lang", "en")
-    _code_to_display   = {get_language_code(opt): opt for opt in lang_options}
-    _current_display   = _code_to_display.get(current_lang_code, lang_options[0])
-    _default_index     = (
-        list(lang_options).index(_current_display)
-        if _current_display in lang_options else 0
-    )
-
-    selected_lang_display = st.selectbox(
-        t("language"),
-        lang_options,
-        index=_default_index,
+# Sidebar: language selector (top of sidebar, before user panel)
+with st.sidebar:
+    lang = st.selectbox(
+        "🌐",
+        ["en", "ml"],
+        index=["en", "ml"].index(st.session_state.get("lang", "en")),
         key="language_selector",
         label_visibility="collapsed",
     )
-    new_lang_code = get_language_code(selected_lang_display)
-    if new_lang_code != st.session_state.get("lang"):
-        st.session_state["lang"] = new_lang_code
+    if lang != st.session_state.get("lang"):
+        st.session_state["lang"] = lang
         st.session_state.pop("_i18n_validated", None)
         st.rerun()
 
@@ -494,77 +461,45 @@ if role == "Customer":
     st.stop()
 
 # ===========================================================================
-# STEP 2 / 8 — All other roles: ROLE_MODULE_MAP drives sidebar visibility
+# STEP 9 — Sidebar navigation: auth.ROLE_PERMISSIONS drives visibility
+# raw_role is the canonical code (e.g. "branch_officer").
+# auth.ROLE_PERMISSIONS maps canonical codes → list of auth display names.
 # ===========================================================================
 
-permitted_keys: list[str] = ROLE_MODULE_MAP.get(role, [])
-
-auth_allowed = set(auth.permitted_modules())
-
-visible_modules: list[tuple[str, str, object, str]] = [
-    (i18n_key, auth_name, mod_obj, icon)
-    for i18n_key, auth_name, mod_obj, icon in ALL_MODULE_REGISTRY
-    if i18n_key in permitted_keys and auth_name in auth_allowed
-]
-
-visible_labels: list[str] = [t(key)      for key, _, _, _      in visible_modules]
-visible_icons:  list[str] = [icon        for _, _, _, icon      in visible_modules]
-visible_auth:   list[str] = [auth_name   for _, auth_name, _, _ in visible_modules]
+_permitted_modules: list[str] = auth.ROLE_PERMISSIONS.get(raw_role, [])
 
 with st.sidebar:
-    if not visible_labels:
+    if not _permitted_modules:
         st.warning(t("no_modules_available"))
         st.stop()
 
-    if role == "SystemAdmin":
-        st.info(t("sysadmin_info"))
-    elif role in ("Officer", "Regional"):
+    # Branch / region context info for relevant roles
+    if role in ("Officer", "PrivacySteward"):
         branch = st.session_state.get("branch", "")
         region = st.session_state.get("region", "")
         st.info(f"{t('branch_label')}: {branch}\n{t('region_label')}: {region}")
+    elif role == "Regional":
+        region = st.session_state.get("region", "")
+        st.info(f"{t('region_label')}: {region}")
+    elif role == "SOCAnalyst":
+        st.info(t_safe("soc_analyst_info", "Security Operations — Breach & Audit access."))
+    elif role == "PrivacyOperations":
+        st.info(t_safe("privacy_ops_info", "Privacy Operations — Breach & Compliance access."))
 
-    if role == "SystemAdmin":
-        with st.expander("🔧 Debug — Role & Access", expanded=False):
-            st.write(f"**{t_safe('role_label', 'Role')}:** {role}")
-            st.write(f"**{t_safe('access_label', 'Allowed Modules')}:**")
-            for key in permitted_keys:
-                st.write(f"  • {t_safe(key, key)}")
-
-    selected_label = option_menu(
-        menu_title=t("dpcms_modules"),
-        options=visible_labels,
-        icons=visible_icons,
-        default_index=0,
-        styles={
-            "container":         {"background-color": "#071E3D", "padding": "4px 0"},
-            "icon":              {"color": "#A8C4E0",  "font-size": "15px"},
-            "nav-link":          {"color": "#C8D8EA",  "font-size": "13px",
-                                  "border-left": "3px solid transparent",
-                                  "padding": "8px 16px"},
-            "nav-link-selected": {"background-color": "#0D2B5E",
-                                  "color": "white",
-                                  "border-left": "3px solid #FFFFFF",
-                                  "font-weight": "600"},
-        },
+    st.sidebar.markdown(f"### {t_safe('modules_label', 'Modules')}")
+    page = st.sidebar.radio(
+        t_safe("modules_label", "Modules"),
+        _permitted_modules,
+        label_visibility="collapsed",
     )
 
 # ===========================================================================
-# STEP 6 — Module routing
+# STEP 10 — Module routing: require_access() guards every render
 # ===========================================================================
 
-LABEL_TO_MODULE: dict[str, tuple[str, object]] = {
-    label: (auth_name, mod_obj)
-    for label, (_, auth_name, mod_obj, _) in zip(
-        visible_labels,
-        visible_modules,
-    )
-}
-
-if selected_label in LABEL_TO_MODULE:
-    auth_name, module_obj = LABEL_TO_MODULE[selected_label]
-
-    if auth_name == "Data Principal Rights" and role not in ("Customer", "DPO"):
-        pass
-
-    if auth.require_access(auth_name):
+if page in _AUTH_TO_MODULE:
+    module_obj = _AUTH_TO_MODULE[page]
+    if auth.require_access(page):
         module_obj.show()
+else:
+    st.error(t_safe("module_not_found", f"Module '{page}' is not registered."))

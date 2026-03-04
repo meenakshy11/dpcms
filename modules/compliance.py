@@ -57,10 +57,17 @@ from utils.dpdp_clauses import get_clause
 # Constants
 # ---------------------------------------------------------------------------
 
-_FULL_ACCESS_ROLES:    frozenset[str] = frozenset({"DPO", "Auditor"})
-_BOARD_ROLES:          frozenset[str] = frozenset({"Board"})
-_OFFICER_ROLES:        frozenset[str] = frozenset({"Officer"})
-_ALL_ALLOWED_ROLES:    frozenset[str] = _FULL_ACCESS_ROLES | _BOARD_ROLES | _OFFICER_ROLES
+# Canonical role codes — mirrors auth.py VALID_ROLES
+_FULL_ACCESS_ROLES:    frozenset[str] = frozenset({"dpo", "auditor"})
+_PRIVACY_OPS_ROLES:    frozenset[str] = frozenset({"privacy_operations"})
+_BOARD_ROLES:          frozenset[str] = frozenset({"board_member"})
+# Officer-level: branch, regional, steward all get summary view
+_OFFICER_ROLES:        frozenset[str] = frozenset({
+    "branch_officer", "regional_officer", "privacy_steward"
+})
+_ALL_ALLOWED_ROLES:    frozenset[str] = (
+    _FULL_ACCESS_ROLES | _PRIVACY_OPS_ROLES | _BOARD_ROLES | _OFFICER_ROLES
+)
 
 _DRIFT_THRESHOLD: int = 5   # points — alert if score dropped more than this
 
@@ -192,30 +199,39 @@ def _render_drift_banner(drift: dict) -> None:
 # ===========================================================================
 
 def show() -> None:
-    if not require_access("Compliance & SLA Monitoring"):
+    import auth as _auth
+
+    # ── Session guard — canonical role from get_current_user() ───────────────
+    current_user = _auth.get_current_user()
+    if not current_user:
+        st.error(t("session_not_found"))
+        st.info(t("contact_dpo_access"))
         return
 
-    role = get_role()
+    role        = current_user["role"]      # canonical code always
+    user        = current_user["username"]
+    user_branch = current_user["branch"]
 
-    # ── Role gate ─────────────────────────────────────────────────────────────
+    # ── Role-access gate ─────────────────────────────────────────────────────
     if role not in _ALL_ALLOWED_ROLES:
         st.warning(t("compliance_access_restricted").format(role=role))
-        if role == "SystemAdmin":
-            st.info(t("compliance_sysadmin_hint"))
-        elif role == "Customer":
-            st.info(t("compliance_customer_hint"))
+        st.info(t("contact_dpo_access"))
         return
 
-    is_full_access = role in _FULL_ACCESS_ROLES
-    is_board       = role in _BOARD_ROLES
-    is_officer     = role in _OFFICER_ROLES
+    # ── Role convenience flags — all canonical codes ──────────────────────────
+    is_full_access  = role in _FULL_ACCESS_ROLES     # dpo, auditor
+    is_privacy_ops  = role in _PRIVACY_OPS_ROLES     # privacy_operations
+    is_board        = role in _BOARD_ROLES           # board_member
+    is_officer      = role in _OFFICER_ROLES         # branch/regional/steward
+    is_auditor      = role == "auditor"
+    is_dpo          = role == "dpo"
 
     # ── Header ────────────────────────────────────────────────────────────────
     st.header(t("compliance"))
     st.caption(t("compliance_caption"))
     more_info(t("compliance_more_info"))
 
-    if role == "Auditor":
+    if is_auditor:
         st.info(t("auditor_read_only"))
 
     # =========================================================================
@@ -286,7 +302,58 @@ def show() -> None:
     # =========================================================================
     # Board view — simplified: score + export only, no clause internals
     # =========================================================================
+    # ── Board view — executive compliance summary + export ───────────────────
     if is_board:
+        # Executive headline metrics
+        st.subheader("Executive Compliance Summary")
+        b1, b2, b3, b4 = st.columns(4)
+        colour = _score_colour(overall)
+        with b1:
+            st.markdown(
+                f'<div style="border-top:4px solid {colour};border-radius:8px;'
+                f'padding:18px 20px;background:#fafafa;text-align:center;">'
+                f'<div style="font-size:2rem;font-weight:800;color:{colour}">{overall}%</div>'
+                f'<div style="font-size:0.9rem;color:#444">{t("overall_compliance_score")}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with b2:
+            st.metric(t("compliant_clauses"),     compliant_count,
+                      delta=None, delta_color="normal")
+        with b3:
+            st.metric(t("partial"),               partial_count)
+        with b4:
+            st.metric(t("non_compliant_clauses"), non_compliant_count,
+                      delta=None, delta_color="inverse")
+
+        # Status summary table (no evidence — board-level view)
+        if clauses:
+            st.divider()
+            st.subheader("Clause Status Overview")
+            summary_rows = [
+                {
+                    "Clause":      c.get("clause_id", ""),
+                    "Description": c.get("description", ""),
+                    "Status":      c.get("status", "").replace("_", " ").title(),
+                    "Score":       f"{c.get('score', 0)} / 100",
+                }
+                for c in clauses
+            ]
+            st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+
+        # Audit observations for board
+        st.divider()
+        open_issues = [c for c in clauses if c.get("status") in ("partial", "non_compliant")]
+        if open_issues:
+            st.warning(
+                f"⚠️ **{len(open_issues)} clause(s) require attention** — "
+                f"review with DPO before next board meeting."
+            )
+        else:
+            st.success("✅ All clauses compliant — no open observations.")
+
+        # Export
+        st.divider()
         st.subheader(t("board_ready_export"))
         st.caption(t("export_caption"))
         render_export_buttons("compliance")
@@ -313,18 +380,30 @@ def show() -> None:
         return
 
     # =========================================================================
-    # Officer view — summary only, no clause evidence or trend internals
+    # Officer view — summary metrics only, no clause evidence or trend internals
+    # Regional officers and Privacy Stewards also see branch-scope note
     # =========================================================================
     if is_officer:
         st.info(t("officer_compliance_limited_view"))
-        st.metric(t("overall_compliance_score"), f"{overall}%")
-        st.metric(t("compliant_clauses"),     compliant_count)
-        st.metric(t("non_compliant_clauses"), non_compliant_count)
+        if user_branch and user_branch not in ("All", "-", None):
+            st.caption(f"**{t('branch_label')}:** {user_branch}")
+        m1, m2, m3 = st.columns(3)
+        with m1: st.metric(t("overall_compliance_score"), f"{overall}%")
+        with m2: st.metric(t("compliant_clauses"),     compliant_count)
+        with m3: st.metric(t("non_compliant_clauses"), non_compliant_count)
         return
 
     # =========================================================================
-    # Full access (DPO + Auditor) — tabs
+    # Full access: DPO, Auditor, and Privacy Operations — tabs
     # =========================================================================
+
+    # Privacy Operations sees all tabs with a scope banner
+    if is_privacy_ops:
+        st.info(
+            "🔍 **Privacy Operations** — Full compliance monitoring scope: "
+            "clause heatmap, evidence, trend, and export."
+        )
+
     tab1, tab2, tab3, tab4 = st.tabs([
         t("clause_heatmap"),
         t("clause_detail"),
