@@ -883,6 +883,40 @@ def admin_restore_ledger(clean_blocks: list[dict], authorised_by: str) -> None:
         raise
 
 
+
+# ---------------------------------------------------------------------------
+# Module-level helper — called by modules/dashboard.py
+# ---------------------------------------------------------------------------
+
+def get_recent_events(limit: int = 20) -> list[dict]:
+    """
+    Return the most recent audit log entries as plain dicts for dashboard display.
+
+    Each dict has keys: ts, event, actor, module (all strings).
+    Returns at most `limit` entries, newest first.
+    Falls back to [] on any error so dashboard can degrade gracefully.
+    """
+    try:
+        data = _load_ledger()
+        if not data:
+            return []
+        recent = data[-limit:][::-1]  # newest first
+        result = []
+        for entry in recent:
+            if not isinstance(entry, dict):
+                continue
+            payload = entry.get("payload", {}) or {}
+            result.append({
+                "ts":     entry.get("timestamp", "")[:19].replace("T", " "),
+                "event":  entry.get("action_type", "unknown"),
+                "actor":  entry.get("actor", payload.get("actor", "system")),
+                "module": entry.get("module", payload.get("module", "")),
+            })
+        return result
+    except Exception:
+        return []
+
+
 # ---------------------------------------------------------------------------
 # Smoke test — run directly: AUDIT_ENV=dev python engine/audit_ledger.py
 # ---------------------------------------------------------------------------

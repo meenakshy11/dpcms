@@ -1085,6 +1085,39 @@ def status_badge(status: str) -> str:
     return STATUS_BADGE.get(status, status)
 
 
+def get_escalation_summary() -> dict:
+    """
+    Return a summary of all escalated SLA records.
+
+    Called by modules/dashboard.py to populate the escalation KPI strip.
+
+    Returns
+    -------
+    dict:
+        total_escalated  : int   — total SLAs with escalation_level > 0
+        by_level         : dict  — {level: count} breakdown
+        by_module        : dict  — {module: count} breakdown
+        escalated_records: list  — full SLA dicts for escalated entries
+    """
+    all_slas = get_all_slas()
+    escalated = [s for s in all_slas if s.get("escalation_level", 0) > 0]
+
+    by_level: dict[int, int] = {}
+    by_module: dict[str, int] = {}
+    for s in escalated:
+        lvl = s.get("escalation_level", 0)
+        mod = s.get("module", "unknown")
+        by_level[lvl]  = by_level.get(lvl, 0) + 1
+        by_module[mod] = by_module.get(mod, 0) + 1
+
+    return {
+        "total_escalated":   len(escalated),
+        "by_level":          by_level,
+        "by_module":         by_module,
+        "escalated_records": escalated,
+    }
+
+
 # ===========================================================================
 # ── SMOKE TEST — run directly: python engine/sla_engine.py ──────────────────
 # ===========================================================================

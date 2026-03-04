@@ -63,6 +63,24 @@ SESSION_TIMEOUT_MINUTES = 15
 
 
 # ===========================================================================
+# Role canonical code → display name mapping
+# auth.py stores canonical codes; ROLE_MODULE_MAP uses display names.
+# This map bridges the two systems.
+# ===========================================================================
+
+_CANONICAL_TO_DISPLAY: dict[str, str] = {
+    "dpo":              "DPO",
+    "branch_officer":   "Officer",
+    "regional_officer": "Regional",
+    "privacy_steward":  "Regional",
+    "auditor":          "Auditor",
+    "board_member":     "Board",
+    "system_admin":     "SystemAdmin",
+    "customer":         "Customer",
+}
+
+
+# ===========================================================================
 # Role → permitted module keys (single source of truth — Step 2)
 # All module keys must match ALL_MODULE_KEYS below.
 # ===========================================================================
@@ -161,9 +179,6 @@ def _show_mfa_prompt(role: str) -> None:
     """
     Block access and present a TOTP MFA prompt for privileged roles.
     Sets st.session_state["mfa_verified"] = True on success.
-
-    Production integration: replace the demo bypass with a real TOTP
-    library (e.g. pyotp) and bind to the user's registered secret.
     """
     st.markdown("---")
     st.subheader(t_safe("mfa_required", "Multi-Factor Authentication Required"))
@@ -194,16 +209,11 @@ def _show_mfa_prompt(role: str) -> None:
 def _verify_totp(code: str, role: str) -> bool:
     """
     Verify a TOTP code for the current user.
-
-    Production: use pyotp.TOTP(user_secret).verify(code, valid_window=1)
     Demo: accepts any 6-digit numeric string so development is unblocked.
     Replace with real TOTP verification before going live.
     """
     try:
         import pyotp  # noqa: PLC0415
-        # In production, retrieve the user's TOTP secret from a secure vault.
-        # Here we fall through to the demo bypass if pyotp is available but
-        # no secret is stored.
         user_secret = st.session_state.get("totp_secret")
         if user_secret:
             return pyotp.TOTP(user_secret).verify(code, valid_window=1)
@@ -221,19 +231,15 @@ def _verify_totp(code: str, role: str) -> bool:
 def _run_startup_checks() -> None:
     """
     Validate audit chain integrity and translation completeness on every load.
-    Both failures are hard stops — the system must not operate in a degraded
-    or tampered state.
-
-    Results are cached in st.session_state to avoid re-running on every
-    Streamlit re-run within the same session.
+    Results are cached in st.session_state to avoid re-running on every rerun.
     """
     if st.session_state.get("_startup_checks_passed"):
         return
 
     # ── Audit chain integrity ────────────────────────────────────────────────
     try:
-        from modules.audit_ledger import audit_ledger  # noqa: PLC0415
-        chain_valid = audit_ledger.verify_full_chain()
+        from engine.audit_ledger import verify_full_chain
+        chain_valid, _ = verify_full_chain()
         if not chain_valid:
             st.error(
                 "🔴 SYSTEM HALT — Audit ledger integrity check FAILED. "
@@ -391,7 +397,19 @@ if "role" not in st.session_state or not st.session_state["role"]:
     auth.show_login()
     st.stop()
 
-role = st.session_state["role"]
+# ===========================================================================
+# ★ ROLE TRANSLATION FIX ★
+# auth.py stores canonical role codes (e.g. "dpo", "branch_officer").
+# ROLE_MODULE_MAP uses display names (e.g. "DPO", "Officer").
+# Translate once here so every downstream check works correctly.
+# ===========================================================================
+
+raw_role = st.session_state["role"]
+role = _CANONICAL_TO_DISPLAY.get(raw_role, raw_role)
+
+# Write the display-name role back to session so all modules read it
+# consistently (modules compare against "DPO", "Officer" etc.)
+#st.session_state["role"] = role - COMMENTED TO CORRECT
 
 # ===========================================================================
 # STEP 1 — Startup integrity checks (after login, before rendering)
@@ -411,12 +429,9 @@ if role in MFA_REQUIRED_ROLES and not st.session_state.get("mfa_verified"):
 # STEP 4 — Hierarchy context: lock branch/region from authenticated profile
 # ===========================================================================
 
-# These are set by auth.init() from the user record.
-# They are read-only here — no UI allows overriding them.
 _user_branch = st.session_state.get("branch", "")
 _user_region = st.session_state.get("region", "")
 
-# Ensure session has canonical context keys (used by modules)
 st.session_state.setdefault("branch", _user_branch)
 st.session_state.setdefault("region", _user_region)
 st.session_state.setdefault("role",   role)
@@ -431,7 +446,6 @@ st.session_state["cross_branch_allowed"] = role in CROSS_BRANCH_ROLES
 col_main, col_lang = responsive_columns(2)
 
 with col_main:
-    # Step 7 — use render_page_title for branded gradient box
     render_page_title("app_title")
     st.caption(t("app_subtitle"))
 
@@ -445,7 +459,6 @@ with col_lang:
         if _current_display in lang_options else 0
     )
 
-    # Step 9 — language switch: store code in session, trigger re-render
     selected_lang_display = st.selectbox(
         t("language"),
         lang_options,
@@ -456,16 +469,14 @@ with col_lang:
     new_lang_code = get_language_code(selected_lang_display)
     if new_lang_code != st.session_state.get("lang"):
         st.session_state["lang"] = new_lang_code
-        # Reset i18n validation so next t() call re-validates parity
         st.session_state.pop("_i18n_validated", None)
         st.rerun()
 
-# Sidebar: user identity panel (no engine calls here — Step 8)
+# Sidebar: user identity panel
 auth.show_sidebar_user_panel()
 
 # ===========================================================================
 # STEP 2 / 8 — Role-based fast paths (single-module roles, no nav menu)
-#              Sidebar shows only an informational caption — no logic runs.
 # ===========================================================================
 
 if role == "Board":
@@ -478,7 +489,6 @@ if role == "Board":
 if role == "Customer":
     with st.sidebar:
         st.info(t("customer_access_info"))
-    # Step 3 — Customer can only reach rights portal; submission UI is visible
     if auth.require_access("Data Principal Rights"):
         rights_portal.show()
     st.stop()
@@ -487,11 +497,8 @@ if role == "Customer":
 # STEP 2 / 8 — All other roles: ROLE_MODULE_MAP drives sidebar visibility
 # ===========================================================================
 
-# Modules permitted for this role per ROLE_MODULE_MAP
 permitted_keys: list[str] = ROLE_MODULE_MAP.get(role, [])
 
-# Build the visible module list respecting ROLE_MODULE_MAP order
-# and auth.permitted_modules() as a secondary guard
 auth_allowed = set(auth.permitted_modules())
 
 visible_modules: list[tuple[str, str, object, str]] = [
@@ -500,8 +507,8 @@ visible_modules: list[tuple[str, str, object, str]] = [
     if i18n_key in permitted_keys and auth_name in auth_allowed
 ]
 
-visible_labels: list[str] = [t(key)      for key, _, _, _    in visible_modules]
-visible_icons:  list[str] = [icon        for _, _, _, icon    in visible_modules]
+visible_labels: list[str] = [t(key)      for key, _, _, _      in visible_modules]
+visible_icons:  list[str] = [icon        for _, _, _, icon      in visible_modules]
 visible_auth:   list[str] = [auth_name   for _, auth_name, _, _ in visible_modules]
 
 with st.sidebar:
@@ -509,7 +516,6 @@ with st.sidebar:
         st.warning(t("no_modules_available"))
         st.stop()
 
-    # Role-specific sidebar annotation (caption only — no engine calls)
     if role == "SystemAdmin":
         st.info(t("sysadmin_info"))
     elif role in ("Officer", "Regional"):
@@ -517,7 +523,6 @@ with st.sidebar:
         region = st.session_state.get("region", "")
         st.info(f"{t('branch_label')}: {branch}\n{t('region_label')}: {region}")
 
-    # Step 10 — Admin-only debug panel (remove before production)
     if role == "SystemAdmin":
         with st.expander("🔧 Debug — Role & Access", expanded=False):
             st.write(f"**{t_safe('role_label', 'Role')}:** {role}")
@@ -545,11 +550,8 @@ with st.sidebar:
 
 # ===========================================================================
 # STEP 6 — Module routing
-#           require_access() is the final security check before each render.
-#           Map selected translated label → auth name → module object.
 # ===========================================================================
 
-# Build label → (auth_name, module_obj) from the visible set only
 LABEL_TO_MODULE: dict[str, tuple[str, object]] = {
     label: (auth_name, mod_obj)
     for label, (_, auth_name, mod_obj, _) in zip(
@@ -561,11 +563,7 @@ LABEL_TO_MODULE: dict[str, tuple[str, object]] = {
 if selected_label in LABEL_TO_MODULE:
     auth_name, module_obj = LABEL_TO_MODULE[selected_label]
 
-    # Step 3 — Prevent Officers from reaching rights submission UI
-    # (rights_portal.show() internally gates the submission form by role)
     if auth_name == "Data Principal Rights" and role not in ("Customer", "DPO"):
-        # Officers reach the portal in review-only mode; the module
-        # reads role from session and hides the submission form internally.
         pass
 
     if auth.require_access(auth_name):

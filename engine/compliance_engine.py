@@ -1480,6 +1480,95 @@ def get_pending_actions() -> List[dict]:
     return sorted(seen.values(), key=lambda x: -x["weight"])
 
 # ===========================================================================
+# ─── Module-level dashboard helpers (called by modules/dashboard.py) ────────
+# ===========================================================================
+
+def get_branch_metrics() -> list[dict]:
+    """
+    Return per-branch compliance and operational metrics for the dashboard
+    branch map / table.
+
+    Each dict has keys:
+        Branch, Consents, RightsReq, SLA_Green, SLA_Amber, SLA_Red,
+        Breaches, ComplianceScore, RiskLevel
+
+    Data is derived from live storage files. Returns an empty list on any
+    failure so dashboard can gracefully degrade.
+    """
+    import json
+    import os
+
+    _BRANCHES = [
+        "Thiruvananthapuram Main",
+        "Kochi Fort",
+        "Kozhikode North",
+        "Thrissur Central",
+        "Kannur Main",
+        "Kollam Main",
+        "Palakkad Central",
+        "Alappuzha Main",
+    ]
+
+    def _load(fname: str) -> list:
+        path = os.path.join("storage", fname)
+        if not os.path.exists(path):
+            return []
+        try:
+            with open(path) as f:
+                return json.load(f) or []
+        except Exception:
+            return []
+
+    consents   = _load("consents.json")
+    rights     = _load("rights_requests.json")
+    sla_data   = _load("sla_registry.json")
+    breaches   = _load("breaches.json")
+
+    # Get overall compliance score (shared across branches for now)
+    try:
+        overall = get_overall_score()
+    except Exception:
+        overall = 75.0
+
+    rows = []
+    for branch in _BRANCHES:
+        def _count(records: list, key: str = "branch") -> int:
+            return sum(1 for r in records if isinstance(r, dict) and r.get(key) == branch)
+
+        def _sla_count(status: str) -> int:
+            return sum(
+                1 for r in sla_data
+                if isinstance(r, dict)
+                and r.get("branch") == branch
+                and r.get("status", "").lower() == status
+            )
+
+        b_consents  = _count(consents)
+        b_rights    = _count(rights)
+        b_breaches  = _count(breaches)
+        sla_green   = _sla_count("green")
+        sla_amber   = _sla_count("amber")
+        sla_red     = _sla_count("red") + _sla_count("escalated")
+
+        # Risk level based on breaches + red SLAs
+        risk_score = b_breaches * 2 + sla_red
+        risk_level = "High" if risk_score >= 3 else ("Medium" if risk_score >= 1 else "Low")
+
+        rows.append({
+            "Branch":          branch,
+            "Consents":        b_consents,
+            "RightsReq":       b_rights,
+            "SLA_Green":       sla_green,
+            "SLA_Amber":       sla_amber,
+            "SLA_Red":         sla_red,
+            "Breaches":        b_breaches,
+            "ComplianceScore": round(overall, 1),
+            "RiskLevel":       risk_level,
+        })
+    return rows
+
+
+# ===========================================================================
 # ─── SMOKE TEST — run directly: python engine/compliance_engine.py ──────────
 # ===========================================================================
 if __name__ == "__main__":
