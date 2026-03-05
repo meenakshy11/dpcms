@@ -137,6 +137,22 @@ VALID_MODULES = {
 }
 VALID_CHANNELS = {"sms", "email", "whatsapp", "in_app"}
 
+# Actions that must NEVER be blocked by the consent pre-commit hook.
+# Rights submissions, queries, and status updates are the mechanism by which
+# data principals EXERCISE their rights — they are not consent-gated data
+# access operations. Blocking them on missing consent defeats the purpose.
+_CONSENT_EXEMPT_ACTIONS: frozenset[str] = frozenset({
+    "create_rights_request",
+    "query_rights_requests",
+    "update_rights_request_status",
+    "mark_identity_verified",
+    "grievance_redressal",
+    "nomination_request",
+    "consent_withdrawal_action",   # customer revoking consent cannot require consent
+    "rights_submit",               # legacy alias
+    "rights_query",                # legacy alias
+})
+
 # Required keys for every dispatched event (Step 13L)
 _REQUIRED_EVENT_KEYS = [
     "event_id", "module", "event_type",
@@ -240,13 +256,23 @@ class GovernanceTransactionManager:
     # Pre-commit hooks
     # =========================================================================
 
-    def _pre_commit_consent(self, payload: dict, actor: str) -> tuple[bool, str]:
+    def _pre_commit_consent(
+        self, payload: dict, actor: str, action_type: str = ""
+    ) -> tuple[bool, str]:
         """
         Pre-commit hook: validate that active consent exists for the
         customer + purpose combination in the payload.
 
+        Skipped entirely for actions in _CONSENT_EXEMPT_ACTIONS — rights
+        submissions and queries must never be consent-gated (they are the
+        mechanism by which principals exercise their statutory rights).
+
         Returns (ok, reason).
         """
+        # Exempt: rights portal actions and any action without a purpose field
+        if action_type in _CONSENT_EXEMPT_ACTIONS:
+            return True, f"consent_check_skipped (exempt action: {action_type})"
+
         customer_id = payload.get("customer_id", "")
         purpose     = payload.get("purpose", "")
 
@@ -473,7 +499,7 @@ class GovernanceTransactionManager:
         )
 
         # ── Pre-commit hooks ──────────────────────────────────────────────────
-        consent_ok, consent_reason   = self._pre_commit_consent(payload, actor)
+        consent_ok, consent_reason   = self._pre_commit_consent(payload, actor, action_type)
         purpose_ok, purpose_reason   = self._pre_commit_purpose(payload, actor)
         notice_ok,  notice_reason    = self._pre_commit_notice_linkage(payload, actor)
 
@@ -713,14 +739,315 @@ governance_manager = GovernanceTransactionManager()
 
 def execute_action(action_type: str, payload: dict, actor: str) -> dict:
     """
-    Module-level alias for GovernanceTransactionManager.execute_action().
-    All modules must use this instead of calling governance_manager directly.
+    Module-level entry point for all governance actions.
+
+    Rights portal actions (create_rights_request, query_rights_requests,
+    update_rights_request_status, mark_identity_verified) are handled by
+    dedicated handlers below — they must never be consent-gated.
+
+    All other actions delegate to GovernanceTransactionManager.
     """
+    if action_type == "create_rights_request":
+        return _handle_create_rights_request(payload, actor)
+    if action_type == "query_rights_requests":
+        return _handle_query_rights_requests(payload, actor)
+    if action_type == "update_rights_request_status":
+        return _handle_update_rights_request_status(payload, actor)
+    if action_type == "mark_identity_verified":
+        return _handle_mark_identity_verified(payload, actor)
+
     return governance_manager.execute_action(
         action_type=action_type,
         payload=payload,
         actor=actor,
     )
+
+
+# ---------------------------------------------------------------------------
+# Rights request storage helpers
+# ---------------------------------------------------------------------------
+
+_RIGHTS_STORAGE = Path("storage/rights_requests.json")
+
+
+def _load_rights_requests() -> list[dict]:
+    """Load all rights requests from storage. Returns [] on any error."""
+    if not _RIGHTS_STORAGE.exists():
+        return []
+    try:
+        raw = _RIGHTS_STORAGE.read_text(encoding="utf-8").strip()
+        parsed = json.loads(raw) if raw else []
+        return parsed if isinstance(parsed, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _save_rights_requests(records: list[dict]) -> None:
+    """Persist rights requests to storage."""
+    _RIGHTS_STORAGE.parent.mkdir(parents=True, exist_ok=True)
+    _RIGHTS_STORAGE.write_text(
+        json.dumps(records, indent=2, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
+
+
+# ---------------------------------------------------------------------------
+# SLA deadline calculator
+# ---------------------------------------------------------------------------
+
+_SLA_DAYS: dict[str, int] = {
+    "data_access_request":       30,
+    "data_correction_request":   30,
+    "data_erasure_request":      30,
+    "consent_withdrawal_action":  7,
+    "nomination_request":        30,
+    "grievance_redressal":       30,
+}
+
+
+def _sla_deadline(sla_key: str) -> str:
+    try:
+        from engine.sla_engine import SLA_CONFIG
+        days = SLA_CONFIG.get(sla_key, 30)
+    except Exception:
+        days = _SLA_DAYS.get(sla_key, 30)
+    from datetime import timedelta
+    return (datetime.now(timezone.utc) + timedelta(days=days)).strftime("%Y-%m-%d")
+
+
+def _sla_status_for(submitted_at: str, deadline: str) -> str:
+    """Return Green / Amber / Red based on remaining time."""
+    try:
+        dl   = datetime.fromisoformat(deadline)
+        now  = datetime.now(timezone.utc).replace(tzinfo=None)
+        diff = (dl - now).days
+        if diff < 0:
+            return "Red"
+        if diff <= 5:
+            return "Amber"
+        return "Green"
+    except Exception:
+        return "Green"
+
+
+# ---------------------------------------------------------------------------
+# Handler: create_rights_request
+# ---------------------------------------------------------------------------
+
+def _handle_create_rights_request(payload: dict, actor: str) -> dict:
+    """
+    Create and persist a new rights request.
+    Never consent-gated — exercising rights is a statutory entitlement.
+    Returns a result dict compatible with rights_portal._handle_submission_result().
+    """
+    from datetime import timedelta
+
+    customer_id       = payload.get("customer_id", "").strip()
+    request_type      = payload.get("request_type", "")
+    notes             = payload.get("notes", "")
+    assisted          = payload.get("assisted", False)
+    identity_verified = payload.get("identity_verified", False)
+    verification_mode = payload.get("verification_mode", "")
+
+    if not customer_id:
+        return {"status": "error", "message": "customer_id is required"}
+    if not request_type:
+        return {"status": "error", "message": "request_type is required"}
+
+    _RT_MAP = {
+        "Access My Data":          "data_access_request",
+        "Correct My Data":         "data_correction_request",
+        "Erase My Data":           "data_erasure_request",
+        "Revoke Consent":          "consent_withdrawal_action",
+        "Nominate Representative": "nomination_request",
+        "Raise Grievance":         "grievance_redressal",
+    }
+    sla_key  = _RT_MAP.get(request_type, "data_access_request")
+    deadline = _sla_deadline(sla_key)
+
+    records = _load_rights_requests()
+    req_id  = f"RQ-{str(len(records) + 1).zfill(5)}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    record: dict = {
+        "id":                   req_id,
+        "customer_id":          customer_id,
+        "type":                 request_type,
+        "sla_key":              sla_key,
+        "notes":                notes,
+        "status":               "Open",
+        "sla_status":           "Green",
+        "submitted_at":         now_iso,
+        "deadline":             deadline,
+        "assisted":             assisted,
+        "identity_verified":    identity_verified,
+        "identity_verified_by": actor if identity_verified else None,
+        "identity_verified_at": now_iso if identity_verified else None,
+        "verification_mode":    verification_mode,
+        "escalated":            False,
+        "branch":               payload.get("branch", ""),
+        "actor":                actor,
+    }
+
+    records.append(record)
+    _save_rights_requests(records)
+
+    audit_log(
+        action=(
+            f"Rights Request Created | id={req_id}"
+            f" | type={request_type} | customer={customer_id}"
+            f" | assisted={assisted}"
+        ),
+        user=actor,
+        metadata={"request_id": req_id, "customer_id": customer_id,
+                  "request_type": request_type, "deadline": deadline},
+    )
+
+    return {
+        "status":    "success",
+        "record":    record,
+        "escalated": False,
+        "message":   f"Rights request {req_id} created successfully.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Handler: query_rights_requests
+# ---------------------------------------------------------------------------
+
+def _handle_query_rights_requests(payload: dict, actor: str) -> dict:
+    """
+    Return rights requests filtered by customer_id and/or branch.
+    Recalculates live SLA status on every query. Never consent-gated.
+    """
+    customer_id = payload.get("customer_id", "")
+    branch      = payload.get("branch", "")
+
+    records = _load_rights_requests()
+
+    # Recalculate live SLA status and auto-escalate if breached
+    for r in records:
+        if r.get("status") not in ("Closed", "Rejected"):
+            r["sla_status"] = _sla_status_for(
+                r.get("submitted_at", ""), r.get("deadline", "")
+            )
+            if r["sla_status"] == "Red" and not r.get("escalated"):
+                r["escalated"] = True
+                r["status"]    = "Escalated"
+
+    if records:
+        _save_rights_requests(records)
+
+    filtered = records
+    if customer_id:
+        filtered = [r for r in filtered if r.get("customer_id") == customer_id]
+    if branch:
+        filtered = [r for r in filtered
+                    if r.get("branch", "").lower() == branch.lower()
+                    or not r.get("branch")]
+
+    return {"status": "success", "records": filtered}
+
+
+# ---------------------------------------------------------------------------
+# Handler: update_rights_request_status
+# ---------------------------------------------------------------------------
+
+def _handle_update_rights_request_status(payload: dict, actor: str) -> dict:
+    """
+    Update the status of an existing rights request. Never consent-gated.
+    """
+    request_id = payload.get("request_id", "")
+    new_status  = payload.get("new_status", "")
+    note        = payload.get("note", "")
+
+    if not request_id or not new_status:
+        return {"status": "error", "message": "request_id and new_status are required"}
+
+    records   = _load_rights_requests()
+    updated   = False
+    escalated = False
+
+    for r in records:
+        if r.get("id") == request_id:
+            r["status"]          = new_status
+            r["updated_at"]      = datetime.now(timezone.utc).isoformat()
+            r["updated_by"]      = actor
+            r["resolution_note"] = note
+            if new_status in ("Closed", "Rejected"):
+                r["closed_at"] = datetime.now(timezone.utc).isoformat()
+            if new_status == "Escalated":
+                r["escalated"] = True
+                escalated = True
+            updated = True
+            break
+
+    if not updated:
+        return {"status": "error", "message": f"Request {request_id} not found"}
+
+    _save_rights_requests(records)
+
+    audit_log(
+        action=(
+            f"Rights Request Updated | id={request_id}"
+            f" | new_status={new_status} | actor={actor}"
+        ),
+        user=actor,
+        metadata={"request_id": request_id, "new_status": new_status, "note": note},
+    )
+
+    return {
+        "status":    "success",
+        "escalated": escalated,
+        "message":   f"Request {request_id} updated to {new_status}.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Handler: mark_identity_verified
+# ---------------------------------------------------------------------------
+
+def _handle_mark_identity_verified(payload: dict, actor: str) -> dict:
+    """
+    Mark a rights request as identity-verified by an officer. Never consent-gated.
+    """
+    request_id        = payload.get("request_id", "")
+    verification_mode = payload.get("verification_mode", "physical_id_verified")
+
+    if not request_id:
+        return {"status": "error", "message": "request_id is required"}
+
+    records = _load_rights_requests()
+    updated = False
+
+    for r in records:
+        if r.get("id") == request_id:
+            r["identity_verified"]    = True
+            r["identity_verified_by"] = actor
+            r["identity_verified_at"] = datetime.now(timezone.utc).isoformat()
+            r["verification_mode"]    = verification_mode
+            updated = True
+            break
+
+    if not updated:
+        return {"status": "error", "message": f"Request {request_id} not found"}
+
+    _save_rights_requests(records)
+
+    audit_log(
+        action=(
+            f"Identity Verified | id={request_id}"
+            f" | mode={verification_mode} | actor={actor}"
+        ),
+        user=actor,
+        metadata={"request_id": request_id, "verification_mode": verification_mode},
+    )
+
+    return {
+        "status":  "success",
+        "message": f"Identity verified for request {request_id}.",
+    }
+
 
 
 def get_active_breach_count() -> int:

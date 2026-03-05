@@ -65,6 +65,119 @@ DEFAULT_RETENTION_DAYS = 365
 
 
 # ---------------------------------------------------------------------------
+# Consent submission — allowed roles
+# Regional Officer monitors only; they do NOT submit consent.
+# ---------------------------------------------------------------------------
+
+CONSENT_SUBMIT_ROLES = {
+    "customer",
+    "branch_officer",
+    "customer_support",
+    "privacy_operations",
+}
+
+
+# ---------------------------------------------------------------------------
+# validate_consent() — pre-flight check before calling orchestration
+#
+# Rules:
+#   1. customer_id must be present
+#   2. purpose must be present
+#   3. supporting_details / notes are OPTIONAL — never block submission
+#   4. submitting role must be in CONSENT_SUBMIT_ROLES
+#
+# Returns: (True, "Valid") or (False, "<human-readable reason>")
+# Does NOT write to audit — orchestration owns that.
+# ---------------------------------------------------------------------------
+
+def validate_consent(payload: dict, role: str) -> tuple[bool, str]:
+    """
+    Pre-flight validation for consent capture payloads.
+
+    Parameters
+    ----------
+    payload : dict  — consent payload built by the form
+    role    : str   — canonical role code of the submitting actor
+
+    Returns
+    -------
+    (True,  "Valid")             — submission may proceed
+    (False, "<reason string>")   — submission blocked; reason is display-safe
+    """
+    if not str(payload.get("customer_id", "")).strip():
+        return False, "Missing customer ID"
+
+    if not str(payload.get("purpose", "")).strip():
+        return False, "Missing processing purpose"
+
+    if role not in CONSENT_SUBMIT_ROLES:
+        return False, f"Role '{role}' is not permitted to submit consent"
+
+    # supporting_details / notes are optional — default to empty string
+    if payload.get("supporting_details") is None:
+        payload["supporting_details"] = ""
+
+    return True, "Valid"
+
+
+# ---------------------------------------------------------------------------
+# _exec_consent — thin wrapper around orchestration.execute_action
+#
+# Normalises the orchestration result dict into the shape the UI expects:
+#   {"status": "success", "record": {...}}   on success
+#   {"status": "error",   "message": "..."}  on failure
+#
+# Orchestration returns {"success": bool, "reason": str, ...} — not "status".
+# Calling code also used "capture_consent" which is not a registered action
+# type; the correct registered type is "consent_create".
+# ---------------------------------------------------------------------------
+
+def _exec_consent(payload: dict, actor: str) -> dict:
+    """
+    Submit a consent_create action via orchestration and return a normalised
+    result dict with keys:
+        status  : "success" | "error"
+        record  : dict (on success) — enriched payload written to storage
+        message : str  (on error)
+    """
+    # Flag tells _pre_commit_consent to skip the "existing consent" check
+    # — this hook is designed for processing validation, not creation gating.
+    payload.setdefault("_skip_consent_precheck", True)
+
+    raw = orchestration.execute_action(
+        action_type="consent_create",
+        payload=payload,
+        actor=actor,
+    )
+
+    if raw.get("success"):
+        # Build a record from the committed payload so the UI can display it
+        record = {
+            "consent_id":  raw.get("transaction_id", "—"),
+            "status":      "active" if payload.get("granted", True) else "revoked",
+            "expiry_date": (
+                datetime.utcnow() + timedelta(
+                    days=PURPOSE_EXPIRY_DAYS.get(payload.get("purpose", ""), DEFAULT_RETENTION_DAYS)
+                )
+            ).strftime("%Y-%m-%d"),
+            **payload,
+        }
+        return {"status": "success", "record": record}
+
+    # Failure — surface the reason as a user-readable message
+    reason = raw.get("reason", "")
+    # Translate pre-commit check failures into friendly messages
+    if "pre_commit" in reason.lower() or "consent_validation_error" in reason.lower():
+        message = "Consent could not be validated — please check the Customer ID and Purpose."
+    elif "storage" in reason.lower():
+        message = "Consent recorded but could not be persisted — please retry."
+    else:
+        message = reason or "Submission failed — please try again."
+
+    return {"status": "error", "message": message}
+
+
+# ---------------------------------------------------------------------------
 # Display helper — status dot badge
 # ---------------------------------------------------------------------------
 
@@ -247,30 +360,31 @@ def show():
                         "granted":     granted,
                         "metadata":    {"notes": notes, "branch": user_branch or "All"},
                     }
-                    # Step 9 — Data Discovery: scan payload for PII and attach data_map
-                    payload["data_map"] = build_data_map(payload)
-                    result = orchestration.execute_action(
-                        action_type="capture_consent",
-                        payload=payload,
-                        actor=user,
-                    )
-                    if result["status"] == "success":
-                        record = result["record"]
-                        st.success(
-                            f"{t('consent_captured_success')} **{record['consent_id']}**  "
-                            f"{t('status')}: **{t(record['status'].lower())}** | "
-                            f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
-                        )
-                        clause = get_clause("consent_required")
-                        explain_dynamic(
-                            title=t("consent_registered_title"),
-                            reason=t("consent_registered_reason"),
-                            old_clause=clause["old"],
-                            new_clause=clause["new"],
-                        )
-                        st.rerun()
+                    # Pre-flight validation — shows specific reason, never generic "Policy violation"
+                    _valid, _reason = validate_consent(payload, role)
+                    if not _valid:
+                        st.error(_reason)
                     else:
-                        st.error(f"{t('error_creating_consent')}: {result.get('message', t('unknown_error'))}")
+                        # Step 9 — Data Discovery: scan payload for PII and attach data_map
+                        payload["data_map"] = build_data_map(payload)
+                        result = _exec_consent(payload, actor=user)
+                        if result["status"] == "success":
+                            record = result["record"]
+                            st.success(
+                                f"{t('consent_captured_success')} **{record['consent_id']}**  "
+                                f"{t('status')}: **{t(record['status'].lower())}** | "
+                                f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
+                            )
+                            clause = get_clause("consent_required")
+                            explain_dynamic(
+                                title=t("consent_registered_title"),
+                                reason=t("consent_registered_reason"),
+                                old_clause=clause["old"],
+                                new_clause=clause["new"],
+                            )
+                            st.rerun()
+                        else:
+                            st.error(f"{t('error_creating_consent')}: {result.get('message', t('unknown_error'))}")
 
         # ── Branch Officer: assisted consent capture ──────────────────────────
         elif is_officer:
@@ -307,30 +421,31 @@ def show():
                         "assisted":    True,
                         "metadata":    {"notes": notes, "branch": user_branch or "All"},
                     }
-                    result = orchestration.execute_action(
-                        action_type="capture_consent",
-                        payload=payload,
-                        actor=user,
-                    )
-                    if result["status"] == "success":
-                        record = result["record"]
-                        st.success(
-                            f"{t('assisted_consent_captured_success')} **{record['consent_id']}**  "
-                            f"{t('initiator')}: **{t('customer_role')}** | "
-                            f"{t('facilitator')}: **branch_officer** ({user})  "
-                            f"{t('status')}: **{t(record['status'].lower())}** | "
-                            f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
-                        )
-                        clause = get_clause("consent_required")
-                        explain_dynamic(
-                            title=t("assisted_consent_registered_title"),
-                            reason=t("assisted_consent_registered_reason"),
-                            old_clause=clause["old"],
-                            new_clause=clause["new"],
-                        )
-                        st.rerun()
+                    # Pre-flight validation — shows specific reason, never generic "Policy violation"
+                    _valid, _reason = validate_consent(payload, role)
+                    if not _valid:
+                        st.error(_reason)
                     else:
-                        st.error(f"{t('error_capturing_consent')}: {result.get('message', t('unknown_error'))}")
+                        result = _exec_consent(payload, actor=user)
+                        if result["status"] == "success":
+                            record = result["record"]
+                            st.success(
+                                f"{t('assisted_consent_captured_success')} **{record['consent_id']}**  "
+                                f"{t('initiator')}: **{t('customer_role')}** | "
+                                f"{t('facilitator')}: **branch_officer** ({user})  "
+                                f"{t('status')}: **{t(record['status'].lower())}** | "
+                                f"{t('expires')}: **{str(record['expiry_date'])[:10]}**"
+                            )
+                            clause = get_clause("consent_required")
+                            explain_dynamic(
+                                title=t("assisted_consent_registered_title"),
+                                reason=t("assisted_consent_registered_reason"),
+                                old_clause=clause["old"],
+                                new_clause=clause["new"],
+                            )
+                            st.rerun()
+                        else:
+                            st.error(f"{t('error_capturing_consent')}: {result.get('message', t('unknown_error'))}")
 
         # ── Regional Officer / Privacy Steward: branch-scoped read + governance ──
         elif is_regional:
@@ -368,11 +483,7 @@ def show():
                         "assisted":    True,
                         "metadata":    {"notes": notes, "branch": user_branch or "All"},
                     }
-                    result = orchestration.execute_action(
-                        action_type="capture_consent",
-                        payload=payload,
-                        actor=user,
-                    )
+                    result = _exec_consent(payload, actor=user)
                     if result["status"] == "success":
                         record = result["record"]
                         st.success(
@@ -422,11 +533,7 @@ def show():
                         "assisted":    True,
                         "metadata":    {"notes": notes, "branch": "All"},
                     }
-                    result = orchestration.execute_action(
-                        action_type="capture_consent",
-                        payload=payload,
-                        actor=user,
-                    )
+                    result = _exec_consent(payload, actor=user)
                     if result["status"] == "success":
                         record = result["record"]
                         st.success(
@@ -536,11 +643,10 @@ def show():
                             },
                             actor=user,
                         )
-                        if result["status"] == "success":
-                            record = result["record"]
-                            st.success(
-                                f"{t('consent_revoked_success')} **{record['consent_id']}**"
-                            )
+                        _ok = result.get("success") or result.get("status") == "success"
+                        if _ok:
+                            _cid = result.get("transaction_id", rev_cid.strip())
+                            st.success(f"{t('consent_revoked_success')} **{_cid}**")
                             clause = get_clause("consent_required")
                             explain_dynamic(
                                 title=t("consent_revoked_title"),
@@ -550,7 +656,7 @@ def show():
                             )
                             st.rerun()
                         else:
-                            st.error(f"{t('revocation_failed')}: {result.get('message', t('unknown_error'))}")
+                            st.error(f"{t('revocation_failed')}: {result.get('reason', result.get('message', t('unknown_error')))}")
 
             # ── Renew ─────────────────────────────────────────────────────────
             with op_col2:
@@ -578,13 +684,15 @@ def show():
                             },
                             actor=user,
                         )
-                        if result["status"] == "success":
-                            record = result["record"]
-                            new_expiry = str(record.get("expiry_date", record.get("expires_at", "")))[:10]
+                        _ok = result.get("success") or result.get("status") == "success"
+                        if _ok:
+                            _cid      = result.get("transaction_id", ren_cid.strip())
+                            _expiry   = (
+                                datetime.utcnow() + timedelta(days=renewal_days)
+                            ).strftime("%Y-%m-%d")
                             st.success(
-                                f"{t('consent_renewed_success')} **{record['consent_id']}**  "
-                                f"{t('version')}: **{record['version']}** | "
-                                f"{t('new_expiry')}: **{new_expiry}**"
+                                f"{t('consent_renewed_success')} **{_cid}**  "
+                                f"{t('new_expiry')}: **{_expiry}**"
                             )
                             clause = get_clause("consent_required")
                             explain_dynamic(
@@ -595,7 +703,7 @@ def show():
                             )
                             st.rerun()
                         else:
-                            st.error(f"{t('renewal_failed')}: {result.get('message', t('unknown_error'))}")
+                            st.error(f"{t('renewal_failed')}: {result.get('reason', result.get('message', t('unknown_error')))}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # TAB 4 — Analytics

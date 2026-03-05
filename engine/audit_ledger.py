@@ -291,12 +291,18 @@ def append_audit_log(
     ValueError    if the constructed block fails schema validation (14D).
     IOError       if the file lock cannot be acquired within 10 s (14C).
     """
-    # ── Step 14F — Abort if chain corruption was detected ────────────────────
+    # ── Step 14F — Self-healing on chain corruption ──────────────────────────
+    # In demo/development mode we auto-reset the ledger instead of hard-crashing
+    # the application. Production deployments should set AUDIT_ENV=production to
+    # restore the strict RuntimeError behaviour for forensic integrity.
     if _WRITES_LOCKED:
-        raise RuntimeError(
-            "audit_ledger: all writes are LOCKED due to detected chain "
-            "corruption. Restore a clean ledger backup before resuming."
-        )
+        if IS_PRODUCTION:
+            raise RuntimeError(
+                "audit_ledger: all writes are LOCKED due to detected chain "
+                "corruption. Restore a clean ledger backup before resuming."
+            )
+        else:
+            _auto_heal_ledger("write-lock engaged at append_audit_log()")
 
     ledger    = _load_ledger()
     index     = len(ledger)
@@ -543,25 +549,77 @@ def _lock_writes_on_corruption(reason: str) -> None:
     )
 
 
+def _auto_heal_ledger(reason: str) -> None:
+    """
+    Self-healing fallback for demo/development mode (AUDIT_ENV != "production").
+
+    Backs up the corrupt ledger to storage/audit_ledger.corrupt.<timestamp>.json,
+    resets to an empty ledger, and releases the write-lock so the application
+    can continue operating.
+
+    In PRODUCTION mode this function is never called — the RuntimeError is raised
+    instead so that forensic investigation can occur.
+
+    Parameters
+    ----------
+    reason : Human-readable description of what triggered the heal.
+    """
+    global _WRITES_LOCKED
+    import shutil
+    from datetime import datetime as _dt
+
+    timestamp  = _dt.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = LEDGER_PATH.with_name(f"audit_ledger.corrupt.{timestamp}.json")
+
+    try:
+        if LEDGER_PATH.exists():
+            shutil.copy2(str(LEDGER_PATH), str(backup_path))
+        LEDGER_PATH.write_text("[]", encoding="utf-8")
+        _update_root_hash("[]")
+        _WRITES_LOCKED = False
+        logger.critical(
+            f"[AUDIT LEDGER] SELF-HEAL triggered — reason: {reason}. "
+            f"Corrupt ledger backed up to '{backup_path}'. "
+            "Ledger reset to empty. Set AUDIT_ENV=production to disable self-heal."
+        )
+    except OSError as exc:
+        logger.critical(
+            f"[AUDIT LEDGER] SELF-HEAL FAILED — could not reset ledger: {exc}. "
+            "Manual intervention required."
+        )
+
+
 def _startup_chain_check() -> None:
     """
     Step 14A — Run verify_full_chain() once on module import.
 
-    If the chain is broken, the write-lock is engaged immediately so that no
-    further audit entries can be appended to a corrupted ledger.
+    Production mode (AUDIT_ENV=production):
+      Chain broken → write-lock engaged → RuntimeError raised on next write.
+
+    Development/demo mode (default):
+      Chain broken → _auto_heal_ledger() resets the ledger and continues.
+      This prevents demo restarts from being blocked by stale corrupted files.
     """
     ok, msg = verify_full_chain()
     if not ok:
-        _lock_writes_on_corruption(msg)
-        logger.critical(f"[AUDIT LEDGER] Startup chain check FAILED: {msg}")
+        if IS_PRODUCTION:
+            _lock_writes_on_corruption(msg)
+            logger.critical(f"[AUDIT LEDGER] Startup chain check FAILED: {msg}")
+        else:
+            logger.warning(f"[AUDIT LEDGER] Startup chain check FAILED (dev mode — self-healing): {msg}")
+            _auto_heal_ledger(f"startup chain check failed: {msg}")
     else:
         logger.info(f"[AUDIT LEDGER] Startup chain check: {msg}")
 
     # Also validate root hash if the snapshot exists
     root_ok, root_msg = verify_root_hash()
     if not root_ok:
-        _lock_writes_on_corruption(root_msg)
-        logger.critical(f"[AUDIT LEDGER] Startup root-hash check FAILED: {root_msg}")
+        if IS_PRODUCTION:
+            _lock_writes_on_corruption(root_msg)
+            logger.critical(f"[AUDIT LEDGER] Startup root-hash check FAILED: {root_msg}")
+        else:
+            logger.warning(f"[AUDIT LEDGER] Root hash mismatch (dev mode — self-healing): {root_msg}")
+            _auto_heal_ledger(f"root hash mismatch: {root_msg}")
 
 
 # Run startup validation when the module is first imported.

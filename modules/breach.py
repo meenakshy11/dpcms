@@ -204,10 +204,13 @@ def _init_incidents() -> None:
     st.session_state.setdefault("incidents", list(SAMPLE_INCIDENTS))
 
 
-def _load_incidents() -> list[dict]:
+def load_incidents() -> list[dict]:
     """
-    Return breach records. Reads from orchestration (engine source of truth)
-    and falls back to session state for the demo bootstrap.
+    Public interface for retrieving breach incidents.
+    Imported by dashboard.py for the Security Incident Alerts panel.
+
+    Reads from orchestration (engine source of truth) and falls back to
+    session state bootstrap for demo environments.
     """
     result = orchestration.execute_action(
         action_type="query_breaches",
@@ -216,8 +219,36 @@ def _load_incidents() -> list[dict]:
     )
     if result.get("status") == "success":
         return result.get("records", [])
-    # Fallback to session bootstrap for demo environments
+    # Fallback to session state bootstrap for demo environments
     return st.session_state.get("incidents", list(SAMPLE_INCIDENTS))
+
+
+def save_incidents(incidents: list[dict]) -> None:
+    """
+    Public interface for persisting breach incidents.
+    Imported by dashboard.py breach detection scan panel.
+
+    Writes through orchestration so audit chain and SLA registration
+    are preserved. Falls back to session state only for demo environments
+    where the orchestration layer is unavailable.
+    """
+    try:
+        orchestration.execute_action(
+            action_type="save_breaches",
+            payload={"records": incidents},
+            actor=st.session_state.get("username", "system"),
+        )
+    except Exception:
+        # Demo fallback — write directly to session state
+        st.session_state["incidents"] = incidents
+
+
+def _load_incidents() -> list[dict]:
+    """
+    Internal alias — delegates to public load_incidents().
+    Kept for backward compatibility with show() internal calls.
+    """
+    return load_incidents()
 
 
 # ---------------------------------------------------------------------------

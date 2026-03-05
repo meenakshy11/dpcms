@@ -1,7 +1,7 @@
 """
 auth.py
 -------
-Kerala Bank — Consent Privacy Management System (DPCMS)
+Kerala Bank — Data Privacy And Consent Management System (DPCMS)
 Authentication, role-based access control, and session management.
 
 Security Model (Step 15 hardening):
@@ -212,7 +212,7 @@ ROLE_ALIAS: dict[str, str] = {
     "Customer":          "customer",
     "SystemAdmin":       "auditor",    # SystemAdmin → auditor (closest read-only role)
     "system_admin":      "auditor",
-    # Canonical codes (idempotent)
+    # Canonical codes — existing roles (idempotent pass-through)
     "customer":           "customer",
     "branch_officer":     "branch_officer",
     "regional_officer":   "regional_officer",
@@ -222,6 +222,18 @@ ROLE_ALIAS: dict[str, str] = {
     "dpo":                "dpo",
     "board_member":       "board_member",
     "auditor":            "auditor",
+    # Step 6 — Governance role additions (canonical pass-through)
+    "customer_support":             "customer_support",
+    "branch_privacy_coordinator":   "branch_privacy_coordinator",
+    "regional_compliance_officer":  "regional_compliance_officer",
+    "internal_auditor":             "internal_auditor",
+    # Step 6 — Display name aliases for governance roles
+    "CustomerSupport":              "customer_support",
+    "BranchPrivacyCoordinator":     "branch_privacy_coordinator",
+    "RegionalComplianceOfficer":    "regional_compliance_officer",
+    "InternalAuditor":              "internal_auditor",
+    # board alias
+    "board":                        "board_member",
 }
 
 # Backward-compatibility shims
@@ -1039,7 +1051,7 @@ def login(username: str, password: str) -> bool:
     st.session_state.login_lockout_minutes = None
     st.session_state.assisted_submission  = False
     st.session_state.cross_branch_allowed = canonical_role in CROSS_BRANCH_ROLES
-    # Step 2 — MFA flag: False until verify_mfa() succeeds in app.py
+    # OTP flag: False until OTP verification succeeds in show_login()
     st.session_state.mfa_verified         = False
     st.session_state.mfa_required         = canonical_role in MFA_REQUIRED_ROLES
 
@@ -1142,7 +1154,18 @@ def init() -> bool:
 # ===========================================================================
 
 def show_login() -> None:
+    import random
     from utils.i18n import t, t_safe
+
+    # ── Session state guards ─────────────────────────────────────────────────
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+    if "otp_sent" not in st.session_state:
+        st.session_state["otp_sent"] = False
+    if "generated_otp" not in st.session_state:
+        st.session_state["generated_otp"] = None
+    if "_temp_username" not in st.session_state:
+        st.session_state["_temp_username"] = None
 
     st.markdown("""
     <style>
@@ -1190,7 +1213,7 @@ def show_login() -> None:
             unsafe_allow_html=True,
         )
         st.markdown(
-            f'<p class="login-bank-name">{t("app_title")}</p>',
+            '<p class="login-bank-name">Data Privacy Consent Management System</p>',
             unsafe_allow_html=True,
         )
         st.markdown(
@@ -1198,41 +1221,91 @@ def show_login() -> None:
             unsafe_allow_html=True,
         )
 
-        # Step 8 — all inputs via t(); no hardcoded English
-        username = st.text_input(
-            t("username"),
-            placeholder="e.g. dpo_admin",
-            key="_login_user",
-        )
-        password = st.text_input(
-            t("password"),
-            type="password",
-            key="_login_pass",
-        )
+        # ── Phase 1: Username / Password ──────────────────────────────────────
+        if not st.session_state.get("otp_sent"):
+            username = st.text_input(
+                t("username"),
+                placeholder="e.g. dpo_admin",
+                key="_login_user",
+            )
+            password = st.text_input(
+                t("password"),
+                type="password",
+                key="_login_pass",
+            )
 
-        if st.button(t("sign_in"), type="primary", use_container_width=True):
-            if username and password:
-                if login(username, password):
-                    st.rerun()
-            else:
-                st.warning(t("login_enter_both"))
+            if st.button(t("sign_in"), type="primary", use_container_width=True):
+                if username and password:
+                    if login(username, password):
+                        # Credentials accepted — generate a random 6-digit OTP
+                        otp = str(random.randint(100000, 999999))
+                        st.session_state["generated_otp"] = otp
+                        st.session_state["otp_sent"] = True
+                        st.session_state["_temp_username"] = username.strip().lower()
+                        st.session_state["_otp_display"] = otp   # TODO: remove in production — replace with SMS/email delivery
+                        st.rerun()
+                    else:
+                        # Error / lockout display — all keys rendered through t()
+                        login_error_key = st.session_state.get("login_error")
+                        if login_error_key:
+                            if login_error_key == "login_account_locked":
+                                minutes = st.session_state.get("login_lockout_minutes", 15)
+                                st.markdown(
+                                    f'<div class="lockout-banner">'
+                                    f'🔒 Account locked. Please wait {minutes} '
+                                    f'{t("minutes")}.</div>',
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                st.error(t(login_error_key))
+                else:
+                    st.warning(t("login_enter_both"))
 
-        # Error / lockout display — all keys rendered through t()
-        login_error_key = st.session_state.get("login_error")
-        if login_error_key:
-            if login_error_key == "login_account_locked":
-                minutes = st.session_state.get("login_lockout_minutes", 15)
-                st.markdown(
-                    f'<div class="lockout-banner">'
-                    f'🔒 {t_safe("login_account_locked", "Account locked.")} '
-                    f'{t_safe("login_lockout_wait", "Please wait")} {minutes} '
-                    f'{t("minutes")}.</div>',
-                    unsafe_allow_html=True,
+        # ── Phase 2: OTP Verification ─────────────────────────────────────────
+        if st.session_state.get("otp_sent"):
+            st.markdown(
+                '<div style="background:#EBF5FB;border-left:4px solid #0A3D91;'
+                'padding:12px 16px;border-radius:6px;margin:12px 0;">'
+                '<b>🔐 Verify OTP</b><br>'
+                '<span style="font-size:0.82rem;color:#444;">'
+                'Enter the 6-digit OTP sent to your registered device.'
+                '</span></div>',
+                unsafe_allow_html=True,
+            )
+
+            # ── Demo OTP display — remove in production ───────────────────────
+            if st.session_state.get("_otp_display"):
+                st.info(
+                    f"🔑 **Demo OTP:** `{st.session_state['_otp_display']}`  "
+                    f"— remove this in production and deliver via SMS/email."
                 )
-            else:
-                st.error(t(login_error_key))
 
-        # Demo credentials table — all labels via t()
+            otp_input = st.text_input(
+                "One-Time Password",
+                type="password",
+                max_chars=6,
+                key="_otp_input",
+            )
+
+            _col_verify, _ = st.columns([2, 1])
+            with _col_verify:
+                if st.button(
+                    "Verify OTP",
+                    type="primary",
+                    use_container_width=True,
+                    key="_otp_verify_btn",
+                ):
+                    if otp_input and otp_input.strip() == st.session_state.get("generated_otp"):
+                        # OTP correct — finalise authentication
+                        st.session_state["mfa_verified"] = True
+                        st.session_state["otp_sent"] = False
+                        st.session_state["generated_otp"] = None
+                        st.session_state["_temp_username"] = None
+                        st.session_state.pop("_otp_display", None)
+                        st.rerun()
+                    else:
+                        st.error("Invalid OTP — please try again.")
+
         with st.expander(t("demo_credentials")):
             st.markdown(f"""
 | {t('username')} | {t('password')} | {t('role_label')} | {t('branch_label')} | {t('access_label')} |
@@ -1250,12 +1323,7 @@ def show_login() -> None:
 | `board_01`         | `board@2026`    | {t('role_board_member')}            | {t('all_branches_head_office')} | {t('demo_access_board')}       |
 | `dpo_admin`        | `dpo@2026`      | {t('role_dpo')}                     | {t('all_branches_head_office')} | {t('demo_access_dpo')}         |
 """)
-            st.caption(
-                t_safe(
-                    "demo_mfa_note",
-                    "MFA-required roles (DPO, Board, Admin): enter any 6-digit code in demo mode."
-                )
-            )
+            st.caption("Demo mode: enter any 6-digit number as the OTP.")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1360,10 +1428,8 @@ def show_sidebar_user_panel() -> None:
 
         st.markdown("---")
 
-        # ── Sign Out ─────────────────────────────────────────────────────────
-        if st.button(t("sign_out"), use_container_width=True):
-            logout()
-            st.rerun()
+        # Sign Out button is rendered once in app.py after render_sidebar_profile().
+        # It is NOT duplicated here — doing so caused the duplicate Sign Out bug.
 
 
 def render_sidebar_profile() -> None:

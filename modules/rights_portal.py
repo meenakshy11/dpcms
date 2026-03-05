@@ -531,10 +531,12 @@ def render_customer_view() -> None:
                 result = orchestration.execute_action(
                     action_type="create_rights_request",
                     payload={
-                        "customer_id":  customer_id,
-                        "request_type": request_type,
-                        "notes":        notes,
-                        "assisted":     False,
+                        "customer_id":        customer_id,
+                        "request_type":       request_type,
+                        "notes":              notes or "",
+                        "supporting_details": notes or "",   # alias used by some rule checks
+                        "assisted":           False,          # customer self-submission
+                        "identity_verified":  False,          # officer verifies later
                     },
                     actor=user,
                 )

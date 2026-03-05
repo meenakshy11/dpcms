@@ -1,7 +1,7 @@
 """
 app.py
 ------
-Kerala Bank — Consent Privacy Management System (DPCMS)
+Kerala Bank — Data Privacy And Consent Management System (DPCMS)
 Entry point. Handles auth gate, MFA, role-based navigation, module routing,
 and all startup integrity checks.
 
@@ -89,13 +89,15 @@ _CANONICAL_TO_DISPLAY: dict[str, str] = {
 # Roles that require MFA — canonical codes (mirrors auth.MFA_REQUIRED_ROLES)
 MFA_REQUIRED_ROLES: set[str] = {
     "dpo", "board_member", "privacy_operations", "regional_officer",
-    "privacy_steward", "soc_analyst", "branch_officer", "auditor", "customer",
+    "regional_compliance_officer", "privacy_steward", "soc_analyst",
+    "branch_officer", "branch_privacy_coordinator", "auditor", "internal_auditor",
+    "customer", "customer_support",
 }
 
 # Roles permitted cross-branch access — canonical codes
 CROSS_BRANCH_ROLES: set[str] = {
-    "dpo", "board_member", "auditor", "privacy_operations",
-    "soc_analyst", "regional_officer",
+    "dpo", "board_member", "auditor", "internal_auditor", "privacy_operations",
+    "soc_analyst", "regional_officer", "regional_compliance_officer",
 }
 
 # ===========================================================================
@@ -151,57 +153,7 @@ def _check_session_timeout() -> None:
     st.session_state["last_activity"] = time.time()
 
 
-# ===========================================================================
-# Step 5 — MFA prompt
-# ===========================================================================
-
-def _show_mfa_prompt(role: str) -> None:
-    """
-    Block access and present a TOTP MFA prompt for privileged roles.
-    Sets st.session_state["mfa_verified"] = True on success.
-    """
-    st.markdown("---")
-    st.subheader(t_safe("mfa_required", "Multi-Factor Authentication Required"))
-    st.caption(
-        t_safe(
-            "mfa_caption",
-            f"Your role ({role}) requires MFA verification before access is granted."
-        )
-    )
-
-    totp_input = st.text_input(
-        t_safe("mfa_enter_code", "Enter your 6-digit authenticator code"),
-        max_chars=6,
-        type="password",
-        key="mfa_code_input",
-    )
-
-    if st.button(t_safe("mfa_verify", "Verify"), key="mfa_verify_btn"):
-        if _verify_totp(totp_input, role):
-            st.session_state["mfa_verified"] = True
-            st.rerun()
-        else:
-            st.error(t_safe("mfa_invalid", "Invalid or expired code. Please try again."))
-
-    st.stop()
-
-
-def _verify_totp(code: str, role: str) -> bool:
-    """
-    Verify a TOTP code for the current user.
-    Demo: accepts any 6-digit numeric string so development is unblocked.
-    Replace with real TOTP verification before going live.
-    """
-    try:
-        import pyotp  # noqa: PLC0415
-        user_secret = st.session_state.get("totp_secret")
-        if user_secret:
-            return pyotp.TOTP(user_secret).verify(code, valid_window=1)
-    except ImportError:
-        pass
-
-    # Demo bypass: any 6-digit code is accepted
-    return len(code) == 6 and code.isdigit()
+# MFA prompt removed — OTP verification is handled inline in auth.show_login().
 
 
 # ===========================================================================
@@ -251,12 +203,15 @@ def _run_startup_checks() -> None:
 if "lang" not in st.session_state:
     st.session_state["lang"] = "en"
 
+if "current_page" not in st.session_state:
+    st.session_state["current_page"] = None
+
 # ===========================================================================
 # Page config
 # ===========================================================================
 
 st.set_page_config(
-    page_title="Consent Privacy Management - Kerala Bank",
+    page_title="Data Privacy And Consent Management System - Kerala Bank",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -370,13 +325,9 @@ auth.init()
 _check_session_timeout()
 
 # ===========================================================================
-# STEP 1B — Cookie consent banner (shown to all visitors, pre-login)
-# Only displayed until the user makes a preference choice.
-# ===========================================================================
-cookie_consent.show_cookie_banner()
-
-# ===========================================================================
 # STEP 2 — Login gate: no role → show login and stop
+# After credentials pass, show_login() also handles OTP verification.
+# Only proceed once both role and mfa_verified are set.
 # ===========================================================================
 
 if "role" not in st.session_state or not st.session_state["role"]:
@@ -403,12 +354,13 @@ role     = raw_role   # canonical code throughout app.py
 _run_startup_checks()
 
 # ===========================================================================
-# STEP 5 — MFA gate: privileged roles must verify before access
+# STEP 5 — OTP gate: all roles must complete OTP before accessing modules
+# mfa_verified is set to True by show_login() after OTP is confirmed.
 # ===========================================================================
 
-if raw_role in MFA_REQUIRED_ROLES and not st.session_state.get("mfa_verified"):
-    _show_mfa_prompt(raw_role)
-    # _show_mfa_prompt() always calls st.stop() — execution never continues here
+if not st.session_state.get("mfa_verified"):
+    auth.show_login()
+    st.stop()
 
 # ===========================================================================
 # STEP 4 — Hierarchy context: lock branch/region from authenticated profile
@@ -428,14 +380,19 @@ st.session_state["cross_branch_allowed"] = (
 )
 
 # ===========================================================================
+# STEP 2B — Cookie consent banner (post-login, shown once per session)
+# Appears for every role after successful authentication and MFA.
+# ===========================================================================
+cookie_consent.show_cookie_banner()
+
+# ===========================================================================
 # STEP 3 / 9 — Page header (full-width) + language switch in sidebar
 # ===========================================================================
 
 # ── Language toggle — compact top-right corner ───────────────────────────────
 _hdr_col, _lang_col = st.columns([10, 1])
 with _hdr_col:
-    render_page_title("app_title")
-    st.caption(t("app_subtitle"))
+    pass   # each module renders its own title — no global heading
 with _lang_col:
     _lang_opts  = ["EN", "ML"]
     _lang_codes = ["en", "ml"]
@@ -449,33 +406,20 @@ with _lang_col:
     )
     _new_lang = _lang_codes[_lang_opts.index(_lang_sel)]
     if _new_lang != _cur_lang:
-        st.session_state["lang"] = _new_lang
+        # Preserve the current page so navigation is restored after rerun
+        st.session_state["lang"]          = _new_lang
+        st.session_state["_restore_page"] = st.session_state.get("current_page")
         st.session_state.pop("_i18n_validated", None)
         st.rerun()
 
 # Sidebar: user identity panel (uses render_sidebar_profile for canonical role display)
 auth.render_sidebar_profile()
 
-# ── Sign Out ────────────────────────────────────────────────────────────────
-# Placed immediately after profile so it is visible to every role.
-# Clears the entire session so no role/permission/cache state persists.
-with st.sidebar:
-    st.markdown("---")
-    if st.button(
-        t_safe("sign_out", "Sign Out"),
-        key="global_sign_out_btn",
-        use_container_width=True,
-    ):
-        for _k in list(st.session_state.keys()):
-            del st.session_state[_k]
-        st.rerun()
-    st.markdown("---")
-
 # ===========================================================================
 # STEP 2 / 8 — Role-based fast paths (single-module roles, no nav menu)
 # ===========================================================================
 
-if raw_role == "board_member":
+if raw_role in ("board_member", "board"):
     with st.sidebar:
         st.info(t("board_view_info"))
     if auth.require_access("Executive Dashboard"):
@@ -488,6 +432,10 @@ if raw_role == "customer":
     if auth.require_access("Data Principal Rights"):
         rights_portal.show()
     st.stop()
+
+if raw_role == "customer_support":
+    with st.sidebar:
+        st.info(t_safe("customer_support_info", "Customer Support — Rights intake and consent status."))
 
 # ===========================================================================
 # STEP 9 — Sidebar navigation: auth.ROLE_PERMISSIONS drives visibility
@@ -503,24 +451,44 @@ with st.sidebar:
         st.stop()
 
     # Branch / region context info for relevant roles — all canonical codes
-    if raw_role in ("branch_officer", "privacy_steward"):
+    if raw_role in ("branch_officer", "privacy_steward", "branch_privacy_coordinator", "customer_support"):
         branch = st.session_state.get("branch", "")
         region = st.session_state.get("region", "")
         st.info(f"{t('branch_label')}: {branch}\n{t('region_label')}: {region}")
-    elif raw_role == "regional_officer":
+    elif raw_role in ("regional_officer", "regional_compliance_officer"):
         region = st.session_state.get("region", "")
         st.info(f"{t('region_label')}: {region}")
     elif raw_role == "soc_analyst":
         st.info(t_safe("soc_analyst_info", "Security Operations — Breach & Audit access."))
     elif raw_role == "privacy_operations":
         st.info(t_safe("privacy_ops_info", "Privacy Operations — Breach & Compliance access."))
+    elif raw_role in ("auditor", "internal_auditor"):
+        st.info(t_safe("auditor_info", "Internal Audit — Read-only compliance oversight."))
 
-    st.sidebar.markdown(f"### {t_safe('modules_label', 'Modules')}")
-    page = st.sidebar.radio(
-        t_safe("modules_label", "Modules"),
-        _permitted_modules,
-        label_visibility="collapsed",
-    )
+    # Initialise current_page to first permitted module if not set or invalid
+    if st.session_state.get("current_page") not in _permitted_modules:
+        st.session_state["current_page"] = _permitted_modules[0]
+
+    # Restore page after language switch — use saved page if still permitted
+    _restore = st.session_state.pop("_restore_page", None)
+    if _restore and _restore in _permitted_modules:
+        st.session_state["current_page"] = _restore
+
+    # ── Button-based module navigation ───────────────────────────────────────
+    st.markdown("### Modules")
+    for _mod in _permitted_modules:
+        if st.button(_mod, key=f"nav_{_mod}", use_container_width=True):
+            st.session_state["current_page"] = _mod
+            st.rerun()
+
+    # ── Single Sign Out button at the bottom ─────────────────────────────────
+    st.markdown("---")
+    if st.button("Sign Out", key="signout_btn", use_container_width=True):
+        for _k in list(st.session_state.keys()):
+            del st.session_state[_k]
+        st.rerun()
+
+page = st.session_state.get("current_page", _permitted_modules[0])
 
 # ===========================================================================
 # STEP 10 — Module routing: require_access() guards every render

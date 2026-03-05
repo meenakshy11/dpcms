@@ -418,18 +418,24 @@ def _build_default_rules() -> list[dict]:
             "message":     "Breach report blocked: incidents affecting >10,000 principals require DPO notification flag.",
             "reason_code": "breach_dpo_notification_required",
         },
-        # ── R011: Rights request — identity must be verifiable ───────────────
+        # ── R011: Rights request — identity must be verified before PROCESSING
+        # (not before submission). A customer submitting their own request
+        # sets assisted=False; an officer processing/deciding the request sets
+        # assisted=True or actor_role to an officer role.
+        # This guard fires ONLY at the officer processing stage so that customer
+        # self-submissions are never blocked by missing identity_verified.
         {
             "rule_id":     "R011",
-            "description": "Identity must be verified for correction/erasure requests",
+            "description": "Identity must be verified before processing correction/erasure",
             "event_types": ["rights_request"],
             "condition":   lambda ctx: (
                 ctx.get("action") in ("correction", "erasure_request", "correction_request")
+                and ctx.get("assisted", False)           # only applies at officer-processing stage
                 and not ctx.get("identity_verified", False)
             ),
             "action":      "BLOCK",
             "severity":    "HIGH",
-            "message":     "Rights request blocked: identity verification is required for correction and erasure.",
+            "message":     "Rights request processing blocked: identity verification is required before an officer may process correction or erasure.",
             "reason_code": "identity_not_verified",
         },
         # ── R012: Erasure may be denied under legal retention ────────────────
@@ -586,6 +592,58 @@ class DecisionEngine:
             }
             for r in self._rules
         ]
+
+
+# ===========================================================================
+# Step 10 — evaluate_request_policy()
+# Policy gate for customer and officer rights request submission.
+#
+# Rules (in order):
+#   1. customer_id must be present
+#   2. request_type must be present
+#   3. supporting_details is OPTIONAL — never blocks submission
+#
+# Returns: (allowed: bool, message: str)
+# ===========================================================================
+
+def evaluate_request_policy(req: dict) -> tuple[bool, str]:
+    """
+    Evaluate whether a rights request submission is policy-compliant.
+
+    Parameters
+    ----------
+    req : dict
+        The rights request payload.  Expected keys:
+            customer_id       : str  — required
+            request_type      : str  — required
+            supporting_details: str  — optional (never blocks submission)
+
+    Returns
+    -------
+    (True,  "Allowed")          — request may proceed
+    (False, "<reason>")         — request is blocked; reason is display-safe
+
+    Notes
+    -----
+    - supporting_details is intentionally NOT a blocking field.
+      Customers and officers may submit without it; it defaults to "".
+    - This function does NOT write to the audit ledger.
+      The calling module (modules/rights.py or modules/consent.py) is
+      responsible for logging the outcome via audit_ledger.audit_log().
+    """
+    # ── 1. Customer ID is mandatory ──────────────────────────────────────────
+    if not str(req.get("customer_id", "")).strip():
+        return False, "Missing customer ID"
+
+    # ── 2. Request type is mandatory ─────────────────────────────────────────
+    if not str(req.get("request_type", "")).strip():
+        return False, "Missing request type"
+
+    # ── 3. Supporting details are optional — ensure key exists as empty string
+    if req.get("supporting_details") is None:
+        req["supporting_details"] = ""
+
+    return True, "Allowed"
 
 
 # ===========================================================================

@@ -2630,5 +2630,397 @@
       "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "partial",
       "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
     }
+  },
+  {
+    "timestamp": "2026-03-05T05:17:37.895225+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:18:24.931986+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:18:58.926022+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:19:29.419373+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:20:04.420966+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:20:38.915877+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:21:18.961005+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:21:58.198498+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T05:22:29.422813+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T07:13:23.081200+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T07:14:05.747019+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T07:14:38.675421+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T07:15:11.520092+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T07:23:00.146650+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T07:23:30.616500+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T07:25:56.438898+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:11:28.502986+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:12:02.580494+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:12:33.425847+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:13:07.634499+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:13:38.429384+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:14:13.425686+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:14:48.430728+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:15:39.811892+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:16:44.798546+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:17:16.436608+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:17:56.353989+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
+  },
+  {
+    "timestamp": "2026-03-05T08:18:42.652256+00:00",
+    "overall_score": 41.36,
+    "clause_results": {
+      "DPDP § 5 / Rule 3": "partial",
+      "Section 6 / Rule 3": "non_compliant",
+      "Section 8(6) / CERT-IN Dir. 1": "compliant",
+      "Section 10": "non_compliant",
+      "Section 11-13": "non_compliant",
+      "RBI Annex II s3 / NABARD Ch. 7": "non_compliant",
+      "RBI Annex I s7 / CERT-IN Dir. 4 / NABARD Ch. 5": "compliant",
+      "RBI Annex III s2 / CERT-IN Dir. 1": "compliant"
+    }
   }
 ]

@@ -1,0 +1,8 @@
+{
+    "customer_01": {
+        "essential": true,
+        "functional": true,
+        "analytics": true,
+        "marketing": true
+    }
+}

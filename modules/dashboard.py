@@ -52,10 +52,49 @@ import engine.audit_ledger as audit_ledger
 from engine.data_discovery import get_discovery_summary
 from engine.consent_validator import get_consent_lifecycle_summary
 import engine.orchestration as orchestration
+from engine.breach_detector import detect_breach, run_bulk_scan
 from utils.dpdp_clauses import get_clause
 from utils.export_utils import export_data
 from utils.i18n import t
 from utils.ui_helpers import more_info, mask_identifier
+
+
+def t_safe(key: str, fallback: str = "") -> str:
+    """
+    Translation helper that falls back to `fallback` when the key is missing.
+    Prevents KeyError in environments where i18n strings are not yet registered.
+    """
+    try:
+        result = t(key)
+        # If t() returns the raw key (common default behaviour) use fallback
+        return result if result != key else (fallback or key)
+    except Exception:
+        return fallback or key
+
+
+# ===========================================================================
+# Data loader helper — sources requests from consent store
+# ===========================================================================
+
+import json
+import os
+
+def load_requests() -> list:
+    """
+    Load rights/consent requests from the data store.
+    Returns an empty list if the file is missing or malformed.
+    Used by dashboard views to compute open/closed/SLA breach counts.
+    """
+    paths = ["data/consents.json", "data/rights_requests.json"]
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data if isinstance(data, list) else []
+            except (json.JSONDecodeError, OSError):
+                continue
+    return []
 
 
 # ===========================================================================
@@ -161,15 +200,20 @@ def _engine_branch_df(data: dict) -> pd.DataFrame:
 def render_page_header(title: str) -> str:
     return f"""
     <div style="
-        background: linear-gradient(90deg, #0d47a1, #1976d2, #42a5f5);
-        color: white;
-        padding: 16px 24px;
-        border-radius: 10px;
-        font-size: 26px;
-        font-weight: 600;
+        background: #f5f7fb;
+        padding: 25px 30px;
+        border-radius: 12px;
         margin-bottom: 20px;
+        border-left: 5px solid #0d47a1;
     ">
-        {title}
+        <h2 style="
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #0d47a1, #1976d2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        ">{title}</h2>
     </div>
     """
 
@@ -224,13 +268,50 @@ def render_export_buttons(module_name: str) -> str:
 # STEP 7F — SLA countdown helper
 # ===========================================================================
 
-def render_sla_remaining(deadline: datetime) -> str:
-    remaining = deadline - datetime.utcnow()
-    if remaining.total_seconds() < 0:
-        return t("overdue")
-    days  = remaining.days
-    hours = int(remaining.seconds // 3600)
-    return f"{days}d {hours}h" if days < 3 else f"{days} {t('days')}"
+def render_sla_remaining(deadline) -> str:
+    """
+    Render a human-readable SLA remaining string.
+
+    Accepts deadline as:
+      - datetime object (naive UTC or timezone-aware)
+      - ISO-format string (with or without timezone suffix)
+      - None → returns "No deadline"
+
+    Never raises — all parse/arithmetic errors return a safe fallback string.
+    """
+    if deadline is None:
+        return t_safe("no_deadline", "No deadline")
+
+    # ── Parse string deadline ────────────────────────────────────────────────
+    if isinstance(deadline, str):
+        if not deadline.strip():
+            return t_safe("no_deadline", "No deadline")
+        try:
+            deadline = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return t_safe("invalid_deadline", "Invalid deadline")
+
+    # ── Arithmetic — handle naive/aware mismatch ─────────────────────────────
+    try:
+        if hasattr(deadline, "tzinfo") and deadline.tzinfo is not None:
+            # aware datetime — compare against aware now
+            now = datetime.now(timezone.utc)
+        else:
+            # naive datetime — compare against naive UTC
+            now = datetime.utcnow()
+            # strip tzinfo from deadline just in case it crept in
+            deadline = deadline.replace(tzinfo=None)
+
+        remaining = deadline - now
+        if remaining.total_seconds() < 0:
+            return t_safe("overdue", "Overdue")
+        days  = remaining.days
+        hours = int(remaining.seconds // 3600)
+        if days == 0:
+            return f"{hours}h remaining"
+        return f"{days}d {hours}h" if days < 3 else f"{days} {t_safe('days', 'days')}"
+    except (TypeError, AttributeError, OverflowError):
+        return t_safe("invalid_deadline", "Invalid deadline")
 
 
 # ===========================================================================
@@ -323,6 +404,183 @@ def _render_dpia_summary(data: dict) -> None:
     _kpi(col1, t("dpia_active"),   dpia.get("active", 0),   t("in_progress"),   "#0d47a1")
     _kpi(col2, t("dpia_overdue"),  dpia.get("overdue", 0),  t("requires_action"), "#d93025")
     _kpi(col3, t("dpia_approved"), dpia.get("approved", 0), t("cleared"),        "#1a9e5c")
+
+
+# ===========================================================================
+# Step 10 — Security Incident Alerts Panel (Breach Detection Engine)
+# ===========================================================================
+
+def _render_security_incident_alerts(incidents: list[dict] | None = None) -> None:
+    """
+    Render the SOC Security Incident Alerts panel.
+
+    Displays all incidents from the breach module, colour-coded by severity:
+      - high   → st.error   (red)
+      - medium → st.warning (amber)
+      - low    → st.info    (blue)
+
+    Provides a "Run Breach Detection Scan" button that triggers detect_breach(),
+    appends the result to the persisted incidents list via the breach module's
+    save_incidents(), and reloads the panel.
+
+    Parameters
+    ----------
+    incidents : list[dict] | None
+        Pre-loaded incident list from the breach module.  When None the panel
+        loads incidents itself via orchestration.get_active_incidents().
+    """
+    # ── Load incidents if not passed in ─────────────────────────────────────
+    if incidents is None:
+        try:
+            from modules.breach import load_incidents  # local import — avoids circular
+            incidents = load_incidents()
+        except Exception:
+            incidents = []
+
+    st.subheader(t_safe("security_incident_alerts", "🚨 Security Incident Alerts"))
+
+    # ── Breach Detection Scan button ─────────────────────────────────────────
+    col_btn, col_bulk, col_spacer = st.columns([2, 2, 6])
+    with col_btn:
+        if st.button(
+            t_safe("run_breach_scan", "▶ Run Breach Detection Scan"),
+            key="_breach_scan_btn",
+            help=t_safe("breach_scan_tooltip", "Simulate a SOC security event detection cycle"),
+        ):
+            try:
+                from modules.breach import load_incidents as _li, save_incidents as _si
+                _incidents = _li()
+                new_incident = detect_breach()
+                _incidents.append(new_incident)
+                _si(_incidents)
+                incidents = _incidents
+                sev = new_incident["severity"].upper()
+                st.warning(
+                    f"⚠ {t_safe('potential_breach_detected', 'Potential breach detected')}  |  "
+                    f"{new_incident['incident_id']} — {new_incident['event']}  |  "
+                    f"{t_safe('severity', 'Severity')}: **{sev}**"
+                )
+            except Exception as exc:
+                st.error(f"{t_safe('breach_scan_error', 'Detection scan error')}: {exc}")
+
+    with col_bulk:
+        if st.button(
+            t_safe("run_bulk_scan", "▶▶ Bulk Scan (5 events)"),
+            key="_breach_bulk_btn",
+            help=t_safe("bulk_scan_tooltip", "Inject 5 simulated SOC events for demo / governance review"),
+        ):
+            try:
+                from modules.breach import load_incidents as _li, save_incidents as _si
+                _incidents = _li()
+                new_incidents = run_bulk_scan(5)
+                _incidents.extend(new_incidents)
+                _si(_incidents)
+                incidents = _incidents
+                st.warning(
+                    f"⚠ {len(new_incidents)} {t_safe('bulk_incidents_detected', 'simulated incidents injected')}"
+                )
+            except Exception as exc:
+                st.error(f"{t_safe('bulk_scan_error', 'Bulk scan error')}: {exc}")
+
+    # ── Summary strip ─────────────────────────────────────────────────────────
+    if incidents:
+        high_c   = sum(1 for i in incidents if i.get("severity") == "high")
+        medium_c = sum(1 for i in incidents if i.get("severity") == "medium")
+        low_c    = sum(1 for i in incidents if i.get("severity") == "low")
+        open_c   = sum(1 for i in incidents if i.get("status", "open") == "open")
+        auto_c   = sum(1 for i in incidents if i.get("source") == "auto_detection")
+
+        sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+        _kpi(sc1, t_safe("inc_total",  "Total Incidents"),  len(incidents), t_safe("all_severities", "all severities"), "#0d47a1")
+        _kpi(sc2, t_safe("inc_high",   "High Severity"),    high_c,         t_safe("requires_immediate_action", "immediate action"), "#d93025")
+        _kpi(sc3, t_safe("inc_medium", "Medium Severity"),  medium_c,       t_safe("investigate_promptly", "investigate promptly"), "#f0a500")
+        _kpi(sc4, t_safe("inc_open",   "Open"),             open_c,         t_safe("awaiting_resolution", "awaiting resolution"), "#1976d2")
+        _kpi(sc5, t_safe("inc_auto",   "Auto-Detected"),    auto_c,         t_safe("by_soc_engine", "by SOC engine"), "#1a9e5c")
+
+        st.markdown("---")
+
+    # ── Severity filter ───────────────────────────────────────────────────────
+    _FILTER_OPTIONS = [
+        t_safe("filter_all",    "All Severities"),
+        t_safe("filter_high",   "High Only"),
+        t_safe("filter_medium", "Medium Only"),
+        t_safe("filter_low",    "Low Only"),
+        t_safe("filter_open",   "Open Only"),
+    ]
+    sev_filter = st.selectbox(
+        t_safe("filter_incidents", "Filter incidents"),
+        _FILTER_OPTIONS,
+        key="_inc_severity_filter",
+    )
+    filter_map = {
+        t_safe("filter_all",    "All Severities"): None,
+        t_safe("filter_high",   "High Only"):      "high",
+        t_safe("filter_medium", "Medium Only"):    "medium",
+        t_safe("filter_low",    "Low Only"):       "low",
+    }
+    selected_sev = filter_map.get(sev_filter)
+    open_only    = sev_filter == t_safe("filter_open", "Open Only")
+
+    # ── Incident alert cards ──────────────────────────────────────────────────
+    if not incidents:
+        st.success(t_safe("no_incidents_active", "✅ No active security incidents detected."))
+        return
+
+    displayed = 0
+    for inc in reversed(incidents):  # most recent first
+        sev    = inc.get("severity", "low")
+        status = inc.get("status", "open")
+
+        # Apply filter
+        if selected_sev and sev != selected_sev:
+            continue
+        if open_only and status != "open":
+            continue
+
+        inc_id    = inc.get("incident_id", "INC-????")
+        event     = inc.get("event",       t_safe("unknown_event", "Unknown event"))
+        ts        = inc.get("timestamp",   "")[:19].replace("T", " ")
+        branch    = inc.get("branch",      "—")
+        category  = inc.get("category",    "—")
+        source    = inc.get("source",      "manual")
+        source_badge = (
+            f'<span style="background:#1976d2;color:#fff;padding:1px 7px;'
+            f'border-radius:8px;font-size:12px;">AUTO</span>'
+            if source == "auto_detection"
+            else
+            f'<span style="background:#546e7a;color:#fff;padding:1px 7px;'
+            f'border-radius:8px;font-size:12px;">MANUAL</span>'
+        )
+        status_badge = (
+            f'<span style="background:#d93025;color:#fff;padding:1px 7px;'
+            f'border-radius:8px;font-size:12px;">OPEN</span>'
+            if status == "open"
+            else
+            f'<span style="background:#1a9e5c;color:#fff;padding:1px 7px;'
+            f'border-radius:8px;font-size:12px;">{status.upper()}</span>'
+        )
+
+        detail_line = (
+            f"<small style='color:#555;'>"
+            f"<b>{t_safe('branch', 'Branch')}:</b> {branch} &nbsp;|&nbsp; "
+            f"<b>{t_safe('category', 'Category')}:</b> {category} &nbsp;|&nbsp; "
+            f"<b>{t_safe('detected', 'Detected')}:</b> {ts} UTC &nbsp;|&nbsp; "
+            f"{source_badge} &nbsp;{status_badge}"
+            f"</small>"
+        )
+        full_msg = f"**{inc_id}** — {event}<br>{detail_line}"
+
+        if sev == "high":
+            st.error(full_msg, icon="🔴")
+        elif sev == "medium":
+            st.warning(full_msg, icon="🟡")
+        else:
+            st.info(full_msg, icon="🔵")
+
+        displayed += 1
+
+    if displayed == 0:
+        st.info(t_safe("no_incidents_match_filter", "No incidents match the selected filter."))
 
 
 # ===========================================================================
@@ -518,7 +776,7 @@ def _render_rights_decision_table(role: str, data: dict | None = None) -> None:
 # ===========================================================================
 
 def render_board_dashboard(data: dict) -> None:
-    st.markdown(render_page_header(t("system_dashboard")), unsafe_allow_html=True)
+    st.markdown(render_page_header("Executive Dashboard"), unsafe_allow_html=True)
     st.caption(t("board_dashboard_caption"))
     st.markdown(render_export_buttons("dashboard"), unsafe_allow_html=True)
 
@@ -613,7 +871,7 @@ def render_board_dashboard(data: dict) -> None:
 def render_dpo_dashboard(data: dict) -> None:
     from auth import KERALA_BRANCHES  # noqa: PLC0415
 
-    st.markdown(render_page_header(t("governance_console")), unsafe_allow_html=True)
+    st.markdown(render_page_header("Governance & Oversight"), unsafe_allow_html=True)
     st.caption(t("dpo_dashboard_caption"))
     st.markdown(render_export_buttons("dpo_dashboard"), unsafe_allow_html=True)
 
@@ -649,7 +907,7 @@ def render_dpo_dashboard(data: dict) -> None:
 
     st.divider()
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         t("consent_management"),
         t("sla_status"),
         t("rights_requests"),
@@ -657,6 +915,7 @@ def render_dpo_dashboard(data: dict) -> None:
         t("gis_map"),
         t("knowledge_graph"),
         t("escalation_dpia"),
+        t_safe("security_incidents_tab", "🚨 Security Incidents"),
     ])
 
     # TAB 1 — Branch compliance comparison
@@ -882,6 +1141,10 @@ def render_dpo_dashboard(data: dict) -> None:
         _render_dpia_summary(data)
         _render_data_discovery_panel()
 
+    # TAB 8 — Security Incident Alerts (Step 10)
+    with tab8:
+        _render_security_incident_alerts()
+
 
 # ===========================================================================
 # Regional Dashboard — Regional aggregation only
@@ -890,7 +1153,7 @@ def render_dpo_dashboard(data: dict) -> None:
 def render_regional_dashboard(data: dict) -> None:
     user_region = get_region()
 
-    st.markdown(render_page_header(t("system_dashboard")), unsafe_allow_html=True)
+    st.markdown(render_page_header("Compliance Monitoring"), unsafe_allow_html=True)
     st.caption(f"{t('region_label')}: {user_region}  |  {t('regional_dashboard_caption')}")
     st.markdown(render_export_buttons("regional_dashboard"), unsafe_allow_html=True)
 
@@ -949,7 +1212,7 @@ def render_regional_dashboard(data: dict) -> None:
 # ===========================================================================
 
 def render_admin_dashboard(data: dict) -> None:
-    st.markdown(render_page_header(t("admin_console")), unsafe_allow_html=True)
+    st.markdown(render_page_header("System Administration"), unsafe_allow_html=True)
     st.caption(t("admin_dashboard_caption"))
     st.markdown(render_export_buttons("admin_dashboard"), unsafe_allow_html=True)
 
@@ -1099,7 +1362,7 @@ def render_operational_dashboard(data: dict) -> None:
     branch_df = _engine_branch_df(data)
 
     if role == "branch_officer":
-        st.markdown(render_page_header(t("system_dashboard")), unsafe_allow_html=True)
+        st.markdown(render_page_header("Executive Dashboard"), unsafe_allow_html=True)
         st.caption(
             f"{t('branch_label')}: {user_branch}  |  "
             f"{t('region_label')}: {user_region}  |  "
@@ -1174,7 +1437,7 @@ def render_operational_dashboard(data: dict) -> None:
         _render_rights_decision_table(role="branch_officer", data=data)
 
     elif role in ("auditor", "soc_analyst"):
-        st.markdown(render_page_header(t("system_dashboard")), unsafe_allow_html=True)
+        st.markdown(render_page_header("Audit & Compliance"), unsafe_allow_html=True)
         st.caption(t("auditor_dashboard_caption"))
         st.markdown(render_export_buttons("auditor_dashboard"), unsafe_allow_html=True)
 
@@ -1199,39 +1462,60 @@ def render_operational_dashboard(data: dict) -> None:
         _render_audit_integrity_banner(data)
         st.divider()
 
+        # Step 10 — Security Incident Alerts for SOC Analyst / Auditor
+        _render_security_incident_alerts()
+        st.divider()
+
         if not branch_df.empty and "ComplianceScore" in branch_df.columns:
             st.subheader(t("branch_compliance_scorecard"))
             scorecard_rows = ""
             for _, r in branch_df.iterrows():
-                risk_val = str(r.get("RiskLevel", "")).strip().lower()
-                badge    = render_status_badge(risk_val)
-                scorecard_rows += f"""
-                <tr style="border-bottom:1px solid #e8ecf0;">
-                    {_td(r["Branch"])}
-                    {_td(r["Region"])}
-                    {_td(str(r["ComplianceScore"]) + "%")}
-                    {_td(badge)}
-                    {_td(str(int(r["RightsReq"])))}
-                    {_td(str(int(r["SLA_Red"])))}
-                    {_td(str(int(r["Breaches"])))}
-                </tr>
-                """
-            scorecard_html = f"""
-            <div style="font-size:16px;overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;">
-                <thead><tr>
-                    {_th(t("branch"))}
-                    {_th(t("region"))}
-                    {_th(t("score_pct"))}
-                    {_th(t("risk_level"))}
-                    {_th(t("open_requests"))}
-                    {_th(t("sla_breaches"))}
-                    {_th(t("incidents"))}
-                </tr></thead>
-                <tbody>{scorecard_rows}</tbody>
-            </table>
-            </div>
-            """
+                risk_val  = str(r.get("RiskLevel", "")).strip().lower()
+                badge     = render_status_badge(risk_val)
+                score_val = int(r["ComplianceScore"])
+                # Traffic-light colour based on score
+                if score_val >= 85:
+                    score_colour = "#1a9e5c"   # green
+                elif score_val >= 60:
+                    score_colour = "#f0a500"   # amber
+                else:
+                    score_colour = "#d93025"   # red
+                score_cell = (
+                    f"<span style=\"display:inline-flex;align-items:center;gap:6px;\">"
+                    f"<span style=\"background:{score_colour};color:#fff;"
+                    f"padding:2px 10px;border-radius:12px;font-weight:600;\">"
+                    f"{score_val}%</span></span>"
+                )
+                scorecard_rows += (
+                    f"<tr style=\"border-bottom:1px solid #e8ecf0;\">"
+                    f"{_td(str(r['Branch']))}"
+                    f"{_td(str(r['Region']))}"
+                    f"{_td(score_cell)}"
+                    f"{_td(badge)}"
+                    f"{_td(str(int(r['RightsReq'])))}"
+                    f"{_td(str(int(r['SLA_Red'])))}"
+                    f"{_td(str(int(r['Breaches'])))}"
+                    f"</tr>"
+                )
+
+            scorecard_html = (
+                "<div style=\"font-size:16px;overflow-x:auto;\">"
+                "<table style=\"width:100%;border-collapse:collapse;"
+                "background:white;border-radius:10px;overflow:hidden;\">"
+                "<thead>"
+                "<tr>"
+                + _th(t("branch"))
+                + _th(t("region"))
+                + _th(t("score_pct"))
+                + _th(t("risk_level"))
+                + _th(t("open_requests"))
+                + _th(t("sla_breaches"))
+                + _th(t("incidents"))
+                + "</tr></thead>"
+                "<tbody>"
+                + scorecard_rows
+                + "</tbody></table></div>"
+            )
             st.markdown(scorecard_html, unsafe_allow_html=True)
 
             display_df = branch_df[[
@@ -1246,21 +1530,85 @@ def render_operational_dashboard(data: dict) -> None:
             })
             export_data(display_df, "branch_compliance_scorecard")
 
-            fig_audit = px.scatter(
-                branch_df,
-                x="ComplianceScore", y="RightsReq",
-                color="RiskLevel", color_discrete_map=RISK_COLOUR_MAP,
-                size="Consents", hover_name="Branch",
-                labels={
-                    "ComplianceScore": t("compliance_score_pct"),
-                    "RightsReq":       t("open_rights_requests"),
-                },
-                title=t("compliance_vs_rights_requests"),
+            # Professional branch compliance chart — zone-coloured, sorted ascending
+            _sorted = branch_df.sort_values("ComplianceScore", ascending=True).copy()
+
+            # Traffic-light colour per score band
+            _sorted["_colour"] = _sorted["ComplianceScore"].apply(
+                lambda s: "#1a9e5c" if s >= 85 else ("#f0a500" if s >= 60 else "#d93025")
+            )
+            # Compliance band label for legend
+            _sorted["_band"] = _sorted["ComplianceScore"].apply(
+                lambda s: "On Target (≥85%)" if s >= 85 else ("At Risk (60–84%)" if s >= 60 else "Critical (<60%)")
+            )
+
+            fig_audit = go.Figure(go.Bar(
+                x=_sorted["ComplianceScore"],
+                y=_sorted["Branch"],
+                orientation="h",
+                marker=dict(
+                    color=_sorted["_colour"].tolist(),
+                    line=dict(color="#ffffff", width=0.8),
+                ),
+                text=[f"  {v}%" for v in _sorted["ComplianceScore"]],
+                textposition="outside",
+                textfont=dict(size=13, color="#333333"),
+                hovertemplate=(
+                    "<b>%{y}</b><br>"
+                    "Compliance Score: <b>%{x}%</b><br>"
+                    "<extra></extra>"
+                ),
+            ))
+            # 90% target line
+            fig_audit.add_vline(
+                x=90,
+                line_dash="dot",
+                line_color="#0d47a1",
+                line_width=1.5,
+                annotation_text="Target 90%",
+                annotation_position="top right",
+                annotation_font=dict(size=12, color="#0d47a1"),
+            )
+            # Legend annotation boxes
+            fig_audit.add_annotation(
+                x=1.01, y=1.0, xref="paper", yref="paper",
+                text=(
+                    "<b>Band Key</b><br>"
+                    "<span style='color:#1a9e5c'>■</span> On Target ≥85%<br>"
+                    "<span style='color:#f0a500'>■</span> At Risk 60–84%<br>"
+                    "<span style='color:#d93025'>■</span> Critical &lt;60%"
+                ),
+                showarrow=False,
+                align="left",
+                bgcolor="#f8fafc",
+                bordercolor="#d0d8e4",
+                borderwidth=1,
+                font=dict(size=11, color="#333"),
             )
             fig_audit.update_layout(
-                plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
-                font=dict(color="#0A3D91", size=14), title_font=dict(size=18),
-                height=400, template="plotly_white",
+                title=dict(
+                    text="Branch Compliance Score Comparison",
+                    font=dict(size=18, color="#0A3D91"),
+                ),
+                xaxis=dict(
+                    title="Compliance Score (%)",
+                    range=[0, 120],
+                    showgrid=True,
+                    gridcolor="#ececec",
+                    ticksuffix="%",
+                    tickfont=dict(size=13),
+                ),
+                yaxis=dict(
+                    title="",
+                    automargin=True,
+                    tickfont=dict(size=13),
+                ),
+                plot_bgcolor="#ffffff",
+                paper_bgcolor="#ffffff",
+                font=dict(color="#0A3D91", size=13),
+                height=max(340, 46 * len(_sorted)),
+                margin=dict(l=10, r=160, t=70, b=30),
+                showlegend=False,
             )
             st.plotly_chart(fig_audit, use_container_width=True)
 
@@ -1270,7 +1618,7 @@ def render_operational_dashboard(data: dict) -> None:
 # ===========================================================================
 
 def render_customer_dashboard() -> None:
-    st.markdown(render_page_header(t("system_dashboard")), unsafe_allow_html=True)
+    st.markdown(render_page_header("Data Principal Rights"), unsafe_allow_html=True)
     st.info(t("customer_dashboard_message"))
     st.subheader(t("your_consents"))
     st.caption(t("customer_consents_caption"))
@@ -1362,7 +1710,7 @@ def show() -> None:
     role = current_user["role"]
 
     # ── Page title ────────────────────────────────────────────────────────────
-    render_page_title("system_dashboard")
+    render_page_title("governance_console")
 
     # ── Sidebar: show permitted modules for the current role ──────────────────
     _render_module_access_panel()
