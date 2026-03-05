@@ -422,6 +422,11 @@ auth.render_sidebar_profile()
 if raw_role in ("board_member", "board"):
     with st.sidebar:
         st.info(t("board_view_info"))
+        st.markdown("---")
+        if st.button("Sign Out", key="signout_board", use_container_width=True):
+            for _k in list(st.session_state.keys()):
+                del st.session_state[_k]
+            st.rerun()
     if auth.require_access("Executive Dashboard"):
         dashboard.show()
     st.stop()
@@ -429,6 +434,11 @@ if raw_role in ("board_member", "board"):
 if raw_role == "customer":
     with st.sidebar:
         st.info(t("customer_access_info"))
+        st.markdown("---")
+        if st.button("Sign Out", key="signout_customer", use_container_width=True):
+            for _k in list(st.session_state.keys()):
+                del st.session_state[_k]
+            st.rerun()
     if auth.require_access("Data Principal Rights"):
         rights_portal.show()
     st.stop()

@@ -4,5 +4,41 @@
         "functional": true,
         "analytics": true,
         "marketing": true
+    },
+    "dpo_admin": {
+        "essential": true,
+        "functional": false,
+        "analytics": false,
+        "marketing": false
+    },
+    "auditor_01": {
+        "essential": true,
+        "functional": false,
+        "analytics": true,
+        "marketing": false
+    },
+    "support_01": {
+        "essential": true,
+        "functional": false,
+        "analytics": false,
+        "marketing": false
+    },
+    "officer_02": {
+        "essential": true,
+        "functional": true,
+        "analytics": true,
+        "marketing": true
+    },
+    "region_01": {
+        "essential": true,
+        "functional": true,
+        "analytics": true,
+        "marketing": true
+    },
+    "privacy_ops_01": {
+        "essential": true,
+        "functional": false,
+        "analytics": false,
+        "marketing": false
     }
 }

@@ -989,7 +989,17 @@ def calculate_sla_status(
     Amber  → ≤ 50 % remains but not yet past deadline
     Red    → deadline passed
     """
-    now         = reference_time or datetime.now(timezone.utc)
+    now = reference_time or datetime.now(timezone.utc)
+
+    # Normalise submitted_time — strings and naive datetimes both become UTC-aware
+    if isinstance(submitted_time, str):
+        submitted_time = datetime.fromisoformat(submitted_time.replace("Z", "+00:00"))
+    if submitted_time.tzinfo is None:
+        submitted_time = submitted_time.replace(tzinfo=timezone.utc)
+    # Ensure now is also timezone-aware
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
     deadline    = submitted_time + timedelta(days=sla_days)
     remaining   = deadline - now
     half_window = timedelta(days=sla_days) / 2
@@ -1009,7 +1019,17 @@ def get_sla_detail(
     reference_time: Optional[datetime] = None,
 ) -> dict:
     """Return a full SLA detail dict for a given request (legacy interface)."""
-    now               = reference_time or datetime.now(timezone.utc)
+    now = reference_time or datetime.now(timezone.utc)
+
+    # Normalise submitted_time — strings and naive datetimes both become UTC-aware
+    if isinstance(submitted_time, str):
+        submitted_time = datetime.fromisoformat(submitted_time.replace("Z", "+00:00"))
+    if submitted_time.tzinfo is None:
+        submitted_time = submitted_time.replace(tzinfo=timezone.utc)
+    # Ensure now is also timezone-aware
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
     sla_days          = SLA_CONFIG.get(request_type, 30)
     deadline          = submitted_time + timedelta(days=sla_days)
     remaining         = deadline - now

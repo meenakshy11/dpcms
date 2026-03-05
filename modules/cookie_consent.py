@@ -606,36 +606,40 @@ def show() -> None:
                     st.markdown("✅  \n*Always on*")
                     new_prefs[cat] = True
                 else:
-                    val = st.toggle(
+                    val = st.checkbox(
                         label,
-                        value=current,
-                        key=f"pref_{cat}",
+                        value=bool(current),
+                        key=f"pref_{cat}_{st.session_state.get('_cookie_form_version', 0)}",
                         label_visibility="collapsed",
                     )
                     new_prefs[cat] = val
             st.divider()
 
-    col_save, col_reset, _ = st.columns([1.5, 1.5, 5])
-    with col_save:
+    _fc1, _fc2, _ = st.columns([1.5, 1.5, 5])
+    with _fc1:
         if st.button(
-            t_safe("save_cookie_preferences", "Save Preferences"),
+            t_safe("save_cookie_preferences", "💾 Save Preferences"),
             type="primary",
             use_container_width=True,
             key="cookie_save_btn",
         ):
-            # Save to disk (per user) and session state
             save_user_preferences(username, new_prefs)
             st.success(
                 t_safe("cookie_preferences_saved", "✔ Cookie preferences saved successfully.")
             )
+            st.rerun()
 
-    with col_reset:
+    with _fc2:
         if st.button(
-            t_safe("reset_to_essential", "Reset to Essential Only"),
+            t_safe("reset_to_essential", "↺ Reset to Essential"),
             use_container_width=True,
             key="cookie_reset_btn",
         ):
             save_user_preferences(username, _DEFAULT_CONSENT.copy())
+            # Bump version so checkboxes re-render with fresh default values
+            st.session_state["_cookie_form_version"] = (
+                st.session_state.get("_cookie_form_version", 0) + 1
+            )
             st.info(t_safe("cookie_reset_done", "Preferences reset — essential cookies only."))
             st.rerun()
 
