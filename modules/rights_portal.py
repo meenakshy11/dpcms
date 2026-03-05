@@ -1,18 +1,36 @@
 """
 modules/rights_portal.py
 ------------------------
-Data Principal Rights Portal — four-role rendering model.
+Data Principal Rights Portal — role-based rendering model.
 
 Architecture (updated):
     UI  →  orchestration.execute_action()  →  Engine  →  Audit / SLA / Compliance
 
-Role dispatch:
-  customer          → render_customer_view()
-  branch_officer    → render_officer_console()
-  privacy_steward   → render_officer_console()
-  dpo               → render_dpo_console()
-  auditor           → render_auditor_console()
-  others            → access denied
+Role dispatch (canonical codes):
+  customer              → render_customer_view()       — submit own requests
+  customer_assisted     → render_customer_view()       — assisted self-service
+  customer_support      → render_officer_console()     — register requests on behalf
+  branch_officer /
+  branch_privacy_coordinator
+                        → render_officer_console()     — monitor branch queue
+  regional_officer /
+  regional_compliance_officer
+                        → render_officer_console()     — regional scope
+  privacy_steward /
+  privacy_operations    → render_dpo_console()         — execute correction/erasure
+  dpo                   → render_dpo_console()         — full governance + escalations
+  auditor / internal_auditor
+                        → render_auditor_console()     — read-only oversight
+  board_member          → read-only dashboard (via app.py fast-path)
+  others                → access denied
+
+Governance matrix enforced:
+  - Customer / Assisted / Support Officer: submit requests only, NO approve/execute
+  - Branch Privacy Coordinator: monitor branch queue, NO direct mutations
+  - Privacy Operations: execute correction/erasure
+  - DPO: full governance — all requests + escalations + analytics
+  - Auditor: read-only
+  - Export: Internal Auditor, Board, Privacy Operations only
 
 Design contract:
   - NO storage reads/writes (json.load / json.dump) in this module.
@@ -30,7 +48,7 @@ from __future__ import annotations
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import engine.orchestration as orchestration
 from engine.sla_engine import get_sla_detail, SLA_CONFIG, status_badge
@@ -76,6 +94,40 @@ _SESSION_SUBMIT_LIMIT = 5
 _SESSION_SUBMIT_KEY   = "_rights_submissions_this_session"
 
 # ---------------------------------------------------------------------------
+# Export-permitted roles — canonical codes
+# Mirrors EXPORT_PERMITTED_ROLES in app.py; kept here for module-level guard.
+# ---------------------------------------------------------------------------
+
+_EXPORT_PERMITTED: set[str] = {
+    "dpo",
+    "board_member",
+    "auditor",
+    "internal_auditor",
+    "privacy_operations",
+}
+
+# ---------------------------------------------------------------------------
+# Kerala district list for identity form
+# ---------------------------------------------------------------------------
+
+KERALA_DISTRICTS: list[str] = [
+    "Thiruvananthapuram",
+    "Kollam",
+    "Pathanamthitta",
+    "Alappuzha",
+    "Kottayam",
+    "Idukki",
+    "Ernakulam",
+    "Thrissur",
+    "Palakkad",
+    "Malappuram",
+    "Kozhikode",
+    "Wayanad",
+    "Kannur",
+    "Kasaragod",
+]
+
+# ---------------------------------------------------------------------------
 # i18n helpers
 # ---------------------------------------------------------------------------
 
@@ -111,9 +163,53 @@ def _t_status(internal: str) -> str:
 
 def _mask_id(raw_id: str) -> str:
     role = st.session_state.get("role", "")
-    if role in ("dpo", "auditor", "privacy_operations"):
+    if role in ("dpo", "auditor", "internal_auditor", "privacy_operations"):
         return raw_id
     return mask_identifier(raw_id, role=role)
+
+
+# ---------------------------------------------------------------------------
+# Sensitive field masking — show last 4 chars only
+# ---------------------------------------------------------------------------
+
+def mask(value: str) -> str:
+    """Mask sensitive identifiers, showing only the last 4 characters."""
+    if not value:
+        return ""
+    value = str(value).strip()
+    if len(value) <= 4:
+        return "****"
+    return "****" + value[-4:]
+
+
+# ---------------------------------------------------------------------------
+# Export permission helper — module-level check
+# ---------------------------------------------------------------------------
+
+def _can_export() -> bool:
+    """Return True only if the current session role is permitted to export."""
+    return st.session_state.get("role", "") in _EXPORT_PERMITTED
+
+
+# ---------------------------------------------------------------------------
+# SLA datetime normalisation
+# Ensures submitted_time is always a timezone-naive datetime for SLA engine.
+# Fixes: TypeError: can't subtract offset-naive and offset-aware datetimes
+# ---------------------------------------------------------------------------
+
+def _normalise_dt(submitted_time) -> datetime:
+    """
+    Accept a string or datetime and return a timezone-naive UTC datetime.
+    Handles ISO strings with or without +00:00 / Z suffix.
+    """
+    if isinstance(submitted_time, str):
+        # Replace Z with +00:00 for fromisoformat compatibility
+        submitted_time = submitted_time.replace("Z", "+00:00")
+        submitted_time = datetime.fromisoformat(submitted_time)
+    # Strip timezone info so SLA engine arithmetic stays naive
+    if submitted_time.tzinfo is not None:
+        submitted_time = submitted_time.replace(tzinfo=None)
+    return submitted_time
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +291,17 @@ def _kpi(label: str, value, colour: str = "#0A3D91", sub: str = "") -> None:
 
 
 def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> None:
-    """Render filterable SLA table. Status updates go through orchestration."""
+    """
+    Render filterable SLA table.
+    Status updates go through orchestration.
+    Export is restricted to permitted roles only.
+    Charts are guarded against empty datasets.
+    """
+    # ── Empty dataset guard ───────────────────────────────────────────────────
+    if not requests:
+        st.info(t("no_requests_available"))
+        return
+
     fcol1, fcol2, fcol3 = st.columns(3)
     with fcol1:
         f_status_display = st.multiselect(
@@ -223,9 +329,11 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
     if filtered:
         rows = []
         for req in filtered:
+            # SLA engine: normalise datetime to avoid offset-naive/aware TypeError
+            submitted_dt = _normalise_dt(req["submitted_at"])
             detail = get_sla_detail(
                 req["id"], req["sla_key"],
-                datetime.fromisoformat(req["submitted_at"]),
+                submitted_dt,
             )
             rows.append({
                 t("id"):           req["id"],
@@ -246,7 +354,14 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
             })
         df = pd.DataFrame(rows)
         st.dataframe(df, use_container_width=True, hide_index=True)
-        export_data(df, "rights_requests")
+
+        # ── Export: permitted roles only ──────────────────────────────────────
+        if _can_export():
+            export_data(df, "rights_requests")
+        else:
+            st.caption(
+                f"🔒 {t('export_restricted_notice') if 'export_restricted_notice' in dir() else 'Export is available to authorised roles only (DPO, Auditor, Privacy Operations, Board).'}"
+            )
     else:
         st.info(t("no_records_match_filters"))
 
@@ -334,6 +449,7 @@ def _render_sla_table(requests: list, user: str, allow_update: bool = True) -> N
 
 
 def _render_sla_analytics(all_reqs: list, open_reqs: list) -> None:
+    # ── Empty dataset guard ───────────────────────────────────────────────────
     if not all_reqs:
         st.info(t("no_data_yet"))
         return
@@ -346,53 +462,61 @@ def _render_sla_analytics(all_reqs: list, open_reqs: list) -> None:
             t("sla_amber"): sum(1 for r in open_reqs if r["sla_status"] == "Amber"),
             t("sla_red"):   sum(1 for r in open_reqs if r["sla_status"] == "Red"),
         }
-        fig_pie = go.Figure(go.Pie(
-            labels=list(sla_counts.keys()),
-            values=list(sla_counts.values()),
-            hole=0.6,
-            marker_colors=["#1a9e5c", "#f0a500", "#d93025"],
-            textinfo="label+value",
-        ))
-        fig_pie.update_layout(
-            title=t("open_requests_by_sla"),
-            height=300, showlegend=False,
-            margin=dict(l=0, r=0, t=40, b=0),
-            annotations=[dict(
-                text=f"{len(open_reqs)}<br>{t('open')}",
-                x=0.5, y=0.5, font=dict(size=15, color="#0A3D91"), showarrow=False,
-            )],
-        )
-        st.plotly_chart(fig_pie, use_container_width=True)
-        more_info(t("sla_legend_note"))
+        # Guard: plotly pie crashes on all-zero values
+        if sum(sla_counts.values()) == 0:
+            st.info(t("no_open_requests_for_chart"))
+        else:
+            fig_pie = go.Figure(go.Pie(
+                labels=list(sla_counts.keys()),
+                values=list(sla_counts.values()),
+                hole=0.6,
+                marker_colors=["#1a9e5c", "#f0a500", "#d93025"],
+                textinfo="label+value",
+            ))
+            fig_pie.update_layout(
+                title=t("open_requests_by_sla"),
+                height=300, showlegend=False,
+                margin=dict(l=0, r=0, t=40, b=0),
+                annotations=[dict(
+                    text=f"{len(open_reqs)}<br>{t('open')}",
+                    x=0.5, y=0.5, font=dict(size=15, color="#0A3D91"), showarrow=False,
+                )],
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+            more_info(t("sla_legend_note"))
 
     with ac2:
         status_counts: dict[str, int] = {}
         for r in all_reqs:
             label = _t_status(r["status"])
             status_counts[label] = status_counts.get(label, 0) + 1
-        bar_colours_internal = {
-            "Open":        "#5a9ef5",
-            "In Progress": "#f0a500",
-            "Escalated":   "#d93025",
-            "Closed":      "#1a9e5c",
-            "Rejected":    "#aaa",
-        }
-        bar_colours = {_t_status(k): v for k, v in bar_colours_internal.items()}
-        fig_bar = go.Figure(go.Bar(
-            x=list(status_counts.keys()),
-            y=list(status_counts.values()),
-            marker_color=[bar_colours.get(s, "#ccc") for s in status_counts],
-            text=list(status_counts.values()),
-            textposition="outside",
-        ))
-        fig_bar.update_layout(
-            title=t("all_requests_by_status"),
-            yaxis=dict(title=t("count")),
-            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
-            font=dict(color="#0A3D91"),
-            height=300, showlegend=False,
-        )
-        st.plotly_chart(fig_bar, use_container_width=True)
+
+        if not status_counts:
+            st.info(t("no_data_yet"))
+        else:
+            bar_colours_internal = {
+                "Open":        "#5a9ef5",
+                "In Progress": "#f0a500",
+                "Escalated":   "#d93025",
+                "Closed":      "#1a9e5c",
+                "Rejected":    "#aaa",
+            }
+            bar_colours = {_t_status(k): v for k, v in bar_colours_internal.items()}
+            fig_bar = go.Figure(go.Bar(
+                x=list(status_counts.keys()),
+                y=list(status_counts.values()),
+                marker_color=[bar_colours.get(s, "#ccc") for s in status_counts],
+                text=list(status_counts.values()),
+                textposition="outside",
+            ))
+            fig_bar.update_layout(
+                title=t("all_requests_by_status"),
+                yaxis=dict(title=t("count")),
+                plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+                font=dict(color="#0A3D91"),
+                height=300, showlegend=False,
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
 
     closed      = [r for r in all_reqs if r["status"] == "Closed"]
     on_time     = sum(1 for r in closed if r["sla_status"] in ("Green", "Amber"))
@@ -456,12 +580,13 @@ def _handle_submission_result(result: dict, request_type: str) -> bool:
 
 # ---------------------------------------------------------------------------
 # CUSTOMER VIEW
+# Submit own requests only. NO approve / execute / export actions.
 # ---------------------------------------------------------------------------
 
 def render_customer_view() -> None:
     import auth as _auth
-    _cu      = _auth.get_current_user() or {}
-    user     = _cu.get("username", st.session_state.get("username", "customer"))
+    _cu         = _auth.get_current_user() or {}
+    user        = _cu.get("username", st.session_state.get("username", "customer"))
     customer_id = user
 
     st.header(t("rights_portal"))
@@ -503,8 +628,14 @@ def render_customer_view() -> None:
             rt_display   = st.selectbox(t("request_type"), _rt_display_options)
             request_type = _rt_display_to_internal[rt_display]
 
+            # ── Banking identity fields ────────────────────────────────────────
+            aadhaar        = st.text_input("Aadhaar Number", max_chars=12, placeholder="12-digit Aadhaar")
+            account_number = st.text_input("Account Number", placeholder="Kerala Bank account number")
+            ifsc_code      = st.text_input("IFSC Code", placeholder="e.g. KLBK0001234")
+
         with col2:
-            notes    = st.text_area(t("supporting_details"), height=120)
+            district = st.selectbox("District", KERALA_DISTRICTS)
+            notes    = st.text_area(t("supporting_details"), height=100)
             sla_key  = REQUEST_TYPE_MAP[request_type]
             sla_days = SLA_CONFIG.get(sla_key, 30)
             deadline = (datetime.utcnow() + timedelta(days=sla_days)).strftime("%Y-%m-%d")
@@ -523,6 +654,13 @@ def render_customer_view() -> None:
             })
             for k, v in preview.items():
                 st.markdown(f"**{k}:** {v}")
+            # Show masked sensitive fields in preview
+            if aadhaar:
+                st.markdown(f"**Aadhaar:** {mask(aadhaar)}")
+            if account_number:
+                st.markdown(f"**Account:** {mask(account_number)}")
+            if district:
+                st.markdown(f"**District:** {district}")
 
         if st.button(t("submit_request"), type="primary", use_container_width=True):
             if not customer_id.strip():
@@ -531,12 +669,20 @@ def render_customer_view() -> None:
                 result = orchestration.execute_action(
                     action_type="create_rights_request",
                     payload={
-                        "customer_id":        customer_id,
                         "request_type":       request_type,
+                        "customer_id":        customer_id,
+                        "aadhaar":            aadhaar.strip() if aadhaar else "",
+                        "account_number":     account_number.strip() if account_number else "",
+                        "ifsc_code":          ifsc_code.strip() if ifsc_code else "",
+                        "district":           district,
                         "notes":              notes or "",
-                        "supporting_details": notes or "",   # alias used by some rule checks
-                        "assisted":           False,          # customer self-submission
-                        "identity_verified":  False,          # officer verifies later
+                        "supporting_details": notes or "",
+                        "description":        notes or "",
+                        "submitted_by":       st.session_state.get("role", "customer"),
+                        "status":             "submitted",
+                        "assisted":           False,
+                        "identity_verified":  False,
+                        "submitted_time":     datetime.utcnow().isoformat(),
                     },
                     actor=user,
                 )
@@ -558,21 +704,24 @@ def render_customer_view() -> None:
                     t("submitted"):    r["submitted_at"][:10],
                     t("deadline"):     r["deadline"],
                     t("status"):       _t_status(r["status"]),
-                    t("notes"):        r["notes"] or "—",
+                    t("notes"):        r.get("notes") or "—",
                 }
                 for r in my_reqs
             ]
             df = pd.DataFrame(rows)
             st.dataframe(df, use_container_width=True, hide_index=True)
-            export_data(df, "my_rights_requests")
+            # Customer CANNOT export — data export is a privileged action
+            # Export available to: DPO, Board, Auditor, Privacy Operations only
 
             if my_open:
                 st.divider()
                 st.subheader(t("active_request_progress"))
                 for req in my_open:
+                    # SLA: normalise datetime before passing to engine
+                    submitted_dt = _normalise_dt(req["submitted_at"])
                     detail = get_sla_detail(
                         req["id"], req["sla_key"],
-                        datetime.fromisoformat(req["submitted_at"]),
+                        submitted_dt,
                     )
                     with st.container(border=True):
                         rc1, rc2 = st.columns([3, 1])
@@ -601,6 +750,10 @@ def render_customer_view() -> None:
 
 # ---------------------------------------------------------------------------
 # OFFICER VIEW
+# Covers: Customer Support Officer, Branch Privacy Coordinator,
+#         Regional Compliance Officer (assisted intake + branch queue monitor).
+# Officers may register requests and monitor their branch queue.
+# Officers may NOT directly execute erasure or approve/reject requests.
 # ---------------------------------------------------------------------------
 
 def render_officer_console() -> None:
@@ -608,6 +761,7 @@ def render_officer_console() -> None:
     _cu         = _auth.get_current_user() or {}
     user        = _cu.get("username", st.session_state.get("username", "officer"))
     user_branch = _cu.get("branch") or get_branch() or "All"
+    role        = st.session_state.get("role", "")
 
     st.header(t("rights_portal"))
     st.caption(f"{t('branch')}: **{user_branch}** — {t('sla_recalc_caption')}")
@@ -641,109 +795,146 @@ def render_officer_console() -> None:
             f"{t('requires_dpo_attention')}"
         )
 
-    tab1, tab2 = st.tabs([
-        t("assisted_submission"),
-        f"{t('branch_requests')} — {user_branch}",
-    ])
+    # Branch Privacy Coordinators monitor but do not submit on behalf of customers
+    # Customer Support Officers may do assisted intake
+    _can_submit = role in (
+        "customer_support", "branch_officer", "privacy_steward",
+        "regional_officer", "regional_compliance_officer",
+    )
 
-    # ── Tab 1: Assisted Submission ────────────────────────────────────────────
-    with tab1:
-        st.subheader(t("submit_on_behalf_of_customer"))
-        st.caption(t("officer_assisted_caption"))
-        st.info(t("officer_assisted_info"))
-        more_info(t("officer_assisted_more_info"))
+    tabs = (
+        [t("assisted_submission"), f"{t('branch_requests')} — {user_branch}"]
+        if _can_submit
+        else [f"{t('branch_requests')} — {user_branch}"]
+    )
+    tab_objects = st.tabs(tabs)
 
-        # Session rate limit guard
-        if not _check_session_rate_limit():
-            st.error(t("rate_limit_exceeded_session"))
-            return
+    tab_idx = 0
 
-        col1, col2 = st.columns(2)
-        with col1:
-            cust_id = st.text_input(
-                t("customer_id"), placeholder="e.g. C110", key="officer_cust_id"
-            )
-            _rt_display_options     = [_t_request_type(k) for k in REQUEST_TYPE_MAP.keys()]
-            _rt_display_to_internal = {_t_request_type(k): k for k in REQUEST_TYPE_MAP.keys()}
-            rt_display   = st.selectbox(t("request_type"), _rt_display_options, key="officer_req_type")
-            request_type = _rt_display_to_internal[rt_display]
+    # ── Assisted Submission Tab (not shown for Branch Privacy Coordinator) ────
+    if _can_submit:
+        with tab_objects[tab_idx]:
+            st.subheader(t("submit_on_behalf_of_customer"))
+            st.caption(t("officer_assisted_caption"))
+            st.info(t("officer_assisted_info"))
+            more_info(t("officer_assisted_more_info"))
 
-        with col2:
-            notes    = st.text_area(t("supporting_details"), height=100, key="officer_notes")
-            sla_key  = REQUEST_TYPE_MAP[request_type]
-            sla_days = SLA_CONFIG.get(sla_key, 30)
-            deadline = (datetime.utcnow() + timedelta(days=sla_days)).strftime("%Y-%m-%d")
-            st.info(f"{t('sla_window')}: {sla_days} {t('days')} — {t('deadline')}: {deadline}")
+            if not _check_session_rate_limit():
+                st.error(t("rate_limit_exceeded_session"))
+                return
 
-        needs_id_verify   = request_type in IDENTITY_VERIFICATION_REQUIRED
-        identity_verified = False
-        verify_mode       = "physical_id_verified"
-
-        if needs_id_verify:
-            st.warning(
-                f"⚠️ **{_t_request_type(request_type)}** {t('requires_mandatory_id_verification')}"
-            )
-            verify_mode = st.selectbox(
-                t("verification_method"),
-                ["physical_id_verified", "aadhaar_verified", "video_kyc"],
-                key="officer_verify_mode",
-            )
-            identity_verified = st.checkbox(
-                t("officer_id_verification_confirm"),
-                key="officer_id_confirmed",
-            )
-
-        with st.expander(t("preview_request_customer_view")):
-            preview = get_customer_friendly_view({
-                "id":           f"<{t('assigned_on_submit')}>",
-                "customer_id":  cust_id or f"<{t('enter_above')}>",
-                "type":         request_type,
-                "branch":       user_branch,
-                "submitted_at": datetime.utcnow().isoformat(),
-                "deadline":     deadline,
-                "status":       "Open",
-                "assisted":     True,
-            })
-            for k, v in preview.items():
-                st.markdown(f"**{k}:** {v}")
-
-        if st.button(
-            t("submit_assisted_request"), type="primary",
-            use_container_width=True, key="officer_submit",
-        ):
-            if not cust_id.strip():
-                st.error(t("customer_id_required"))
-            elif needs_id_verify and not identity_verified:
-                st.error(
-                    f"{t('must_confirm_id_verification_before')} "
-                    f"**{_t_request_type(request_type)}** {t('request')}."
+            col1, col2 = st.columns(2)
+            with col1:
+                cust_id = st.text_input(
+                    t("customer_id"), placeholder="e.g. C110", key="officer_cust_id"
                 )
-            else:
-                result = orchestration.execute_action(
-                    action_type="create_rights_request",
-                    payload={
-                        "customer_id":        cust_id.strip(),
-                        "request_type":       request_type,
-                        "notes":              notes,
-                        "assisted":           True,
-                        "verification_mode":  verify_mode,
-                        "identity_verified":  identity_verified,
-                    },
-                    actor=user,
-                )
-                if _handle_submission_result(result, request_type):
-                    set_assisted_submission(False)
-                    st.rerun()
+                _rt_display_options     = [_t_request_type(k) for k in REQUEST_TYPE_MAP.keys()]
+                _rt_display_to_internal = {_t_request_type(k): k for k in REQUEST_TYPE_MAP.keys()}
+                rt_display   = st.selectbox(t("request_type"), _rt_display_options, key="officer_req_type")
+                request_type = _rt_display_to_internal[rt_display]
 
-    # ── Tab 2: Branch Processing ──────────────────────────────────────────────
-    with tab2:
+                # ── Banking identity fields ────────────────────────────────────
+                aadhaar        = st.text_input("Aadhaar Number", max_chars=12, placeholder="12-digit Aadhaar", key="officer_aadhaar")
+                account_number = st.text_input("Account Number", placeholder="Kerala Bank account number", key="officer_account")
+                ifsc_code      = st.text_input("IFSC Code", placeholder="e.g. KLBK0001234", key="officer_ifsc")
+
+            with col2:
+                district = st.selectbox("District", KERALA_DISTRICTS, key="officer_district")
+                notes    = st.text_area(t("supporting_details"), height=100, key="officer_notes")
+                sla_key  = REQUEST_TYPE_MAP[request_type]
+                sla_days = SLA_CONFIG.get(sla_key, 30)
+                deadline = (datetime.utcnow() + timedelta(days=sla_days)).strftime("%Y-%m-%d")
+                st.info(f"{t('sla_window')}: {sla_days} {t('days')} — {t('deadline')}: {deadline}")
+
+            needs_id_verify   = request_type in IDENTITY_VERIFICATION_REQUIRED
+            identity_verified = False
+            verify_mode       = "physical_id_verified"
+
+            if needs_id_verify:
+                st.warning(
+                    f"⚠️ **{_t_request_type(request_type)}** {t('requires_mandatory_id_verification')}"
+                )
+                verify_mode = st.selectbox(
+                    t("verification_method"),
+                    ["physical_id_verified", "aadhaar_verified", "video_kyc"],
+                    key="officer_verify_mode",
+                )
+                identity_verified = st.checkbox(
+                    t("officer_id_verification_confirm"),
+                    key="officer_id_confirmed",
+                )
+
+            with st.expander(t("preview_request_customer_view")):
+                preview = get_customer_friendly_view({
+                    "id":           f"<{t('assigned_on_submit')}>",
+                    "customer_id":  cust_id or f"<{t('enter_above')}>",
+                    "type":         request_type,
+                    "branch":       user_branch,
+                    "submitted_at": datetime.utcnow().isoformat(),
+                    "deadline":     deadline,
+                    "status":       "Open",
+                    "assisted":     True,
+                })
+                for k, v in preview.items():
+                    st.markdown(f"**{k}:** {v}")
+                if aadhaar:
+                    st.markdown(f"**Aadhaar:** {mask(aadhaar)}")
+                if account_number:
+                    st.markdown(f"**Account:** {mask(account_number)}")
+                st.markdown(f"**District:** {district}")
+
+            if st.button(
+                t("submit_assisted_request"), type="primary",
+                use_container_width=True, key="officer_submit",
+            ):
+                if not cust_id.strip():
+                    st.error(t("customer_id_required"))
+                elif needs_id_verify and not identity_verified:
+                    st.error(
+                        f"{t('must_confirm_id_verification_before')} "
+                        f"**{_t_request_type(request_type)}** {t('request')}."
+                    )
+                else:
+                    result = orchestration.execute_action(
+                        action_type="create_rights_request",
+                        payload={
+                            "request_type":       request_type,
+                            "customer_id":        cust_id.strip(),
+                            "aadhaar":            aadhaar.strip() if aadhaar else "",
+                            "account_number":     account_number.strip() if account_number else "",
+                            "ifsc_code":          ifsc_code.strip() if ifsc_code else "",
+                            "district":           district,
+                            "notes":              notes or "",
+                            "description":        notes or "",
+                            "assisted":           True,
+                            "verification_mode":  verify_mode,
+                            "identity_verified":  identity_verified,
+                            "submitted_by":       st.session_state.get("role", "customer_support"),
+                            "status":             "submitted",
+                            "submitted_time":     datetime.utcnow().isoformat(),
+                        },
+                        actor=user,
+                    )
+                    if _handle_submission_result(result, request_type):
+                        set_assisted_submission(False)
+                        st.rerun()
+
+        tab_idx += 1
+
+    # ── Branch Queue Tab ──────────────────────────────────────────────────────
+    with tab_objects[tab_idx]:
         st.subheader(f"{t('requests')} — {user_branch}")
         st.caption(t("officer_branch_requests_caption"))
-        _render_sla_table(branch_reqs, user, allow_update=True)
+        # Branch Privacy Coordinator: monitor only (allow_update=False)
+        # Customer Support Officer and other officers: allow status updates
+        _allow_update = role not in ("branch_privacy_coordinator", "regional_compliance_officer")
+        _render_sla_table(branch_reqs, user, allow_update=_allow_update)
 
 
 # ---------------------------------------------------------------------------
 # DPO VIEW
+# Full governance: all requests + status updates + escalations + analytics.
+# Also used by privacy_operations for correction/erasure execution.
 # ---------------------------------------------------------------------------
 
 def render_dpo_console() -> None:
@@ -790,7 +981,6 @@ def render_dpo_console() -> None:
         st.subheader(t("submit_on_behalf_of_customer"))
         st.info(t("dpo_submission_info"))
 
-        # Session rate limit guard
         if not _check_session_rate_limit():
             st.error(t("rate_limit_exceeded_session"))
             return
@@ -805,7 +995,13 @@ def render_dpo_console() -> None:
             rt_display   = st.selectbox(t("request_type"), _rt_display_options, key="dpo_req_type")
             request_type = _rt_display_to_internal[rt_display]
 
+            # ── Banking identity fields ────────────────────────────────────────
+            aadhaar        = st.text_input("Aadhaar Number", max_chars=12, placeholder="12-digit Aadhaar", key="dpo_aadhaar")
+            account_number = st.text_input("Account Number", placeholder="Kerala Bank account number", key="dpo_account")
+            ifsc_code      = st.text_input("IFSC Code", placeholder="e.g. KLBK0001234", key="dpo_ifsc")
+
         with col2:
+            district = st.selectbox("District", KERALA_DISTRICTS, key="dpo_district")
             notes    = st.text_area(t("supporting_details"), height=120, key="dpo_notes")
             sla_key  = REQUEST_TYPE_MAP[request_type]
             sla_days = SLA_CONFIG.get(sla_key, 30)
@@ -838,6 +1034,11 @@ def render_dpo_console() -> None:
             })
             for k, v in preview.items():
                 st.markdown(f"**{k}:** {v}")
+            if aadhaar:
+                st.markdown(f"**Aadhaar:** {mask(aadhaar)}")
+            if account_number:
+                st.markdown(f"**Account:** {mask(account_number)}")
+            st.markdown(f"**District:** {district}")
 
         if st.button(
             t("submit_request"), type="primary",
@@ -851,12 +1052,20 @@ def render_dpo_console() -> None:
                 result = orchestration.execute_action(
                     action_type="create_rights_request",
                     payload={
-                        "customer_id":       dpo_cust_id.strip(),
-                        "request_type":      request_type,
-                        "notes":             notes,
-                        "assisted":          True,
-                        "verification_mode": verify_mode,
-                        "identity_verified": identity_verified,
+                        "request_type":       request_type,
+                        "customer_id":        dpo_cust_id.strip(),
+                        "aadhaar":            aadhaar.strip() if aadhaar else "",
+                        "account_number":     account_number.strip() if account_number else "",
+                        "ifsc_code":          ifsc_code.strip() if ifsc_code else "",
+                        "district":           district,
+                        "notes":              notes or "",
+                        "description":        notes or "",
+                        "assisted":           True,
+                        "verification_mode":  verify_mode,
+                        "identity_verified":  identity_verified,
+                        "submitted_by":       st.session_state.get("role", "dpo"),
+                        "status":             "submitted",
+                        "submitted_time":     datetime.utcnow().isoformat(),
                     },
                     actor=user,
                 )
@@ -880,9 +1089,11 @@ def render_dpo_console() -> None:
         else:
             st.error(f"{len(escalated)} {t('requests_require_dpo_attention')}")
             for req in escalated:
+                # SLA: normalise datetime to avoid offset-naive/aware TypeError
+                submitted_dt = _normalise_dt(req["submitted_at"])
                 detail = get_sla_detail(
                     req["id"], req["sla_key"],
-                    datetime.fromisoformat(req["submitted_at"]),
+                    submitted_dt,
                 )
                 colour = SLA_COLOUR.get(req["sla_status"], "#d93025")
                 with st.container(border=True):
@@ -937,7 +1148,7 @@ def render_dpo_console() -> None:
 
 
 # ---------------------------------------------------------------------------
-# AUDITOR VIEW — read-only oversight
+# AUDITOR VIEW — read-only oversight with export access
 # ---------------------------------------------------------------------------
 
 def render_auditor_console() -> None:
@@ -955,6 +1166,11 @@ def render_auditor_console() -> None:
     )
     all_reqs  = query_result.get("records", [])
     open_reqs = [r for r in all_reqs if r["status"] not in CLOSED_STATUSES]
+
+    # ── Empty dataset guard ───────────────────────────────────────────────────
+    if not all_reqs:
+        st.info(t("no_data_yet"))
+        return
 
     _total = len(all_reqs)
     _open  = len(open_reqs)
@@ -992,7 +1208,7 @@ def render_auditor_console() -> None:
 def show() -> None:
     import auth as _auth
 
-    # ── Session guard — canonical role from get_current_user() ───────────────
+    # ── Session guard ─────────────────────────────────────────────────────────
     current_user = _auth.get_current_user()
     if not current_user:
         st.error(t("session_not_found"))
@@ -1001,21 +1217,38 @@ def show() -> None:
 
     role = current_user["role"]   # always a canonical code
 
-    # ── Role dispatch — all canonical codes covered ───────────────────────────
-    # customer          → self-service rights submission
-    # branch_officer    → assisted submission + branch queue
-    # regional_officer  → assisted submission + regional scope (uses officer console)
-    # privacy_steward   → assisted submission + branch/region scope (uses officer console)
-    # privacy_operations→ full governance: all requests + status updates (uses dpo console)
-    # dpo               → full governance: all requests + escalations + analytics
-    # auditor           → read-only oversight
-    if role == "customer":
+    # ── Role permission guard ─────────────────────────────────────────────────
+    # Only these canonical roles may access the Rights Portal.
+    # All other roles are denied regardless of how they arrive here.
+    _allowed_canonical = {
+        "customer",
+        "customer_assisted",
+        "customer_support",
+        "branch_officer",
+        "branch_privacy_coordinator",
+        "regional_officer",
+        "regional_compliance_officer",
+        "privacy_steward",
+        "privacy_operations",
+        "dpo",
+        "auditor",
+        "internal_auditor",
+    }
+
+    if role not in _allowed_canonical:
+        st.warning(t("access_restricted"))
+        st.info(t("contact_dpo_access"))
+        return
+
+    # ── Role dispatch ─────────────────────────────────────────────────────────
+    if role in ("customer", "customer_assisted"):
         render_customer_view()
-    elif role in ("branch_officer", "regional_officer", "privacy_steward"):
+    elif role in ("customer_support", "branch_officer", "branch_privacy_coordinator",
+                  "regional_officer", "regional_compliance_officer", "privacy_steward"):
         render_officer_console()
     elif role in ("privacy_operations", "dpo"):
         render_dpo_console()
-    elif role == "auditor":
+    elif role in ("auditor", "internal_auditor"):
         render_auditor_console()
     else:
         st.warning(t("access_restricted"))

@@ -40,5 +40,23 @@
         "functional": false,
         "analytics": false,
         "marketing": false
+    },
+    "officer_01": {
+        "essential": true,
+        "functional": true,
+        "analytics": true,
+        "marketing": true
+    },
+    "soc_analyst_01": {
+        "essential": true,
+        "functional": true,
+        "analytics": true,
+        "marketing": true
+    },
+    "board_01": {
+        "essential": true,
+        "functional": false,
+        "analytics": false,
+        "marketing": false
     }
 }

@@ -192,6 +192,23 @@ def _parse_dt(value) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
+def normalize_datetime(value) -> datetime:
+    """
+    Normalize any datetime input (string or datetime) to a tz-aware UTC datetime.
+
+    Handles:
+      - ISO strings (with or without timezone offset)
+      - naive datetime objects (assumed UTC)
+      - tz-aware datetime objects (returned unchanged)
+
+    This is the public-facing alias of _parse_dt exposed for use by
+    rights_portal, dashboard, and regional compliance monitoring modules.
+    """
+    if value is None:
+        raise ValueError("normalize_datetime: received None — caller must guard before calling.")
+    return _parse_dt(value)
+
+
 # ---------------------------------------------------------------------------
 # Step 14H — Centralised write functions (the ONLY code paths that write storage)
 # ---------------------------------------------------------------------------
@@ -991,12 +1008,8 @@ def calculate_sla_status(
     """
     now = reference_time or datetime.now(timezone.utc)
 
-    # Normalise submitted_time — strings and naive datetimes both become UTC-aware
-    if isinstance(submitted_time, str):
-        submitted_time = datetime.fromisoformat(submitted_time.replace("Z", "+00:00"))
-    if submitted_time.tzinfo is None:
-        submitted_time = submitted_time.replace(tzinfo=timezone.utc)
-    # Ensure now is also timezone-aware
+    # Normalise both timestamps via normalize_datetime — handles strings + naive datetimes
+    submitted_time = normalize_datetime(submitted_time)
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
 
@@ -1017,24 +1030,32 @@ def get_sla_detail(
     request_type: str,
     submitted_time: datetime,
     reference_time: Optional[datetime] = None,
-) -> dict:
-    """Return a full SLA detail dict for a given request (legacy interface)."""
+) -> Optional[dict]:
+    """Return a full SLA detail dict for a given request (legacy interface).
+
+    Returns None if submitted_time is None — callers must handle this.
+    """
+    # Step 9 — guard against None submitted_time (prevents crash when no requests)
+    if submitted_time is None:
+        return None
+
     now = reference_time or datetime.now(timezone.utc)
 
-    # Normalise submitted_time — strings and naive datetimes both become UTC-aware
-    if isinstance(submitted_time, str):
-        submitted_time = datetime.fromisoformat(submitted_time.replace("Z", "+00:00"))
-    if submitted_time.tzinfo is None:
-        submitted_time = submitted_time.replace(tzinfo=timezone.utc)
-    # Ensure now is also timezone-aware
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+    # Normalise submitted_time and now via normalize_datetime
+    submitted_time = normalize_datetime(submitted_time)
+    now = normalize_datetime(now) if not isinstance(now, datetime) else (
+        now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    )
 
     sla_days          = SLA_CONFIG.get(request_type, 30)
     deadline          = submitted_time + timedelta(days=sla_days)
     remaining         = deadline - now
     remaining_seconds = remaining.total_seconds()
+    remaining_days    = max(0, int(remaining_seconds // 86400))  # never negative
     status            = calculate_sla_status(submitted_time, sla_days, now)
+
+    # Step 6 — escalation trigger: escalate when ≤ 1 day remaining
+    escalate = should_escalate(remaining_days)
 
     return {
         "request_id":      request_id,
@@ -1042,10 +1063,11 @@ def get_sla_detail(
         "submitted_time":  submitted_time.isoformat(),
         "deadline":        deadline.isoformat(),
         "sla_days":        sla_days,
-        "remaining_days":  max(0, int(remaining_seconds // 86400)),
+        "remaining_days":  remaining_days,
         "remaining_hours": max(0, round(remaining_seconds / 3600, 1)),
         "status":          status,
         "overdue":         remaining_seconds < 0,
+        "escalate":        escalate,
     }
 
 
@@ -1103,6 +1125,52 @@ def sla_summary(
 def status_badge(status: str) -> str:
     """Return emoji badge string for a RAG status label (legacy interface)."""
     return STATUS_BADGE.get(status, status)
+
+
+# ===========================================================================
+# ── ESCALATION + SCORING HELPERS — used by rights_portal, dashboard, regional
+# ===========================================================================
+
+def should_escalate(remaining_days: int) -> bool:
+    """
+    Return True when remaining_days is within the escalation threshold (≤ 1 day).
+
+    Used by:
+      - rights_portal  — to flag requests needing urgent attention
+      - dashboard      — to populate the escalation alert strip
+      - regional compliance monitoring — to trigger supervisor notifications
+
+    Parameters
+    ----------
+    remaining_days : Non-negative integer from get_sla_detail() or get_sla_detail().
+    """
+    return remaining_days <= 1
+
+
+def calculate_compliance_score(open_requests: int, sla_breaches: int) -> int:
+    """
+    Compute a 0–100 compliance score for dashboard KPIs.
+
+    Formula
+    -------
+    score = 100 − (sla_breaches × 5) − (open_requests × 2)
+
+    Breaches are penalised more heavily than open requests because a breach
+    represents a regulatory failure, whereas an open request is still in-flight.
+
+    The score is clamped to [0, 100] — it can never go negative.
+
+    Parameters
+    ----------
+    open_requests : Count of active (not yet closed) rights / consent requests.
+    sla_breaches  : Count of SLA records currently in "breached" status.
+
+    Returns
+    -------
+    int in the range [0, 100].
+    """
+    score = 100 - (sla_breaches * 5) - (open_requests * 2)
+    return max(score, 0)
 
 
 # ===========================================================================
@@ -1460,3 +1528,10 @@ if __name__ == "__main__":
             f"status={sla['status']:<10s} | esc={sla['escalation_level']} "
             f"→ {sla.get('escalated_to', '')} | branch={sla.get('branch', '-')}"
         )
+
+    print("\n── should_escalate() + calculate_compliance_score() ────")
+    for days in [0, 1, 2, 5]:
+        print(f"  remaining_days={days} → escalate={should_escalate(days)}")
+    for open_r, breaches in [(0, 0), (5, 2), (10, 10), (50, 20)]:
+        score = calculate_compliance_score(open_r, breaches)
+        print(f"  open={open_r} breaches={breaches} → score={score}")

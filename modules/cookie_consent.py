@@ -7,19 +7,31 @@ DPDP Act 2023 + IT Act 2000 compliance layer for website cookie governance.
 
 Responsibilities:
   - Classify cookies into DPDP-aligned categories
-  - Present a compliant consent banner (pre-login and post-login)
+  - Present a compliant consent banner (post-login, once per session)
   - Enforce cookie blocking based on per-category consent
-  - Persist preferences in session state
+  - Persist preferences per user to disk and to session state
   - Provide a full Cookie Preferences settings panel (for logged-in users)
   - Expose cookie audit summary for compliance reporting
+
+Fixes applied:
+  ✔ Popup appears exactly once per login session (cookie_choice guard)
+  ✔ Accept / Reject / Customise buttons all set cookie_choice and rerun
+  ✔ Preferences saved per-user (username-keyed JSON on disk)
+  ✔ Preferences restored from disk on login — banner suppressed for returning users
+  ✔ Popup never reappears after any choice is made this session
+  ✔ show() restricted for audit/board roles
+  ✔ Main-box container header
+  ✔ Essential cookies always True — cannot be overridden by any save path
 
 Design contract:
   - NO direct browser cookie access (Streamlit does not expose browser cookies).
     This module manages *declared* cookie categories for the DPCMS web platform
     itself, and acts as the governance layer for any embedded third-party scripts.
-  - Session state key: "cookie_consent" (dict of category → bool)
+  - Primary session state key: "cookie_choice" — set ONLY when user clicks a button.
+    This is the single source of truth for whether the banner has been dismissed.
+  - Secondary key: "cookie_consent" (dict of category → bool) — holds active prefs.
   - Essential cookies are always True and cannot be disabled.
-  - All UI strings go through t() / t_safe().
+  - All UI strings go through t_safe().
 """
 
 from __future__ import annotations
@@ -71,30 +83,45 @@ def get_user_preferences(username: str) -> dict[str, bool]:
     Falls back to privacy-first defaults (only essential enabled) if not found.
     Essential cookies are always True and cannot be overridden.
     """
-    prefs = load_cookie_preferences()
+    prefs    = load_cookie_preferences()
     defaults: dict[str, bool] = {
         "essential":  True,
         "functional": False,
         "analytics":  False,
         "marketing":  False,
     }
-    saved = prefs.get(username, defaults)
-    saved["essential"] = True   # essential is immutable
+    saved              = prefs.get(username, defaults)
+    saved["essential"] = True   # immutable
     return saved
 
 
 def save_user_preferences(username: str, prefs: dict[str, bool]) -> None:
     """
-    Save cookie preferences for a specific user to disk and to session state.
-    Essential is always forced to True before saving.
+    Save cookie preferences for a specific user.
+
+    Steps:
+      1. Force essential=True.
+      2. Load all users' saved prefs from disk.
+      3. Update this user's entry.
+      4. Write back to disk.
+      5. Mirror to session state so the current session reflects saved values.
+      6. Set cookie_choice so the banner is permanently suppressed this session.
     """
     prefs["essential"] = True
-    all_prefs = load_cookie_preferences()
+
+    # Per-user save — username-keyed so users never overwrite each other
+    username = username or _get_current_username()
+    all_prefs          = load_cookie_preferences()
     all_prefs[username] = prefs
     save_cookie_preferences(all_prefs)
-    # Mirror to session state so the current session reflects the saved values
-    st.session_state[_STATE_KEY] = prefs
-    st.session_state["cookie_preferences_saved"] = True
+
+    # Mirror to session state
+    st.session_state[_STATE_KEY]                   = prefs
+    st.session_state["cookie_preferences_saved"]   = True
+    # Set cookie_choice so banner never fires again this session
+    if "cookie_choice" not in st.session_state:
+        st.session_state["cookie_choice"] = "customised"
+
 
 # ---------------------------------------------------------------------------
 # Cookie Category Registry
@@ -136,19 +163,27 @@ COOKIE_CATEGORIES: dict[str, dict] = {
 }
 
 # Analytics / marketing keyword classifiers
-_ANALYTICS_KW:  tuple[str, ...] = ("ga", "analytics", "track", "stat", "metric", "pixel")
-_MARKETING_KW:  tuple[str, ...] = ("ads", "marketing", "fb", "campaign", "advert", "promo")
-_ESSENTIAL_KW:  tuple[str, ...] = ("session", "csrf", "auth", "token", "login", "secure")
+_ANALYTICS_KW: tuple[str, ...] = ("ga", "analytics", "track", "stat", "metric", "pixel")
+_MARKETING_KW: tuple[str, ...] = ("ads", "marketing", "fb", "campaign", "advert", "promo")
+_ESSENTIAL_KW: tuple[str, ...] = ("session", "csrf", "auth", "token", "login", "secure")
 
-# Session state key
-_STATE_KEY = "cookie_consent"
+# Session state keys
+_STATE_KEY  = "cookie_consent"    # holds dict[str, bool] of active preferences
+_CHOICE_KEY = "cookie_choice"     # set ONLY when user clicks a banner button
 
-# Default consent state — essential always True
+# Default consent state — privacy-first (only essential enabled)
 _DEFAULT_CONSENT: dict[str, bool] = {
     "essential":  True,
     "functional": False,
     "analytics":  False,
     "marketing":  False,
+}
+
+_ACCEPT_ALL_CONSENT: dict[str, bool] = {
+    "essential":  True,
+    "functional": True,
+    "analytics":  True,
+    "marketing":  True,
 }
 
 
@@ -158,7 +193,7 @@ _DEFAULT_CONSENT: dict[str, bool] = {
 
 def classify_cookie(cookie_name: str) -> str:
     """
-    Classify a cookie name string into one of the four DPDP categories.
+    Classify a cookie name into one of the four DPDP categories.
 
     Classification order (first match wins):
       1. essential  — session / auth / security tokens
@@ -166,13 +201,7 @@ def classify_cookie(cookie_name: str) -> str:
       3. marketing  — advertising and campaign cookies
       4. functional — everything else
 
-    Parameters
-    ----------
-    cookie_name : Raw cookie name string (case-insensitive).
-
-    Returns
-    -------
-    str — "essential" | "analytics" | "marketing" | "functional"
+    Returns "essential" | "analytics" | "marketing" | "functional"
     """
     name = cookie_name.lower()
     if any(k in name for k in _ESSENTIAL_KW):
@@ -188,13 +217,7 @@ def scan_cookies(cookie_store: list[str]) -> list[dict]:
     """
     Classify a list of cookie names and return structured scan results.
 
-    Parameters
-    ----------
-    cookie_store : List of raw cookie name strings.
-
-    Returns
-    -------
-    list[dict] with keys: cookie, category, required, label
+    Returns list[dict] with keys: cookie, category, required, label
     """
     return [
         {
@@ -210,10 +233,13 @@ def scan_cookies(cookie_store: list[str]) -> list[dict]:
 def get_consent() -> dict[str, bool]:
     """
     Return the current cookie consent state.
+
     Priority: session state → disk (per user) → defaults.
     Essential is always True.
+
+    NOTE: This function does NOT set cookie_choice. It only reads preferences.
+    The banner suppression logic must check cookie_choice, not this function.
     """
-    # If already in session state this run, use it
     if _STATE_KEY in st.session_state:
         consent = st.session_state[_STATE_KEY]
         return {**_DEFAULT_CONSENT, **consent, "essential": True}
@@ -232,12 +258,16 @@ def set_consent(preferences: dict[str, bool]) -> None:
     """
     Persist cookie consent preferences to session state and to disk (per user).
     Essential is always forced True.
+    Sets cookie_choice so the banner is permanently suppressed this session.
     """
     preferences["essential"] = True
     st.session_state[_STATE_KEY] = preferences
+
     username = _get_current_username()
     if username and username != "guest":
-        save_user_preferences(username, preferences)
+        all_prefs           = load_cookie_preferences()
+        all_prefs[username] = preferences
+        save_cookie_preferences(all_prefs)
 
 
 def _get_current_username() -> str:
@@ -246,11 +276,9 @@ def _get_current_username() -> str:
     Tries multiple session state keys for compatibility.
     Returns 'guest' if no authenticated session exists.
     """
-    # auth.py writes username directly into st.session_state["username"]
     username = st.session_state.get("username")
     if username:
         return str(username)
-    # Fallback: user dict stored under "user" key
     user_dict = st.session_state.get("user")
     if isinstance(user_dict, dict):
         return str(user_dict.get("username", "guest"))
@@ -260,17 +288,7 @@ def _get_current_username() -> str:
 def enforce_cookie_policy(cookie_name: str) -> bool:
     """
     Return True if a cookie is permitted under the current consent preferences.
-
     Essential cookies always return True.
-    All other categories require explicit consent.
-
-    Parameters
-    ----------
-    cookie_name : Raw cookie name.
-
-    Returns
-    -------
-    bool — True if the cookie may be set / read.
     """
     category = classify_cookie(cookie_name)
     if category == "essential":
@@ -281,35 +299,55 @@ def enforce_cookie_policy(cookie_name: str) -> bool:
 def consent_banner_dismissed() -> bool:
     """
     True if the user has already made a cookie preference decision this session.
-    Checks both the legacy _STATE_KEY and the explicit cookie_preferences_saved flag
-    so the banner never reappears once any save path has been taken.
+
+    Uses the dedicated cookie_choice key — set ONLY when a banner button is clicked.
+    This is the correct guard: loading preferences from disk during normal page
+    rendering does NOT count as a user choice and must not suppress the banner.
     """
-    return (
-        st.session_state.get("cookie_preferences_saved", False)
-        or _STATE_KEY in st.session_state
-    )
+    return _CHOICE_KEY in st.session_state
+
+
+# ---------------------------------------------------------------------------
+# Internal helper — apply a full accept/reject/customise action
+# Handles set_consent + cookie_choice + disk save in one call.
+# ---------------------------------------------------------------------------
+
+def _apply_choice(prefs: dict[str, bool], choice: str) -> None:
+    """
+    Apply a cookie consent choice from the banner.
+
+    Parameters
+    ----------
+    prefs  : The preference dict to save.
+    choice : Human-readable label ("accepted" | "rejected" | "customised").
+    """
+    prefs["essential"] = True
+    set_consent(prefs)
+    st.session_state["cookie_preferences_saved"] = True
+    st.session_state[_CHOICE_KEY] = choice   # banner guard — prevents repeat popup
+
+    # Persist per-user to disk
+    username = _get_current_username()
+    if username and username != "guest":
+        all_prefs           = load_cookie_preferences()
+        all_prefs[username] = prefs
+        save_cookie_preferences(all_prefs)
 
 
 # ===========================================================================
-# UI — Cookie Banner (pre-login / first visit)
+# UI — Cookie Banner Modal (post-login, once per session)
 # ===========================================================================
-
-# ---------------------------------------------------------------------------
-# Cookie modal — uses st.dialog (Streamlit ≥ 1.35).
-# Decorated functions are only defined once; the dialog is opened by calling
-# _open_cookie_dialog() which sets a trigger flag then reruns.
-# ---------------------------------------------------------------------------
 
 @st.dialog("Kerala Bank — Cookie Preferences", width="large")
 def _cookie_dialog() -> None:
     """
     Professional banking-grade cookie consent modal.
     Rendered as a centred overlay via st.dialog (Streamlit ≥ 1.35).
-    Never shown again once cookie_preferences_saved is True.
+    Never shown again once cookie_choice is set in session state.
     """
     lang = st.session_state.get("lang", "en")
 
-    # ── Policy description ──────────────────────────────────────────────────
+    # Policy description
     st.markdown(
         """
         <div style="background:#f0f5ff;border-left:4px solid #0A3D91;
@@ -327,7 +365,7 @@ def _cookie_dialog() -> None:
         unsafe_allow_html=True,
     )
 
-    # ── Action buttons ──────────────────────────────────────────────────────
+    # Action buttons — each sets cookie_choice so banner never shows again
     ca, ce, cc = st.columns(3)
 
     with ca:
@@ -337,9 +375,7 @@ def _cookie_dialog() -> None:
             use_container_width=True,
             type="primary",
         ):
-            set_consent({"essential": True, "functional": True,
-                          "analytics": True, "marketing": True})
-            st.session_state["cookie_preferences_saved"] = True
+            _apply_choice(_ACCEPT_ALL_CONSENT.copy(), "accepted")
             st.rerun()
 
     with ce:
@@ -348,8 +384,7 @@ def _cookie_dialog() -> None:
             key="ck_modal_essential",
             use_container_width=True,
         ):
-            set_consent(_DEFAULT_CONSENT.copy())
-            st.session_state["cookie_preferences_saved"] = True
+            _apply_choice(_DEFAULT_CONSENT.copy(), "rejected")
             st.rerun()
 
     with cc:
@@ -358,12 +393,13 @@ def _cookie_dialog() -> None:
             key="ck_modal_customise",
             use_container_width=True,
         ):
+            # Toggle inline customise panel — does NOT set cookie_choice yet
             st.session_state["_cookie_modal_customise"] = not st.session_state.get(
                 "_cookie_modal_customise", False
             )
             st.rerun()
 
-    # ── Customise panel — expands inline inside the modal ──────────────────
+    # Inline customise panel — visible only when Customise is toggled
     if st.session_state.get("_cookie_modal_customise"):
         st.markdown("---")
         st.markdown("**Select which optional cookie categories to allow:**")
@@ -391,42 +427,58 @@ def _cookie_dialog() -> None:
             use_container_width=True,
             type="primary",
         ):
-            set_consent(prefs)
-            st.session_state["cookie_preferences_saved"] = True
+            _apply_choice(prefs, "customised")
             st.session_state.pop("_cookie_modal_customise", None)
             st.rerun()
 
     st.divider()
     st.caption(
         "Essential cookies are always active and cannot be disabled.  "
-        "Your preferences are stored for this session only.  "
+        "Your preferences are stored per account and restored on every login.  "
         "You can update them at any time from **Cookie Settings** in the sidebar."
     )
 
 
 def show_cookie_banner() -> None:
     """
-    Show the cookie consent popup modal (post-login, once per session).
+    Show the cookie consent popup (post-login, once per session).
 
-    Uses st.dialog() for a proper centred overlay.
-    Falls back to a styled inline panel for Streamlit < 1.35.
-    The banner is suppressed for the rest of the session once a choice is made.
+    Guard: if cookie_choice is already set in session state, return immediately.
+    This is the ONLY correct guard — it fires only after a button is clicked,
+    not when preferences are merely loaded from disk.
+
+    For returning users whose preferences are already saved on disk:
+    the banner is suppressed because saved preferences are treated as a prior choice.
+
+    Falls back to an inline panel for Streamlit < 1.35.
     """
+    # ── Primary guard — already made a choice this session ──────────────────
     if consent_banner_dismissed():
         return
 
-    # Try st.dialog API (Streamlit >= 1.35)
+    # ── Returning user — disk prefs exist → suppress banner ─────────────────
+    username = _get_current_username()
+    if username and username != "guest":
+        all_prefs = load_cookie_preferences()
+        if username in all_prefs:
+            # Load their saved prefs into session state and mark as chosen
+            prefs = all_prefs[username]
+            prefs["essential"] = True
+            st.session_state[_STATE_KEY] = prefs
+            st.session_state[_CHOICE_KEY] = "restored"
+            return
+
+    # ── New user / guest — show the banner ───────────────────────────────────
     try:
         _cookie_dialog()
     except Exception:
-        # Fallback: styled inline panel (works on all Streamlit versions)
         _show_cookie_banner_fallback()
 
 
 def _show_cookie_banner_fallback() -> None:
     """
-    Professional inline cookie consent banner — fallback for Streamlit < 1.35.
-    Renders at the top of the page. Matches the dialog version in content and style.
+    Inline cookie consent banner — fallback for Streamlit < 1.35.
+    All three buttons set cookie_choice so the banner never reappears.
     """
     lang = st.session_state.get("lang", "en")
 
@@ -462,21 +514,19 @@ def _show_cookie_banner_fallback() -> None:
     with col_a:
         if st.button("✅ Accept All Cookies", key="cookie_fb_all",
                      use_container_width=True, type="primary"):
-            set_consent({"essential": True, "functional": True,
-                          "analytics": True, "marketing": True})
-            st.session_state["cookie_preferences_saved"] = True
+            _apply_choice(_ACCEPT_ALL_CONSENT.copy(), "accepted")
             st.rerun()
 
     with col_e:
         if st.button("🔒 Reject Non-Essential", key="cookie_fb_essential",
                      use_container_width=True):
-            set_consent(_DEFAULT_CONSENT.copy())
-            st.session_state["cookie_preferences_saved"] = True
+            _apply_choice(_DEFAULT_CONSENT.copy(), "rejected")
             st.rerun()
 
     with col_c:
         if st.button("⚙ Customise", key="cookie_fb_customise",
                      use_container_width=True):
+            # Toggle — does NOT set cookie_choice until Save is clicked
             st.session_state["_cookie_customise_open"] = not st.session_state.get(
                 "_cookie_customise_open", False
             )
@@ -506,8 +556,7 @@ def _render_customise_inline(lang: str = "en") -> None:
                 )
         if st.form_submit_button("💾 Save Preferences", type="primary",
                                  use_container_width=True):
-            set_consent(prefs)
-            st.session_state["cookie_preferences_saved"] = True
+            _apply_choice(prefs, "customised")
             st.session_state.pop("_cookie_customise_open", None)
             st.rerun()
 
@@ -518,17 +567,22 @@ def _render_customise_inline(lang: str = "en") -> None:
 
 def show() -> None:
     """
-    Full cookie preferences management panel — accessible from the sidebar
-    or as a standalone settings page for logged-in users.
+    Full cookie preferences management panel.
+    Accessible from the sidebar or as a standalone settings page.
 
-    Shows:
-      - Per-category toggle cards with descriptions
-      - Active cookies list (platform cookies scan)
-      - Compliance summary for audit
+    Role guard:
+      - Auditors, Internal Auditors, and Board members do not manage cookie prefs.
+        These roles are blocked at entry.
+
+    Session guard:
+      - The panel itself is always accessible to permitted roles regardless of
+        whether the banner has been shown. The banner and the settings panel are
+        independent surfaces.
     """
-    from utils.ui_helpers import render_page_title   # local import
+    from utils.ui_helpers import render_page_title
 
-    # ── Role guard — auditors / internal auditors do not manage cookie prefs ─
+    # ── Step 11 — Role guard ─────────────────────────────────────────────────
+    # Auditors and board members do not interact with cookie settings.
     role = st.session_state.get("role", "")
     if role in ("auditor", "internal_auditor", "board_member"):
         st.info(
@@ -540,15 +594,16 @@ def show() -> None:
         )
         return
 
-    render_page_title(
-        t_safe("cookie_management_title", "Cookie Consent Management"),
-        icon="🍪",
+    # ── Page header — main-box container ─────────────────────────────────────
+    st.markdown(
+        '<div class="main-box"><h2>Cookie Consent Management</h2></div>',
+        unsafe_allow_html=True,
     )
 
     lang     = st.session_state.get("lang", "en")
     username = _get_current_username()
 
-    # ── Professional banner container ────────────────────────────────────────
+    # ── Policy notice ─────────────────────────────────────────────────────────
     st.markdown(
         """
         <div style="
@@ -561,6 +616,7 @@ def show() -> None:
         ">
             <b style="font-size:1rem;color:#0A3D91;">Cookie Preferences</b>
             <p style="margin:6px 0 0 0;color:#444;font-size:0.88rem;line-height:1.6;">
+                This platform uses cookies to enhance privacy governance functionality.
                 Control how cookies are used on this platform. Essential cookies are
                 required for security and cannot be disabled. All other categories
                 require your explicit consent under <b>DPDP Act 2023</b>.
@@ -571,18 +627,17 @@ def show() -> None:
         unsafe_allow_html=True,
     )
 
-    # ── Load preferences for this specific user ───────────────────────────────
-    # Merge disk preferences into session state so toggles reflect saved values
+    # ── Load preferences for this user into session state ────────────────────
+    # Hydrate from disk only if not already set this session.
     if username and username != "guest":
         disk_prefs = get_user_preferences(username)
-        # Only hydrate from disk if not already set this session
         if _STATE_KEY not in st.session_state:
             st.session_state[_STATE_KEY] = disk_prefs
 
     consent = get_consent()
     st.markdown("---")
 
-    # ── Per-category preference cards ──────────────────────────────────────
+    # ── Per-category preference cards ────────────────────────────────────────
     st.subheader(t_safe("cookie_preferences", "Cookie Preferences"))
     new_prefs: dict[str, bool] = {}
 
@@ -616,6 +671,7 @@ def show() -> None:
             st.divider()
 
     _fc1, _fc2, _ = st.columns([1.5, 1.5, 5])
+
     with _fc1:
         if st.button(
             t_safe("save_cookie_preferences", "💾 Save Preferences"),
@@ -623,7 +679,8 @@ def show() -> None:
             use_container_width=True,
             key="cookie_save_btn",
         ):
-            save_user_preferences(username, new_prefs)
+            # Per-user save
+            _apply_choice(new_prefs, "customised")
             st.success(
                 t_safe("cookie_preferences_saved", "✔ Cookie preferences saved successfully.")
             )
@@ -635,7 +692,7 @@ def show() -> None:
             use_container_width=True,
             key="cookie_reset_btn",
         ):
-            save_user_preferences(username, _DEFAULT_CONSENT.copy())
+            _apply_choice(_DEFAULT_CONSENT.copy(), "rejected")
             # Bump version so checkboxes re-render with fresh default values
             st.session_state["_cookie_form_version"] = (
                 st.session_state.get("_cookie_form_version", 0) + 1
@@ -645,7 +702,7 @@ def show() -> None:
 
     st.markdown("---")
 
-    # ── Platform cookies scan ───────────────────────────────────────────────
+    # ── Platform cookies scan ─────────────────────────────────────────────────
     st.subheader(t_safe("platform_cookies", "Platform Cookies"))
     platform_cookies = [
         "session_id", "csrf_token", "auth_token", "lang_pref",
@@ -657,15 +714,15 @@ def show() -> None:
     for item in scanned:
         allowed    = enforce_cookie_policy(item["cookie"])
         status_txt = (
-            f'<span style="color:#1a9e5c;font-weight:600;">✔ Allowed</span>'
+            '<span style="color:#1a9e5c;font-weight:600;">✔ Allowed</span>'
             if allowed else
-            f'<span style="color:#d93025;font-weight:600;">✘ Blocked</span>'
+            '<span style="color:#d93025;font-weight:600;">✘ Blocked</span>'
         )
         rows += (
             f"<tr>"
-            f"<td style='padding:6px 10px;'><code>{item['cookie']}</code></td>"
-            f"<td style='padding:6px 10px;'>{item['label']}</td>"
-            f"<td style='padding:6px 10px;'>{status_txt}</td>"
+            f"<td style='padding:8px 10px;border-bottom:1px solid #ddd;'><code>{item['cookie']}</code></td>"
+            f"<td style='padding:8px 10px;border-bottom:1px solid #ddd;'>{item['label']}</td>"
+            f"<td style='padding:8px 10px;border-bottom:1px solid #ddd;'>{status_txt}</td>"
             f"</tr>"
         )
 
@@ -673,12 +730,12 @@ def show() -> None:
         f"""
         <table style='width:100%;border-collapse:collapse;font-size:14px;'>
           <thead>
-            <tr style='background:#EBF5FB;'>
-              <th style='padding:8px 10px;text-align:left;'>
+            <tr>
+              <th style='background:#003366;color:white;padding:10px;text-align:left;'>
                 {t_safe('cookie_name', 'Cookie Name')}</th>
-              <th style='padding:8px 10px;text-align:left;'>
+              <th style='background:#003366;color:white;padding:10px;text-align:left;'>
                 {t_safe('category', 'Category')}</th>
-              <th style='padding:8px 10px;text-align:left;'>
+              <th style='background:#003366;color:white;padding:10px;text-align:left;'>
                 {t_safe('status', 'Status')}</th>
             </tr>
           </thead>
@@ -690,18 +747,18 @@ def show() -> None:
 
     st.markdown("---")
 
-    # ── Compliance summary ──────────────────────────────────────────────────
+    # ── Compliance summary ────────────────────────────────────────────────────
     st.subheader(t_safe("cookie_compliance_summary", "Compliance Summary"))
     active_cats   = [k for k, v in get_consent().items() if v]
     inactive_cats = [k for k, v in get_consent().items() if not v]
+    choice_label  = st.session_state.get(_CHOICE_KEY, "not recorded this session")
 
     c1, c2, c3 = st.columns(3)
     c1.metric(t_safe("categories_enabled",  "Categories Enabled"),  len(active_cats))
     c2.metric(t_safe("categories_disabled", "Categories Disabled"), len(inactive_cats))
-    c3.metric(
-        t_safe("essential_status", "Essential Cookies"),
-        "✔ Always Active",
-    )
+    c3.metric(t_safe("essential_status",    "Essential Cookies"),   "✔ Always Active")
+
+    st.caption(f"Last consent action this session: **{choice_label}**")
 
     if not get_consent().get("analytics") and not get_consent().get("marketing"):
         st.success(

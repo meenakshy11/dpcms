@@ -20,11 +20,12 @@ Architecture:
 Security posture:
   - auth.ROLE_PERMISSIONS is the single source of truth for module access.
   - No module renders without passing auth.require_access().
-  - MFA is enforced for DPO, Board, PrivacyOperations, Regional roles.
+  - MFA is enforced for all roles.
   - Session expires after SESSION_TIMEOUT_MINUTES of inactivity.
   - Audit chain and translation parity are verified on every page load.
   - Branch/region context is locked to the authenticated user's profile.
   - Cross-branch access is denied unless role has CROSS_BRANCH_ROLES membership.
+  - Export access is restricted to DPO, Board, Auditor, and Privacy Operations only.
 """
 
 from __future__ import annotations
@@ -61,37 +62,146 @@ SESSION_TIMEOUT_MINUTES = 15
 
 
 # ===========================================================================
-# Role canonical code → display name mapping
-# auth.py stores canonical codes; MFA/cross-branch checks use display names.
-# This map bridges the two for in-app role checks only.
+# Official role list — canonical display names
+# These match the role matrix and are used for UI display and ROLE_MODULES.
+# auth.py canonical codes are used for permission lookups (see _CANONICAL_TO_DISPLAY).
 # ===========================================================================
 
-_CANONICAL_TO_DISPLAY: dict[str, str] = {
-    "dpo":                "DPO",
-    "branch_officer":     "Officer",
-    "regional_officer":   "Regional",
-    "privacy_steward":    "PrivacySteward",
-    "privacy_operations": "PrivacyOperations",
-    "soc_analyst":        "SOCAnalyst",
-    "auditor":            "Auditor",
-    "board_member":       "Board",
-    "customer":           "Customer",
+ROLES: list[str] = [
+    "Customer",
+    "Customer Assisted",
+    "Customer Support Officer",
+    "Branch Privacy Coordinator",
+    "Regional Compliance Officer",
+    "Privacy Operations",
+    "DPO",
+    "SOC Analyst",
+    "Internal Auditor",
+    "Board",
+]
+
+
+# ===========================================================================
+# Role → permitted modules mapping (display names)
+# This mirrors auth.ROLE_PERMISSIONS but uses display names for UI rendering.
+# auth.ROLE_PERMISSIONS (canonical codes) remains the enforcement source of truth.
+# ===========================================================================
+
+ROLE_MODULES: dict[str, list[str]] = {
+
+    "Customer": [
+        "Consent Management",
+        "Data Principal Rights",
+    ],
+
+    "Customer Assisted": [
+        "Consent Management",
+        "Data Principal Rights",
+    ],
+
+    "Customer Support Officer": [
+        "Consent Management",
+        "Data Principal Rights",
+    ],
+
+    "Branch Privacy Coordinator": [
+        "Executive Dashboard",
+        "Consent Management",
+        "Data Principal Rights",
+    ],
+
+    "Regional Compliance Officer": [
+        "Executive Dashboard",
+        "Compliance & SLA Monitoring",
+    ],
+
+    "Privacy Operations": [
+        "Consent Management",
+        "Data Principal Rights",
+        "Data Breach Management",
+        "Compliance & SLA Monitoring",
+    ],
+
+    "DPO": [
+        "Executive Dashboard",
+        "Data Breach Management",
+        "DPIA & Privacy Assessments",
+        "Privacy Notices",
+        "Audit Logs",
+        "Compliance & SLA Monitoring",
+    ],
+
+    "SOC Analyst": [
+        "Data Breach Management",
+        "Audit Logs",
+    ],
+
+    "Internal Auditor": [
+        "Executive Dashboard",
+        "Audit Logs",
+        "Compliance & SLA Monitoring",
+    ],
+
+    "Board": [
+        "Executive Dashboard",
+    ],
+
 }
 
 
 # ===========================================================================
-# Module access authority
-# auth.ROLE_PERMISSIONS (in auth.py) is the SINGLE source of truth for which
-# modules each canonical role may access. Do NOT duplicate that mapping here.
-# ALL_MODULE_REGISTRY below maps auth display names → module objects for routing.
+# Export-permitted roles — canonical codes
+# Only these roles may trigger data exports anywhere in the application.
+# Modules must call is_export_permitted() before rendering any download button.
 # ===========================================================================
 
-# Roles that require MFA — canonical codes (mirrors auth.MFA_REQUIRED_ROLES)
+EXPORT_PERMITTED_ROLES: set[str] = {
+    "dpo",
+    "board_member",
+    "auditor",
+    "internal_auditor",
+    "privacy_operations",
+}
+
+
+def is_export_permitted() -> bool:
+    """Return True only if the current session role is allowed to export data."""
+    return st.session_state.get("role", "") in EXPORT_PERMITTED_ROLES
+
+
+# ===========================================================================
+# Role canonical code → display name mapping
+# auth.py stores canonical codes; MFA/cross-branch checks use canonical codes.
+# This map is retained for UI display (e.g. sidebar profile panel).
+# ===========================================================================
+
+_CANONICAL_TO_DISPLAY: dict[str, str] = {
+    "dpo":                        "DPO",
+    "branch_officer":             "Branch Privacy Coordinator",
+    "branch_privacy_coordinator": "Branch Privacy Coordinator",
+    "regional_officer":           "Regional Compliance Officer",
+    "regional_compliance_officer":"Regional Compliance Officer",
+    "privacy_steward":            "Privacy Operations",
+    "privacy_operations":         "Privacy Operations",
+    "soc_analyst":                "SOC Analyst",
+    "auditor":                    "Internal Auditor",
+    "internal_auditor":           "Internal Auditor",
+    "board_member":               "Board",
+    "customer":                   "Customer",
+    "customer_support":           "Customer Support Officer",
+    "customer_assisted":          "Customer Assisted",
+}
+
+
+# ===========================================================================
+# Roles that require MFA — canonical codes
+# ===========================================================================
+
 MFA_REQUIRED_ROLES: set[str] = {
     "dpo", "board_member", "privacy_operations", "regional_officer",
     "regional_compliance_officer", "privacy_steward", "soc_analyst",
     "branch_officer", "branch_privacy_coordinator", "auditor", "internal_auditor",
-    "customer", "customer_support",
+    "customer", "customer_support", "customer_assisted",
 }
 
 # Roles permitted cross-branch access — canonical codes
@@ -99,6 +209,7 @@ CROSS_BRANCH_ROLES: set[str] = {
     "dpo", "board_member", "auditor", "internal_auditor", "privacy_operations",
     "soc_analyst", "regional_officer", "regional_compliance_officer",
 }
+
 
 # ===========================================================================
 # Module registry — maps i18n key → (auth name, module object, icon)
@@ -130,7 +241,21 @@ _AUTH_TO_MODULE: dict[str, object] = {
 
 
 # ===========================================================================
-# Step 6 — Session timeout enforcement
+# Page header helper
+# Renders a consistent title container box on every module page.
+# Modules should call page_header("Module Name") instead of st.title().
+# ===========================================================================
+
+def page_header(title: str) -> None:
+    """Render a styled page title box."""
+    st.markdown(
+        f'<div class="page-title-box">{title}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ===========================================================================
+# Session timeout enforcement
 # ===========================================================================
 
 def _check_session_timeout() -> None:
@@ -142,22 +267,17 @@ def _check_session_timeout() -> None:
     if last is not None:
         elapsed_minutes = (time.time() - last) / 60
         if elapsed_minutes > SESSION_TIMEOUT_MINUTES:
-            # Clear authentication state and force re-login
             for key in ("role", "mfa_verified", "last_activity",
                         "branch", "region", "username"):
                 st.session_state.pop(key, None)
             st.warning(t_safe("session_expired", "Your session has expired. Please sign in again."))
             st.stop()
 
-    # Update last activity timestamp on every page interaction
     st.session_state["last_activity"] = time.time()
 
 
-# MFA prompt removed — OTP verification is handled inline in auth.show_login().
-
-
 # ===========================================================================
-# Step 1 — Startup integrity checks
+# Startup integrity checks
 # ===========================================================================
 
 def _run_startup_checks() -> None:
@@ -187,7 +307,6 @@ def _run_startup_checks() -> None:
     try:
         validate_translation_completeness(raise_on_failure=False)
     except Exception as exc:
-        # Warn but do not halt — missing translation keys degrade gracefully via t_safe()
         st.warning(
             f"⚠️ Translation parity check — missing keys detected:\n\n{exc}\n\n"
             "Add missing keys to utils/i18n.py to resolve. App will continue with fallbacks."
@@ -239,7 +358,16 @@ h1, h2 {
 }
 
 /* ── Button accessibility ── */
-button { font-size: 16px !important; }
+button {
+    font-size: 16px !important;
+    background-color: #003366;
+    color: white;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+button:hover {
+    background-color: #0055aa;
+}
 
 /* ── Global background ── */
 .main { background-color: #F4F6F9; }
@@ -289,23 +417,41 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 }
 .kpi-card p { font-size: 0.78rem; margin: 0; }
 
-/* ── Page title box (from ui_helpers) ── */
+/* ── Page title box ── */
 .page-title-box {
     padding: 16px 24px;
     border-radius: 10px;
     background: linear-gradient(135deg, #1f3c88, #39a0ed);
-    color: white;
+    color: white !important;
     font-weight: 700;
     font-size: 22px;
     margin-bottom: 18px;
     line-height: 1.3;
+    -webkit-text-fill-color: white !important;
 }
 
-/* ── Table headers ── */
+/* ── Main content box ── */
+.main-box {
+    background: #f5f7fb;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+/* ── Table styling ── */
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
 thead tr th {
     background-color: #0A3D91 !important;
     color: white !important;
     font-weight: 600 !important;
+    padding: 10px !important;
+}
+td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
 }
 tbody tr:nth-child(even) { background-color: #F8FAFC !important; }
 </style>
@@ -335,15 +481,11 @@ if "role" not in st.session_state or not st.session_state["role"]:
     st.stop()
 
 # ===========================================================================
-# ★ ROLE TRANSLATION ★
+# Role resolution
 # auth.py stores canonical role codes (e.g. "dpo", "branch_officer").
-# MFA_REQUIRED_ROLES and CROSS_BRANCH_ROLES use display names (e.g. "DPO").
 # raw_role (canonical) is used for auth.ROLE_PERMISSIONS lookups.
-# role (display name) is used for MFA/cross-branch checks in this file.
 # ===========================================================================
 
-# raw_role is the canonical code (e.g. "dpo", "branch_officer")
-# All MFA/cross-branch checks now use canonical codes — no display-name translation needed.
 raw_role = st.session_state["role"]
 role     = raw_role   # canonical code throughout app.py
 
@@ -355,7 +497,6 @@ _run_startup_checks()
 
 # ===========================================================================
 # STEP 5 — OTP gate: all roles must complete OTP before accessing modules
-# mfa_verified is set to True by show_login() after OTP is confirmed.
 # ===========================================================================
 
 if not st.session_state.get("mfa_verified"):
@@ -379,20 +520,23 @@ st.session_state["cross_branch_allowed"] = (
     or st.session_state.get("cross_branch_allowed", False)
 )
 
+# Export permission flag — consumed by all modules that render download buttons
+st.session_state["export_permitted"] = is_export_permitted()
+
 # ===========================================================================
 # STEP 2B — Cookie consent banner (post-login, shown once per session)
-# Appears for every role after successful authentication and MFA.
 # ===========================================================================
-cookie_consent.show_cookie_banner()
+
+if "cookie_choice" not in st.session_state:
+    cookie_consent.show_cookie_banner()
 
 # ===========================================================================
 # STEP 3 / 9 — Page header (full-width) + language switch in sidebar
 # ===========================================================================
 
-# ── Language toggle — compact top-right corner ───────────────────────────────
 _hdr_col, _lang_col = st.columns([10, 1])
 with _hdr_col:
-    pass   # each module renders its own title — no global heading
+    pass   # each module renders its own title via page_header()
 with _lang_col:
     _lang_opts  = ["EN", "ML"]
     _lang_codes = ["en", "ml"]
@@ -406,17 +550,16 @@ with _lang_col:
     )
     _new_lang = _lang_codes[_lang_opts.index(_lang_sel)]
     if _new_lang != _cur_lang:
-        # Preserve the current page so navigation is restored after rerun
         st.session_state["lang"]          = _new_lang
         st.session_state["_restore_page"] = st.session_state.get("current_page")
         st.session_state.pop("_i18n_validated", None)
         st.rerun()
 
-# Sidebar: user identity panel (uses render_sidebar_profile for canonical role display)
+# Sidebar: user identity panel
 auth.render_sidebar_profile()
 
 # ===========================================================================
-# STEP 2 / 8 — Role-based fast paths (single-module roles, no nav menu)
+# STEP 8 — Role-based fast paths (single-module roles, no nav menu)
 # ===========================================================================
 
 if raw_role in ("board_member", "board"):
@@ -458,9 +601,14 @@ _permitted_modules: list[str] = auth.ROLE_PERMISSIONS.get(raw_role, [])
 with st.sidebar:
     if not _permitted_modules:
         st.warning(t("no_modules_available"))
+        st.markdown("---")
+        if st.button("Sign Out", key="signout_no_modules", use_container_width=True):
+            for _k in list(st.session_state.keys()):
+                del st.session_state[_k]
+            st.rerun()
         st.stop()
 
-    # Branch / region context info for relevant roles — all canonical codes
+    # Branch / region context info for relevant roles
     if raw_role in ("branch_officer", "privacy_steward", "branch_privacy_coordinator", "customer_support"):
         branch = st.session_state.get("branch", "")
         region = st.session_state.get("region", "")
@@ -491,7 +639,7 @@ with st.sidebar:
             st.session_state["current_page"] = _mod
             st.rerun()
 
-    # ── Single Sign Out button at the bottom ─────────────────────────────────
+    # ── Sign Out button at the bottom of every sidebar ────────────────────────
     st.markdown("---")
     if st.button("Sign Out", key="signout_btn", use_container_width=True):
         for _k in list(st.session_state.keys()):
@@ -502,6 +650,7 @@ page = st.session_state.get("current_page", _permitted_modules[0])
 
 # ===========================================================================
 # STEP 10 — Module routing: require_access() guards every render
+# No download_button calls exist here — exports live inside permitted modules only.
 # ===========================================================================
 
 if page in _AUTH_TO_MODULE:

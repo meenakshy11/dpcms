@@ -970,13 +970,85 @@ def admin_restore_ledger(clean_blocks: list[dict], authorised_by: str) -> None:
 # Module-level helper — called by modules/dashboard.py
 # ---------------------------------------------------------------------------
 
-def get_recent_events(limit: int = 20) -> list[dict]:
+def record_audit_event(
+    event_type: str,
+    actor: str,
+    target: str = "",
+    metadata: Optional[dict[str, Any]] = None,
+) -> dict:
+    """
+    Compatibility shim for modules that use the older four-argument call style:
+
+        record_audit_event(event_type, actor, target, metadata)
+
+    Maps cleanly onto append_audit_log() so all blocks go through the same
+    cryptographic pipeline (hash chaining, HMAC signature, schema enforcement,
+    write-lock guard, FileLock, root-hash update).
+
+    Parameters
+    ----------
+    event_type : Short event descriptor, e.g. "CONSENT_CREATED", "BREACH_REPORTED"
+    actor      : Username or service identifier initiating the event
+    target     : Entity affected — customer_id, request_id, breach_id, etc.
+    metadata   : Optional extra context dict
+
+    Returns
+    -------
+    dict — the complete written block (same as append_audit_log)
+
+    Example
+    -------
+    >>> record_audit_event(
+    ...     event_type="CONSENT_SUBMISSION",
+    ...     actor="officer_01",
+    ...     target="CUST001",
+    ...     metadata={"purpose": "kyc", "branch": "Kochi Fort"},
+    ... )
+    """
+    combined_meta = dict(metadata or {})
+    if target:
+        combined_meta.setdefault("target", target)
+
+    action = (
+        f"{event_type} | target={target}"
+        if target
+        else event_type
+    )
+
+    return append_audit_log(
+        action=action,
+        user=actor,
+        metadata=combined_meta,
+    )
+
+
+
     """
     Return the most recent audit log entries as plain dicts for dashboard display.
 
     Each dict has keys: ts, event, actor, module (all strings).
     Returns at most `limit` entries, newest first.
     Falls back to [] on any error so dashboard can degrade gracefully.
+
+    Block structure written by append_audit_log():
+        {
+            "block_id":      str,
+            "index":         int,
+            "timestamp":     str,   ← top-level
+            "previous_hash": str,
+            "hash":          str,
+            "signature":     str,
+            "data": {
+                "action":   str,    ← event description lives here
+                "user":     str,    ← actor lives here
+                "metadata": dict,   ← module/entity context lives here
+            }
+        }
+
+    Previous version incorrectly read entry.get("action_type") and
+    entry.get("actor") from the top level — both are always absent,
+    so every dashboard row showed "unknown"/empty. Fixed to read from
+    entry["data"] where the fields actually live.
     """
     try:
         data = _load_ledger()
@@ -987,12 +1059,14 @@ def get_recent_events(limit: int = 20) -> list[dict]:
         for entry in recent:
             if not isinstance(entry, dict):
                 continue
-            payload = entry.get("payload", {}) or {}
+            # Action and user live inside entry["data"], not at the top level.
+            inner    = entry.get("data", {}) or {}
+            metadata = inner.get("metadata", {}) or {}
             result.append({
                 "ts":     entry.get("timestamp", "")[:19].replace("T", " "),
-                "event":  entry.get("action_type", "unknown"),
-                "actor":  entry.get("actor", payload.get("actor", "system")),
-                "module": entry.get("module", payload.get("module", "")),
+                "event":  inner.get("action", entry.get("action_type", "unknown")),
+                "actor":  inner.get("user",   entry.get("actor", metadata.get("actor", "system"))),
+                "module": metadata.get("module", entry.get("module", "")),
             })
         return result
     except Exception:

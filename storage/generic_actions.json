@@ -17307,5 +17307,1388 @@
     "transaction_id": "TX-EE62DCA26927",
     "action_type": "query_notices",
     "timestamp": "2026-03-05T11:05:53.671279+00:00"
+  },
+  {
+    "transaction_id": "TX-0DD79D561ED3",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:20:36.703466+00:00"
+  },
+  {
+    "transaction_id": "TX-905674BA292D",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:29:16.374226+00:00"
+  },
+  {
+    "transaction_id": "TX-7113304A2B04",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:30:33.097451+00:00"
+  },
+  {
+    "transaction_id": "TX-A948A8DE9D66",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:31:35.490121+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "b1e94a43fba9e60ff0872aec7b015501cf914e664b14823666497d5b3504a181",
+    "generated_at": "2026-03-05 13:31 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-B90E319D1F05",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:31:35.673468+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "96bae912205d55bd6b476c473f771bb2fc11e2d9c08b81839067b1e0ed8640ba",
+    "generated_at": "2026-03-05 13:31 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-A4D87B1C6AA6",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:31:35.856298+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "5d0bd5250480f64949a47eccd0492ea72ce314d49a81b5b887722d81cc43458f",
+    "generated_at": "2026-03-05 13:31 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-26B7D909847F",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:32:38.827575+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "24f873c9f39b5f882b1884fbca34e66ddb19c01b0e0fb7320a1bbf815ca66948",
+    "generated_at": "2026-03-05 13:32 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-FE86FD7E1286",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:32:39.023138+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "96bae912205d55bd6b476c473f771bb2fc11e2d9c08b81839067b1e0ed8640ba",
+    "generated_at": "2026-03-05 13:32 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-E427A86539F8",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:32:39.220868+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "8f1e237fbfa131de9cf333b8b5852fe579c19d6f0ae01df8bcd476bdb8b3ab3d",
+    "generated_at": "2026-03-05 13:32 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-221E0AAA5CA4",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:32:40.160059+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "rights_requests",
+    "record_count": 6,
+    "export_hash": "7e1fde13112ca3098e6ab9d28cc1ebb5cc34979bfdcfb70e3d8d3e99d33b47cd",
+    "generated_at": "2026-03-05 13:32 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-F5657A2A3C1C",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:32:40.339738+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "rights_requests",
+    "record_count": 6,
+    "export_hash": "51d96ac2464a87e0b8178af54d41c3ef20d0943c3151096402d1b2a621949be4",
+    "generated_at": "2026-03-05 13:32 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-AF7B6C85A9AE",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:32:40.504315+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "rights_requests",
+    "record_count": 6,
+    "export_hash": "23913710310dfaaed2dcd17b3a6642c04358c78af2aa6d915bdd7e341d63fe91",
+    "generated_at": "2026-03-05 13:32 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-337E7D0563D9",
+    "action_type": "query_dpias",
+    "timestamp": "2026-03-05T13:33:31.728842+00:00"
+  },
+  {
+    "transaction_id": "TX-11BDD8513B15",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:33:31.911115+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "dpia_register",
+    "record_count": 2,
+    "export_hash": "a0590ade2d4f6d6b90efb1f38e12408d95113cdcff17950fde76c4d6e6de70d8",
+    "generated_at": "2026-03-05 13:33 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-6E38BEBD561F",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:33:32.108577+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "dpia_register",
+    "record_count": 2,
+    "export_hash": "3e88718f250303c2f6ecf447b60860bd9fb256abba6321ec2d72bca90969e5fa",
+    "generated_at": "2026-03-05 13:33 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-3049A526A05E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:33:32.276358+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "dpia_register",
+    "record_count": 2,
+    "export_hash": "9da6c5c010de60cb7ea4bf7bbb6acebd3e4c2c82dad36d1984236111df17331c",
+    "generated_at": "2026-03-05 13:33 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-588EEDA43F6E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:33:32.672448+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "dpia_report_DPIA-001",
+    "record_count": 1,
+    "export_hash": "411fee625fd4118427ffac5e498b216b4a8c6ee69c330a77e84425cac119864a",
+    "generated_at": "2026-03-05 13:33 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-D62E7184E640",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:33:32.849429+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "dpia_report_DPIA-001",
+    "record_count": 1,
+    "export_hash": "23eb090271914a2d5ad32c19425aab719d1259d49281c67215389a41c09d425c",
+    "generated_at": "2026-03-05 13:33 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-92D8E78A78AE",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:33:33.063112+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "dpia_report_DPIA-001",
+    "record_count": 1,
+    "export_hash": "75539983ff7729482ef16593ecda6f26a28f22829d13342b92de10531dcd6cbe",
+    "generated_at": "2026-03-05 13:33 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-50AE32C6EF48",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:34:23.887374+00:00"
+  },
+  {
+    "transaction_id": "TX-9E2E3C3B4DD7",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:34:24.092188+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "breach_register",
+    "record_count": 2,
+    "export_hash": "4668da9a5ed7956a68d3c7875fac83f0e12d4a590bf1ad37102df5916bfffffd",
+    "generated_at": "2026-03-05 13:34 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-35906188B52C",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:34:24.267863+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "breach_register",
+    "record_count": 2,
+    "export_hash": "772f7973783ba7777ba08d392cb4350b7f6dfab52c375cbe0621179c3a690fcb",
+    "generated_at": "2026-03-05 13:34 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-C4F16D84ECCE",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:34:24.446991+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "breach_register",
+    "record_count": 2,
+    "export_hash": "3bed971b95859e80362799e887df37d0f3cce4ba5eb0a106b9fd602c365b1408",
+    "generated_at": "2026-03-05 13:34 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-6E33053EDF57",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:34:24.687147+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "regulatory_breach_report",
+    "record_count": 2,
+    "export_hash": "1a153528a44d69de5dc4e04d872fe9ab2bdcd9e8832b67c59ed6c0849b4abf2c",
+    "generated_at": "2026-03-05 13:34 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-A9CAFF157EE3",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:34:24.867577+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "regulatory_breach_report",
+    "record_count": 2,
+    "export_hash": "772f7973783ba7777ba08d392cb4350b7f6dfab52c375cbe0621179c3a690fcb",
+    "generated_at": "2026-03-05 13:34 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-50F180FF4538",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:34:25.029440+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "regulatory_breach_report",
+    "record_count": 2,
+    "export_hash": "42949a79f94f740076aa5c766a0870a9273b0fdb07bae4bd0e4058c25c2dbe66",
+    "generated_at": "2026-03-05 13:34 UTC",
+    "actor_role": "privacy_operations"
+  },
+  {
+    "transaction_id": "TX-3742A33E25C4",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:37:21.084605+00:00"
+  },
+  {
+    "transaction_id": "TX-AE5EE81ACE1C",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:12.287987+00:00"
+  },
+  {
+    "transaction_id": "TX-0C2862877DCA",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:13.602298+00:00"
+  },
+  {
+    "transaction_id": "TX-B7EAAAA07C5A",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:16.199216+00:00"
+  },
+  {
+    "transaction_id": "TX-8A4273AA38C3",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:21.198950+00:00"
+  },
+  {
+    "transaction_id": "TX-FF5D34EFA466",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:26.198252+00:00"
+  },
+  {
+    "transaction_id": "TX-643F4C1A3D4B",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:31.189974+00:00"
+  },
+  {
+    "transaction_id": "TX-FFA842CAF08E",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:36.205044+00:00"
+  },
+  {
+    "transaction_id": "TX-F3D87698B448",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:41.199645+00:00"
+  },
+  {
+    "transaction_id": "TX-B529CB774208",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:46.566998+00:00"
+  },
+  {
+    "transaction_id": "TX-62988BADD637",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:51.208181+00:00"
+  },
+  {
+    "transaction_id": "TX-FDFD63A058B3",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:38:55.338441+00:00"
+  },
+  {
+    "transaction_id": "TX-3BD62F5EFEED",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:39:35.221717+00:00"
+  },
+  {
+    "transaction_id": "TX-51E36DBCA236",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:39:40.953254+00:00"
+  },
+  {
+    "transaction_id": "TX-0E16A0E900E3",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:40:05.219576+00:00"
+  },
+  {
+    "transaction_id": "TX-034272AACE86",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:05.426913+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "b3a9bf04160f10e95742a08ef4d917d829fa5e4057ae216bbd70d3aa610b1f4e",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-41BA5CDF7383",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:05.622623+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "b31a134d406f39ac0d2a711e6b2d9a7e7641604e368d90d276be5f2b585f5862",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-3250BAB65C05",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:05.829204+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "f1acf47b8dbe1010ef8267f5163159ac68eeaaa31667921cfac0262fe960438e",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-E81651923D28",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:40:10.297211+00:00"
+  },
+  {
+    "transaction_id": "TX-15A92AC39E59",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:10.513649+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "9e06c4862ec36d9eeba89976fe6bc9b9e76400fd19ca1cf0b109d69a0f70f0db",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-31206084B863",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:10.696427+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "b31a134d406f39ac0d2a711e6b2d9a7e7641604e368d90d276be5f2b585f5862",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-6A93273C44EE",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:10.865127+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "f1acf47b8dbe1010ef8267f5163159ac68eeaaa31667921cfac0262fe960438e",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-9BD1F690DFE1",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:40:15.295425+00:00"
+  },
+  {
+    "transaction_id": "TX-CD2AFA805F16",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:15.550490+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "ca3ce957cd88ee0499c9a9bc4826c26e6c65659e07027902d19137e8860ccab6",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-B31632D290BC",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:15.777252+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "b31a134d406f39ac0d2a711e6b2d9a7e7641604e368d90d276be5f2b585f5862",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-A61098FF13A9",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:16.013392+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "f1acf47b8dbe1010ef8267f5163159ac68eeaaa31667921cfac0262fe960438e",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-C8758114A548",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:40:20.295317+00:00"
+  },
+  {
+    "transaction_id": "TX-6A512959F8C9",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:20.488684+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "a67f7ab3cc447a7040cae735d5bc9dc26d2a1373a1674b78f316729bedd5b497",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-6154A4328883",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:20.672043+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "b31a134d406f39ac0d2a711e6b2d9a7e7641604e368d90d276be5f2b585f5862",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-E8D89923AA17",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:20.873875+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "f1acf47b8dbe1010ef8267f5163159ac68eeaaa31667921cfac0262fe960438e",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-2EDA9C38BFEC",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:40:25.307006+00:00"
+  },
+  {
+    "transaction_id": "TX-CDC789FF3FBD",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:25.526865+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "3b05ffea40f44fa67fad44d07270c4574856e9216c9426dc50df957bf615b727",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-14A2723EFDD6",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:25.700798+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "b31a134d406f39ac0d2a711e6b2d9a7e7641604e368d90d276be5f2b585f5862",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-73E92F97A8CC",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:25.894487+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "f1acf47b8dbe1010ef8267f5163159ac68eeaaa31667921cfac0262fe960438e",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-28D8876C4131",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:40:30.299074+00:00"
+  },
+  {
+    "transaction_id": "TX-8605B5773D79",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:30.500048+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "545ae9250ad2010d05b209d59ff2679dde22e70932f6f54ad0605c47af95a173",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-F832FDC14DD6",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:30.676170+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "b31a134d406f39ac0d2a711e6b2d9a7e7641604e368d90d276be5f2b585f5862",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-AD416E576722",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:30.898926+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "branch_compliance_scorecard",
+    "record_count": 12,
+    "export_hash": "f1acf47b8dbe1010ef8267f5163159ac68eeaaa31667921cfac0262fe960438e",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-22383EA25CAC",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:32.606007+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "audit_ledger",
+    "record_count": 100,
+    "export_hash": "3127eb529ed97260fb1ac0fa4eda04ad6c982eeb6759048fadb148c91c82f44a",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-5ACD1D73E780",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:32.752231+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "audit_ledger",
+    "record_count": 100,
+    "export_hash": "a926e2e441cfc85671ef156c5b39b4df127af179757b7d77d0f280a41f9b95d5",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-F60FAE075528",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:40:32.920978+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "audit_ledger",
+    "record_count": 100,
+    "export_hash": "400ca1b37ffefc97c45d8356ddc9bb3243cb34c818d765aee659e3517e34cf4f",
+    "generated_at": "2026-03-05 13:40 UTC",
+    "actor_role": "auditor"
+  },
+  {
+    "transaction_id": "TX-99AFE8CDCDF5",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:45:25.256143+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "2beb47d9a43d3c31e01a2417414b9f0d31bcaac4c572006e4c262bd4d88d45d6",
+    "generated_at": "2026-03-05 13:45 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-F0390214AA22",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:45:25.453971+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:45 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-AC126026923B",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:45:25.611476+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6a3e5cb35e3b1bf24e30973958f3e35eb50e8dfbe2495f29e05026df29f12196",
+    "generated_at": "2026-03-05 13:45 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-8B4C94CF1E6B",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:45:26.189886+00:00"
+  },
+  {
+    "transaction_id": "TX-D1E500A9A091",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:28.240019+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "c13bf20b7d41b4783b2648afd203b036515179fa9c66dd78d43a640dda2e1b42",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-C81658FB4BB7",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:28.464552+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-A6B512A1C8A5",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:28.667385+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6b1c9b2c63b11f701997ad5867d4ba730fcd0e50f06e9cf73f7924024b2a491c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-88CF4ECA56EF",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:46:28.992499+00:00"
+  },
+  {
+    "transaction_id": "TX-0A4CD949533C",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:30.477734+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "54588d3d3b151af8c95aca2dbcf102ef694bdb042c60d6764e7ac78fc643c30c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-7E1FF3F2B572",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:30.717235+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-78BDD57D9506",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:30.924009+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6b1c9b2c63b11f701997ad5867d4ba730fcd0e50f06e9cf73f7924024b2a491c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-1A1580557662",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:46:31.245793+00:00"
+  },
+  {
+    "transaction_id": "TX-4F1A946147BD",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:35.471157+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "368d3cb09717ec92f6420faed5ed09a54313b6e829a02726e31eb2dd93ca24e6",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-49177BA1BCB7",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:35.675848+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-6090B7409960",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:35.906021+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6b1c9b2c63b11f701997ad5867d4ba730fcd0e50f06e9cf73f7924024b2a491c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-697D14D508D6",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:46:36.208411+00:00"
+  },
+  {
+    "transaction_id": "TX-D918101D201C",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:40.486328+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "eb3cd16c57255d83410161dc1a9353f04978ce15fa4f4fef39924804cd8c18a4",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-C961E38681A6",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:40.695384+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-C1E7489653CE",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:40.872649+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6b1c9b2c63b11f701997ad5867d4ba730fcd0e50f06e9cf73f7924024b2a491c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-448B98620AAA",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:46:41.189698+00:00"
+  },
+  {
+    "transaction_id": "TX-870DB4857737",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:45.464985+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "b517f25b47194cbd9817331c82cf4273cf777822ed948b9717a365338ebdaede",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-6F1A91B6B194",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:45.637728+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-E44814763D8E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:45.802450+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6b1c9b2c63b11f701997ad5867d4ba730fcd0e50f06e9cf73f7924024b2a491c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-B4481453FCD6",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:46:46.128558+00:00"
+  },
+  {
+    "transaction_id": "TX-9677D0864F38",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:50.465008+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "22b0c1809c7bbd2b41cd33798a2fad2aa02567c1f6b872c30dd9dd2ffe4e0cc3",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-C0404A318312",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:50.655925+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-4038DB9A4575",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:50.837971+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6b1c9b2c63b11f701997ad5867d4ba730fcd0e50f06e9cf73f7924024b2a491c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-CD809AB301F1",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:46:51.148097+00:00"
+  },
+  {
+    "transaction_id": "TX-3819DF6E17F9",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:55.477794+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "9a3c525096b0e733b9c7c7936f3c44e186b0acc1fd0e9e3b2cef5b8453131c64",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-5923FAAB2978",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:55.694383+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-AC2F0ABAF4F7",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:46:55.915930+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "6b1c9b2c63b11f701997ad5867d4ba730fcd0e50f06e9cf73f7924024b2a491c",
+    "generated_at": "2026-03-05 13:46 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-4AE0241B8A2D",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:46:56.236508+00:00"
+  },
+  {
+    "transaction_id": "TX-822113623E6D",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:00.964515+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "118fccbde57242ce6c010968ca57731426152e30501f7b7e08845e320e0c00e8",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-65F0CA03F08E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:01.197672+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-03521745AC8A",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:01.404722+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "5dac7ee0d2361ec500ffb224b5d9f7ed00ecb8769c152d647fe4b1cef486cd4b",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-735B1B98049B",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:47:01.747008+00:00"
+  },
+  {
+    "transaction_id": "TX-67AAF859ED01",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:05.487925+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "2774da852fdd264e6869163f42af87ef8cc7a16b9168f6cb64bae41f9eafeba0",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-75348843A347",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:05.698561+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-9197F4B9CB29",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:05.877069+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "5dac7ee0d2361ec500ffb224b5d9f7ed00ecb8769c152d647fe4b1cef486cd4b",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-447DFF964258",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:47:06.183764+00:00"
+  },
+  {
+    "transaction_id": "TX-794689591532",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:10.493223+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "46198ae824d0a210cd84d300ea64beabe8f385767bff2975a0f676ddf716873b",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-C381FC6DAE84",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:10.719145+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "901b1ebefcf3954b66248dc5198debd86894fe85bdd9cc29057aa846f6535828",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-B5ACD6E84485",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:10.945447+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_distribution",
+    "record_count": 12,
+    "export_hash": "5dac7ee0d2361ec500ffb224b5d9f7ed00ecb8769c152d647fe4b1cef486cd4b",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-D8F78A5B63CF",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:47:11.221050+00:00"
+  },
+  {
+    "transaction_id": "TX-07498DFE63FC",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:12.088467+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "649376c4ac528c692fbf4596fd50206bf53a0f11fa3a62d569cf014c679c7cb2",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-8BF8A7EE809E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:12.290575+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "96bae912205d55bd6b476c473f771bb2fc11e2d9c08b81839067b1e0ed8640ba",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-9979F1C927BC",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:12.479247+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "consent_register",
+    "record_count": 11,
+    "export_hash": "eba0b8edc23034789d148b20ee21002149fbb6c2f4a64cc8d1b970bb9db339fc",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-099C4594F3F2",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:24.762447+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "rights_requests",
+    "record_count": 6,
+    "export_hash": "0b4d2c15234f294d187f6f21ba92d5bb6c5dddde35841be068132963cca1a676",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-B0F6AA41E2B3",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:24.939055+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "rights_requests",
+    "record_count": 6,
+    "export_hash": "51d96ac2464a87e0b8178af54d41c3ef20d0943c3151096402d1b2a621949be4",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-A0534EE83B78",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:25.122554+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "rights_requests",
+    "record_count": 6,
+    "export_hash": "283a9b17e1d0a059eba81eb9443319a2b8e62c888ddc24c57d0deee93129bc38",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-66E99BD6A457",
+    "action_type": "query_dpias",
+    "timestamp": "2026-03-05T13:47:38.774491+00:00"
+  },
+  {
+    "transaction_id": "TX-232044CBC4D9",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:38.981772+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "dpia_register",
+    "record_count": 2,
+    "export_hash": "a1f2f421191851c4aee42a7b6efde1258b9f91118a1fc800d1eada15f845a044",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-58931F9D1C7D",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:39.201819+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "dpia_register",
+    "record_count": 2,
+    "export_hash": "3e88718f250303c2f6ecf447b60860bd9fb256abba6321ec2d72bca90969e5fa",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-253BB6966101",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:39.381318+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "dpia_register",
+    "record_count": 2,
+    "export_hash": "8d312e1391db3cce58ec278375105aac077f66c613c45c2995a6bccac357576c",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-2CEB164C1334",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:39.638926+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "dpia_report_DPIA-001",
+    "record_count": 1,
+    "export_hash": "3fc84e4254b489796d0b7b2eda5e74ba0f4489618ebae8071e3de42f2ad905e8",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-B2389D6E414E",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:39.844119+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "dpia_report_DPIA-001",
+    "record_count": 1,
+    "export_hash": "23eb090271914a2d5ad32c19425aab719d1259d49281c67215389a41c09d425c",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-78987667DC6B",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:40.045992+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "dpia_report_DPIA-001",
+    "record_count": 1,
+    "export_hash": "0585153355542c3d33a0e06d162ddb38ab7e6f7625b3ac72837a638a7d114c2f",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-A4A3A6D073E2",
+    "action_type": "query_breaches",
+    "timestamp": "2026-03-05T13:47:57.713835+00:00"
+  },
+  {
+    "transaction_id": "TX-76374C306BAD",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:57.913286+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "breach_register",
+    "record_count": 2,
+    "export_hash": "4851d53dd133a03d22b2f9e68728f8afac2581b5f41b24fc58875c0e41056fc2",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-315AD6CF85A4",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:58.095197+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "breach_register",
+    "record_count": 2,
+    "export_hash": "772f7973783ba7777ba08d392cb4350b7f6dfab52c375cbe0621179c3a690fcb",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-E62929A6DED7",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:58.312084+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "breach_register",
+    "record_count": 2,
+    "export_hash": "817dfa3b99dad3cdbb2a3aa098e9cd6465edac876d31b8098fec21e1d066be6d",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-A175DF6DB450",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:58.672060+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "regulatory_breach_report",
+    "record_count": 2,
+    "export_hash": "9c1bc91878705b29abf672e3d6ea91be076f7c05e0dc10026cb0caeadc7ece23",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-914CD0E175EC",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:58.876197+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "regulatory_breach_report",
+    "record_count": 2,
+    "export_hash": "772f7973783ba7777ba08d392cb4350b7f6dfab52c375cbe0621179c3a690fcb",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-179FB7666E47",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:47:59.072004+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "regulatory_breach_report",
+    "record_count": 2,
+    "export_hash": "eafaf742c7b0451c7a38b3380cc101629b94aaa9669c03fe72d787074686e40e",
+    "generated_at": "2026-03-05 13:47 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-CE0A1803F1DE",
+    "action_type": "query_notices",
+    "timestamp": "2026-03-05T13:48:30.309039+00:00"
+  },
+  {
+    "transaction_id": "TX-1A13D6016FA5",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:48:30.535425+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "privacy_notices_history",
+    "record_count": 3,
+    "export_hash": "78e0d787a1566f991fc1e6f3cf9df09dab6822589c27280b515509d5f1f43045",
+    "generated_at": "2026-03-05 13:48 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-7682F9F84B8D",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:48:30.730745+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "privacy_notices_history",
+    "record_count": 3,
+    "export_hash": "3b63b866948d27584c5e4901d7c90c14af546f37d94118b33b2f1b9570babfc3",
+    "generated_at": "2026-03-05 13:48 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-0107441FDCE3",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:48:30.920817+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "privacy_notices_history",
+    "record_count": 3,
+    "export_hash": "1da1be58a380f7641cc4a9051eff09879af048d3ddce28d476c7c2ff3021d3dc",
+    "generated_at": "2026-03-05 13:48 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-A026A07B6F20",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:48:49.089025+00:00",
+    "export_type": "pdf",
+    "format": "pdf",
+    "module": "audit_ledger",
+    "record_count": 100,
+    "export_hash": "00041d753b355c4f0454a4ea398c504939b6a950d0cddca40bbbf185e9e32b0b",
+    "generated_at": "2026-03-05 13:48 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-A96A6D8940F9",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:48:49.284817+00:00",
+    "export_type": "json",
+    "format": "json",
+    "module": "audit_ledger",
+    "record_count": 100,
+    "export_hash": "d5442aed261d8b3b89a69e069bb7f3e10fc6e517289b8007274ec767fc900100",
+    "generated_at": "2026-03-05 13:48 UTC",
+    "actor_role": "dpo"
+  },
+  {
+    "transaction_id": "TX-729243F9A5D5",
+    "action_type": "export_generated",
+    "timestamp": "2026-03-05T13:48:49.496121+00:00",
+    "export_type": "xml",
+    "format": "xml",
+    "module": "audit_ledger",
+    "record_count": 100,
+    "export_hash": "54cd24dc31b40660b06e886dddbf70b15bee6aeabd87adac4a33e715b9dcfca4",
+    "generated_at": "2026-03-05 13:48 UTC",
+    "actor_role": "dpo"
   }
 ]

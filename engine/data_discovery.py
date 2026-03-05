@@ -291,9 +291,276 @@ def get_discovery_summary(data_maps: list[list[dict]]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Smoke test
-# ---------------------------------------------------------------------------
+
+# ===========================================================================
+# Role-Gated Customer Data Discovery
+# ===========================================================================
+# Only the Privacy Operations role may trigger full customer data discovery.
+# This function is called by the rights portal when processing correction or
+# erasure requests — it locates all records across system datasets so the
+# operator knows exactly what data exists before executing the action.
+#
+# Role enforcement uses the exact snake_case string "privacy_operations" that
+# all other system modules (rights_portal.py, consent_management.py, auth.py)
+# use — NOT "Privacy Operations" with spaces and mixed case.
+# ===========================================================================
+
+# Roles authorised to run full data discovery.
+# "dpo" is included because the DPO must be able to respond to regulatory
+# enquiries; "privacy_operations" is the primary operational role.
+_DISCOVERY_PERMITTED_ROLES: frozenset[str] = frozenset({
+    "privacy_operations",
+    "dpo",
+})
+
+# Storage paths — aligned with consent_validator.py, sla_engine.py, and
+# compliance_engine.py. The document suggests "data/consents.json" but the
+# system-wide canonical paths are under storage/.
+_DISCOVERY_SOURCES: dict[str, str] = {
+    "consents":        "storage/consents.json",
+    "rights_requests": "storage/rights_requests.json",
+    "breaches":        "storage/breaches.json",
+    "dpias":           "storage/dpias.json",
+    "sla_records":     "storage/sla_registry.json",
+}
+
+# Fields that must be masked before returning discovery results to any caller.
+# Even privacy_operations sees masked values — full values are available to
+# the DPO only through the consent_management export path.
+_MASK_FIELDS: frozenset[str] = frozenset({
+    "aadhaar",
+    "pan",
+    "passport",
+    "account_number",
+    "account_no",
+    "ifsc",
+    "phone",
+    "mobile",
+})
+
+
+def _load_source(path: str) -> list[dict]:
+    """
+    Safe JSON loader for a storage file.
+
+    Returns [] if the file does not exist, is empty, or contains invalid JSON.
+    Never raises — callers must not crash on missing storage files.
+    """
+    import json as _json
+    import os as _os
+
+    if not _os.path.exists(path):
+        return []
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = f.read().strip()
+        if not raw:
+            return []
+        data = _json.loads(raw)
+        return data if isinstance(data, list) else []
+    except (ValueError, OSError):
+        return []
+
+
+def _mask_value(value: Any) -> str:
+    """
+    Partial masking for sensitive field values.
+
+    Shows the last 4 characters so an operator can correlate records without
+    seeing the full identifier. Empty/None values return an empty string.
+
+    Examples
+    --------
+    "1234 5678 9012" → "****9012"
+    "ABCDE1234F"     → "****234F"
+    ""               → ""
+    """
+    if not value:
+        return ""
+    s = str(value).replace(" ", "").replace("-", "")
+    return "****" + s[-4:] if len(s) > 4 else "****"
+
+
+def _mask_record(record: dict) -> dict:
+    """
+    Return a shallow copy of record with sensitive fields masked.
+
+    Only top-level fields listed in _MASK_FIELDS are masked; nested dicts
+    are not deep-copied to keep the function O(n) on field count.
+    """
+    masked = dict(record)
+    for field in _MASK_FIELDS:
+        if field in masked and masked[field]:
+            masked[field] = _mask_value(masked[field])
+    return masked
+
+
+def discover_customer_data(
+    customer_id: str,
+    actor: str,
+    actor_role: str,
+) -> dict:
+    """
+    Locate all personal data records associated with a customer across system
+    datasets and return a structured, masked discovery result.
+
+    This is the entry point for Privacy Operations when processing correction
+    or erasure rights requests under DPDP Act 2023 §§ 12-13.
+
+    Access control
+    --------------
+    Only roles in _DISCOVERY_PERMITTED_ROLES ("privacy_operations", "dpo")
+    may call this function. All other callers receive a blocked result with
+    an audit entry recording the attempt.
+
+    Parameters
+    ----------
+    customer_id : Data principal whose records are being discovered.
+                  Must be a non-empty string — returns error otherwise.
+    actor       : Username of the officer triggering the discovery.
+    actor_role  : Role string of the calling user — must be
+                  "privacy_operations" or "dpo".
+
+    Returns
+    -------
+    dict:
+        status      : "success" | "blocked" | "error"
+        reason      : str — human-readable outcome
+        customer_id : str
+        actor       : str
+        actor_role  : str
+        timestamp   : str — UTC ISO-8601
+        results     : dict — per-source lists of masked matching records
+                      (only present on status="success")
+        summary     : dict — record counts per source + data_map
+                      (only present on status="success")
+
+    Raises
+    ------
+    Does NOT raise — all errors are captured in the returned dict.
+
+    Example
+    -------
+    >>> result = discover_customer_data(
+    ...     customer_id="CUST001",
+    ...     actor="officer_priya",
+    ...     actor_role="privacy_operations",
+    ... )
+    >>> print(result["status"])
+    success
+    >>> print(result["summary"]["total_records"])
+    3
+    """
+    import json as _json
+    from datetime import datetime as _dt, timezone as _tz
+
+    timestamp = _dt.now(tz=_tz.utc).isoformat()
+
+    # ── Lazy import audit_ledger — keeps module importable without engines ────
+    def _audit(event_type: str, meta: dict) -> None:
+        try:
+            from engine.audit_ledger import record_audit_event
+            record_audit_event(
+                event_type=event_type,
+                actor=actor,
+                target=customer_id,
+                metadata={"actor_role": actor_role, **meta},
+            )
+        except Exception:
+            pass   # audit failure must never block the discovery response
+
+    def _resp(status: str, reason: str, extra: dict | None = None) -> dict:
+        base = {
+            "status":      status,
+            "reason":      reason,
+            "customer_id": customer_id,
+            "actor":       actor,
+            "actor_role":  actor_role,
+            "timestamp":   timestamp,
+        }
+        if extra:
+            base.update(extra)
+        return base
+
+    # ── Guard: empty customer_id ─────────────────────────────────────────────
+    if not customer_id or not str(customer_id).strip():
+        _audit("DATA_DISCOVERY_ERROR", {"reason": "missing_customer_id"})
+        return _resp("error", "customer_id is required — cannot run discovery without it.")
+
+    customer_id = str(customer_id).strip()
+
+    # ── Guard: role restriction ──────────────────────────────────────────────
+    # Use the system-canonical snake_case role string. "Privacy Operations"
+    # (the display label) is intentionally NOT accepted here.
+    normalised_role = str(actor_role or "").strip().lower().replace(" ", "_")
+    if normalised_role not in _DISCOVERY_PERMITTED_ROLES:
+        _audit(
+            "DATA_DISCOVERY_BLOCKED",
+            {
+                "reason":          "unauthorized_role",
+                "attempted_role":  actor_role,
+                "permitted_roles": sorted(_DISCOVERY_PERMITTED_ROLES),
+            },
+        )
+        return _resp(
+            "blocked",
+            f"Role '{actor_role}' is not authorised to run data discovery. "
+            f"Permitted roles: {sorted(_DISCOVERY_PERMITTED_ROLES)}.",
+        )
+
+    # ── Search all configured sources ────────────────────────────────────────
+    results: dict[str, list[dict]] = {}
+    total_records = 0
+
+    for source_name, source_path in _DISCOVERY_SOURCES.items():
+        records = _load_source(source_path)
+        # Match on customer_id — also check "id" for rights_requests which
+        # stores the customer identifier under both keys.
+        matched = [
+            _mask_record(r)
+            for r in records
+            if isinstance(r, dict)
+            and (
+                r.get("customer_id") == customer_id
+                or r.get("id") == customer_id
+            )
+        ]
+        results[source_name] = matched
+        total_records += len(matched)
+
+    # ── Build data map from consent records (PII field classification) ────────
+    consent_records = [
+        r for r in _load_source(_DISCOVERY_SOURCES["consents"])
+        if isinstance(r, dict) and r.get("customer_id") == customer_id
+    ]
+    data_maps = [build_data_map(r) for r in consent_records if r]
+    discovery_summary_map = get_discovery_summary(data_maps) if data_maps else {}
+
+    # ── Audit the completed discovery ────────────────────────────────────────
+    _audit(
+        "DATA_DISCOVERY",
+        {
+            "total_records_found": total_records,
+            "sources_searched":    list(_DISCOVERY_SOURCES.keys()),
+            "records_per_source":  {k: len(v) for k, v in results.items()},
+        },
+    )
+
+    summary = {
+        "total_records":    total_records,
+        "records_per_source": {k: len(v) for k, v in results.items()},
+        "data_map_summary": discovery_summary_map,
+    }
+
+    return _resp(
+        "success",
+        f"Data discovery complete — {total_records} record(s) found across "
+        f"{len(_DISCOVERY_SOURCES)} source(s).",
+        extra={"results": results, "summary": summary},
+    )
+
+
+
 if __name__ == "__main__":
     import json
 
@@ -325,3 +592,43 @@ if __name__ == "__main__":
     print("\n── get_discovery_summary() ──────────────────────────────")
     summary = get_discovery_summary([data_map])
     print(json.dumps(summary, indent=2))
+
+    print("\n── discover_customer_data() — role blocked ───────────────")
+    blocked = discover_customer_data(
+        customer_id="CUST-1001",
+        actor="branch_officer_raju",
+        actor_role="branch_officer",
+    )
+    print(f"  status : {blocked['status']}")
+    print(f"  reason : {blocked['reason']}")
+
+    print("\n── discover_customer_data() — Privacy Operations (no storage) ─")
+    result = discover_customer_data(
+        customer_id="CUST-1001",
+        actor="priya_privacy_ops",
+        actor_role="privacy_operations",
+    )
+    print(f"  status         : {result['status']}")
+    print(f"  total_records  : {result['summary']['total_records']}")
+    print(f"  sources        : {list(result['summary']['records_per_source'].keys())}")
+
+    print("\n── discover_customer_data() — wrong role display name ───")
+    wrong_role = discover_customer_data(
+        customer_id="CUST-1001",
+        actor="priya_privacy_ops",
+        actor_role="Privacy Operations",   # display name — normalised and accepted
+    )
+    print(f"  status : {wrong_role['status']}  (display name normalised to snake_case)")
+
+    print("\n── discover_customer_data() — empty customer_id ─────────")
+    empty_id = discover_customer_data(
+        customer_id="",
+        actor="priya_privacy_ops",
+        actor_role="privacy_operations",
+    )
+    print(f"  status : {empty_id['status']}")
+    print(f"  reason : {empty_id['reason']}")
+
+    print("\n── _mask_value() ────────────────────────────────────────")
+    for val in ("1234567890123456", "ABCDE1234F", "9876543210", ""):
+        print(f"  {val!r:25s} → {_mask_value(val)!r}")

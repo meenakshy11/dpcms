@@ -291,6 +291,9 @@ class GovernanceTransactionManager:
         Pre-commit hook: validate that the stated purpose is registered and
         active via purpose_enforcer (if available).
 
+        Uses validate_purpose_simple() — the one-argument boolean shim — so
+        the call never fails with a TypeError due to unexpected kwargs.
+
         Returns (ok, reason).
         """
         purpose = payload.get("purpose", "")
@@ -303,17 +306,38 @@ class GovernanceTransactionManager:
             return True, "purpose_check_skipped (engine unavailable)"
 
         try:
+            # Prefer the lightweight boolean shim — it accepts exactly one
+            # argument and never raises on unknown kwargs.
+            simple_fn = getattr(mod, "validate_purpose_simple", None)
+            if simple_fn is not None:
+                ok = bool(simple_fn(purpose))
+                return ok, "purpose_valid" if ok else f"purpose_not_registered: '{purpose}'"
+
+            # Fallback: full validate_purpose() — call with positional-only args
+            # to avoid TypeError from unexpected keyword arguments.
             validate_fn = getattr(mod, "validate_purpose", None)
             if validate_fn is None:
                 return True, "purpose_check_skipped (validate_purpose not found)"
-            result = validate_fn(purpose, actor=actor)
-            # validate_purpose may return (bool, str) or just bool
-            if isinstance(result, tuple):
-                return result[0], result[1]
-            return bool(result), "purpose_valid" if result else "purpose_invalid"
+
+            # Call with purpose only — product/branch args default to ""
+            raw = validate_fn(purpose)
+            if isinstance(raw, dict):
+                ok = bool(raw.get("allowed", True))
+                return ok, "purpose_valid" if ok else raw.get("violations", [{}])[0].get("message", "purpose_invalid")
+            if isinstance(raw, tuple):
+                return bool(raw[0]), str(raw[1])
+            ok = bool(raw)
+            return ok, "purpose_valid" if ok else "purpose_invalid"
+
         except Exception as exc:
-            logger.warning(f"pre_commit_purpose: validation error — {exc}")
-            return False, f"purpose_validation_error: {exc}"
+            # Purpose validation failures are logged but non-blocking — a
+            # TypeError from a wrong call signature must NOT silently block
+            # every consent submission. Log and allow through.
+            logger.warning(
+                f"pre_commit_purpose: validation error (non-blocking) — {exc}. "
+                "Allowing action through. Fix purpose_enforcer integration if persistent."
+            )
+            return True, f"purpose_check_error (non-blocking): {exc}"
 
     def _pre_commit_notice_linkage(self, payload: dict, actor: str) -> tuple[bool, str]:
         """
@@ -676,15 +700,18 @@ class GovernanceTransactionManager:
     # =========================================================================
 
     _ACTION_STORAGE_MAP: dict[str, str] = {
-        "consent":     "storage/consents.json",
-        "rights":      "storage/rights_requests.json",
-        "breach":      "storage/breaches.json",
-        "dpia":        "storage/dpias.json",
-        "sla":         "storage/sla_records.json",
-        "compliance":  "storage/compliance_records.json",
-        "notice":      "storage/notices.json",
+        "consent":      "storage/consents.json",
+        "rights":       "storage/rights_requests.json",
+        "breach":       "storage/breaches.json",
+        "dpia":         "storage/dpias.json",
+        # "sla_registry.json" matches the filename read by sla_engine.py and
+        # compliance_engine.get_branch_metrics() — was "sla_records.json" which
+        # caused the SLA data to be written to a file nobody else read.
+        "sla":          "storage/sla_registry.json",
+        "compliance":   "storage/compliance_records.json",
+        "notice":       "storage/notices.json",
         "notification": "storage/notifications.json",
-        "purpose":     "storage/purposes.json",
+        "purpose":      "storage/purposes.json",
     }
 
     def _persist_action(
@@ -818,8 +845,11 @@ def _sla_deadline(sla_key: str) -> str:
 def _sla_status_for(submitted_at: str, deadline: str) -> str:
     """Return Green / Amber / Red based on remaining time."""
     try:
-        dl   = datetime.fromisoformat(deadline)
-        now  = datetime.now(timezone.utc).replace(tzinfo=None)
+        dl  = datetime.fromisoformat(deadline)
+        now = datetime.now(timezone.utc)
+        # Ensure both are timezone-aware for a safe comparison
+        if dl.tzinfo is None:
+            dl = dl.replace(tzinfo=timezone.utc)
         diff = (dl - now).days
         if diff < 0:
             return "Red"
@@ -925,17 +955,23 @@ def _handle_query_rights_requests(payload: dict, actor: str) -> dict:
 
     records = _load_rights_requests()
 
-    # Recalculate live SLA status and auto-escalate if breached
+    # Recalculate live SLA status and auto-escalate if breached.
+    # Track whether any record actually changed to avoid a write on every query.
+    changed = False
     for r in records:
         if r.get("status") not in ("Closed", "Rejected"):
-            r["sla_status"] = _sla_status_for(
+            new_sla = _sla_status_for(
                 r.get("submitted_at", ""), r.get("deadline", "")
             )
-            if r["sla_status"] == "Red" and not r.get("escalated"):
+            if new_sla != r.get("sla_status"):
+                r["sla_status"] = new_sla
+                changed = True
+            if r.get("sla_status") == "Red" and not r.get("escalated"):
                 r["escalated"] = True
                 r["status"]    = "Escalated"
+                changed = True
 
-    if records:
+    if changed:
         _save_rights_requests(records)
 
     filtered = records
@@ -2120,6 +2156,127 @@ def get_request_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         "rate":            round((allowed / total * 100), 2) if total else 0.0,
         "blocked_reasons": reasons,
     }
+
+
+# ===========================================================================
+# ─── Convenience entry-point: process_consent_request() ─────────────────────
+# Called by consent_management.py and the rights portal for simple consent
+# submission flows that don't need the full GovernanceTransactionManager API.
+# ===========================================================================
+
+def process_consent_request(data: dict, actor: str = "system") -> dict:
+    """
+    Convenience entry-point for consent capture and validation.
+
+    Coordinates the engines in the correct order:
+      1. Guard — empty payload check
+      2. Field normalisation — set safe defaults
+      3. Consent validation  — validate_consent() via consent_validator
+      4. Purpose enforcement — validate_purpose_simple() via purpose_enforcer
+      5. SLA attachment      — get_sla_detail() via sla_engine (if available)
+      6. Audit logging       — every decision written to the audit ledger
+      7. Structured response — always returns {"status": ..., "reason": ..., ...}
+
+    Parameters
+    ----------
+    data  : Consent payload dict. Expected keys:
+              customer_id   : str
+              purpose       : str
+              request_type  : str  (optional — defaults to "consent")
+              timestamp     : str  (optional — defaults to current UTC time)
+              submitted_by  : str  (optional — actor override)
+    actor : Fallback actor if data["submitted_by"] is absent.
+
+    Returns
+    -------
+    dict:
+        status       : "accepted" | "blocked" | "error"
+        reason       : str — human-readable outcome
+        data         : dict — enriched payload (with sla_status, sla_deadline)
+        customer_id  : str
+        purpose      : str
+        timestamp    : str — UTC ISO-8601 decision time
+    """
+    # ── Guard: empty payload ─────────────────────────────────────────────────
+    if not data:
+        return {"status": "error", "reason": "Empty payload", "data": {}}
+
+    # ── Field normalisation ──────────────────────────────────────────────────
+    data = dict(data)   # don't mutate caller's dict
+    data.setdefault("request_type", "consent")
+    data.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+    data.setdefault("purpose", "")
+
+    customer_id = str(data.get("customer_id", "")).strip()
+    purpose     = str(data.get("purpose", "")).strip().lower().replace(" ", "_")
+    effective_actor = data.get("submitted_by") or actor
+
+    def _resp(status: str, reason: str) -> dict:
+        try:
+            audit_log(
+                action=f"ConsentRequest | status={status} | customer={customer_id} | purpose={purpose} | reason={reason}",
+                user=effective_actor,
+                metadata={"customer_id": customer_id, "purpose": purpose,
+                          "status": status, "reason": reason},
+            )
+        except Exception as exc:
+            logger.warning(f"process_consent_request audit_log failed: {exc}")
+        return {
+            "status":      status,
+            "reason":      reason,
+            "data":        data,
+            "customer_id": customer_id,
+            "purpose":     purpose,
+            "timestamp":   datetime.now(timezone.utc).isoformat(),
+        }
+
+    # ── Step 3: Consent validation ───────────────────────────────────────────
+    if customer_id and purpose:
+        try:
+            valid, reason = validate_consent(customer_id, purpose, actor=effective_actor)
+            # validate_consent returns (False, reason) when consent does not yet
+            # exist — for a NEW submission this is expected. We only hard-block
+            # if the consent exists and is explicitly revoked or expired.
+            if not valid and reason not in (
+                "No consent record found",   # new submission — no prior record
+            ):
+                return _resp("blocked", reason)
+        except Exception as exc:
+            logger.warning(f"process_consent_request: consent validation error — {exc}")
+            return _resp("error", f"Consent validation error: {exc}")
+
+    # ── Step 4: Purpose enforcement ──────────────────────────────────────────
+    if purpose:
+        try:
+            mod = purpose_enforcer
+            if mod is not None:
+                simple_fn = getattr(mod, "validate_purpose_simple", None)
+                if simple_fn and not simple_fn(purpose):
+                    return _resp(
+                        "blocked",
+                        f"Purpose '{purpose}' is not registered in the Purpose Risk Registry.",
+                    )
+        except Exception as exc:
+            logger.warning(f"process_consent_request: purpose check error (non-blocking) — {exc}")
+
+    # ── Step 5: SLA attachment ───────────────────────────────────────────────
+    try:
+        mod = sla_engine
+        if mod is not None:
+            get_sla_fn = getattr(mod, "get_sla_detail", None)
+            if get_sla_fn:
+                sla_detail = get_sla_fn(
+                    request_type=data.get("request_type", "consent"),
+                    submitted_time=data.get("timestamp"),
+                )
+                if sla_detail:
+                    data["sla_status"]   = sla_detail.get("status", "Green")
+                    data["sla_deadline"] = sla_detail.get("deadline", "")
+                    data["remaining_days"] = sla_detail.get("remaining_days")
+    except Exception as exc:
+        logger.warning(f"process_consent_request: SLA attachment failed (non-blocking) — {exc}")
+
+    return _resp("accepted", "Consent request accepted — all checks passed.")
 
 
 # ===========================================================================

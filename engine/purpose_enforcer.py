@@ -36,11 +36,16 @@ from typing import Any, Optional
 # ---------------------------------------------------------------------------
 
 PURPOSE_REGISTRY: dict[str, dict[str, Any]] = {
+    # ── Core banking purposes ────────────────────────────────────────────────
     "loan_processing": {
         "risk_level":    "medium",
         "requires_dpia": False,
     },
-    "kyc_verification": {
+    "kyc": {                          # canonical key — matches consent_validator
+        "risk_level":    "high",
+        "requires_dpia": True,
+    },
+    "kyc_verification": {             # legacy alias → same as kyc
         "risk_level":    "high",
         "requires_dpia": True,
     },
@@ -68,6 +73,38 @@ PURPOSE_REGISTRY: dict[str, dict[str, Any]] = {
         "risk_level":    "low",
         "requires_dpia": False,
     },
+    # ── Additional purposes from consent_validator.PURPOSE_EXPIRY_DAYS ───────
+    "analytics": {
+        "risk_level":    "high",
+        "requires_dpia": True,
+    },
+    "digital_lending": {
+        "risk_level":    "high",
+        "requires_dpia": True,
+    },
+    "third_party_share": {
+        "risk_level":    "critical",
+        "requires_dpia": True,
+    },
+    "credit_scoring": {
+        "risk_level":    "high",
+        "requires_dpia": True,
+    },
+    "fraud_detection": {
+        "risk_level":    "high",
+        "requires_dpia": True,
+    },
+    "authentication": {
+        "risk_level":    "low",
+        "requires_dpia": False,
+    },
+    # ── Rights and compliance purposes ───────────────────────────────────────
+    "data_access":       {"risk_level": "low",    "requires_dpia": False},
+    "data_correction":   {"risk_level": "low",    "requires_dpia": False},
+    "data_erasure":      {"risk_level": "medium", "requires_dpia": False},
+    "data_portability":  {"risk_level": "medium", "requires_dpia": False},
+    "nomination":        {"risk_level": "low",    "requires_dpia": False},
+    "grievance_redressal": {"risk_level": "low",  "requires_dpia": False},
 }
 
 # Risk-level → SLA / compliance weight multiplier
@@ -107,7 +144,7 @@ def get_purpose_risk(purpose: str) -> dict:
 
     Parameters
     ----------
-    purpose : The processing purpose string (must be in PURPOSE_REGISTRY).
+    purpose : The processing purpose string (normalised internally).
 
     Returns
     -------
@@ -117,15 +154,16 @@ def get_purpose_risk(purpose: str) -> dict:
     ------
     ValueError  — if the purpose is not in the registry.
     """
-    meta = PURPOSE_REGISTRY.get(purpose)
+    normalised = str(purpose).strip().lower().replace(" ", "_") if purpose else ""
+    meta = PURPOSE_REGISTRY.get(normalised)
     if meta is None:
         raise ValueError(
-            f"PURPOSE_ENFORCER | Unknown purpose '{purpose}'. "
+            f"PURPOSE_ENFORCER | Unknown purpose '{purpose}' (normalised: '{normalised}'). "
             "Register it in PURPOSE_REGISTRY before use."
         )
     return {
-        "purpose":      purpose,
-        "risk_level":   meta["risk_level"],
+        "purpose":       normalised,
+        "risk_level":    meta["risk_level"],
         "requires_dpia": meta["requires_dpia"],
     }
 
@@ -136,15 +174,16 @@ def enforce_dpia_requirement(purpose: str, product: str) -> None:
 
     Parameters
     ----------
-    purpose : The processing purpose (must be in PURPOSE_REGISTRY).
+    purpose : The processing purpose (normalised internally).
     product : The product / system requesting processing.
 
     Raises
     ------
-    ValueError  — if purpose is unregistered.
+    ValueError      — if purpose is unregistered.
     PermissionError — if DPIA is required but absent.
     """
-    meta = PURPOSE_REGISTRY.get(purpose)
+    normalised = str(purpose).strip().lower().replace(" ", "_") if purpose else ""
+    meta = PURPOSE_REGISTRY.get(normalised)
     if meta is None:
         raise ValueError(
             f"PURPOSE_ENFORCER | Cannot enforce DPIA for unknown purpose '{purpose}'."
@@ -152,7 +191,7 @@ def enforce_dpia_requirement(purpose: str, product: str) -> None:
 
     if meta["requires_dpia"] and not _dpia_exists(product):
         raise PermissionError(
-            f"PURPOSE_ENFORCER | DPIA REQUIRED — purpose='{purpose}', "
+            f"PURPOSE_ENFORCER | DPIA REQUIRED — purpose='{normalised}', "
             f"product='{product}'. Complete a DPIA before activating consent."
         )
 
@@ -185,9 +224,9 @@ def get_risk_multiplier(purpose: str) -> float:
 
 def validate_purpose(
     purpose: str,
-    product: str,
-    actor_branch: str,
-    entity_branch: str,
+    product: str = "",
+    actor_branch: str = "",
+    entity_branch: str = "",
     declared_notice_purpose: Optional[str] = None,
     actor_role: Optional[str] = None,
 ) -> dict:
@@ -196,17 +235,22 @@ def validate_purpose(
 
     Checks (in order):
       1. Purpose is registered.
-      2. DPIA is completed (if required).
+      2. DPIA is completed (if required) — advisory only while _dpia_exists()
+         is a stub; does NOT hard-block the submission.
       3. Branch isolation — actor branch must match entity branch
          unless actor_role is a permitted override role.
+         Skipped when actor_branch or entity_branch is empty/unset.
       4. Purpose drift — declared notice purpose must match processing purpose.
+         Skipped when declared_notice_purpose is None.
 
     Parameters
     ----------
     purpose                  : The purpose being asserted for this processing action.
-    product                  : The product / system initiating processing.
+    product                  : The product / system initiating processing (optional).
     actor_branch             : Branch identifier of the acting user / service.
+                               Pass "" or omit to skip branch isolation check.
     entity_branch            : Branch identifier of the data subject / entity.
+                               Pass "" or omit to skip branch isolation check.
     declared_notice_purpose  : Purpose stated in the original privacy notice / consent
                                (optional; drift check is skipped if None).
     actor_role               : Role of the actor (e.g. "dpo", "board") for override
@@ -217,9 +261,9 @@ def validate_purpose(
     dict:
         allowed          : bool
         purpose          : str
-        risk_level       : str
-        risk_multiplier  : float
-        requires_dpia    : bool
+        risk_level       : str | None
+        risk_multiplier  : float | None
+        requires_dpia    : bool | None
         violations       : list[dict] — structured violation records for audit
 
     Notes
@@ -230,12 +274,20 @@ def validate_purpose(
     violations: list[dict] = []
     allowed = True
 
+    # Normalise purpose key — lowercase, spaces → underscores, strip whitespace
+    if purpose is None:
+        purpose = ""
+    purpose = str(purpose).strip().lower().replace(" ", "_")
+
     # ── 1. Registry check ──────────────────────────────────────────────────
     meta = PURPOSE_REGISTRY.get(purpose)
     if meta is None:
         violations.append({
             "code":    "UNREGISTERED_PURPOSE",
-            "message": f"Purpose '{purpose}' is not in the Purpose Risk Registry.",
+            "message": (
+                f"Purpose '{purpose}' is not in the Purpose Risk Registry. "
+                "If this is a new valid purpose, add it to PURPOSE_REGISTRY."
+            ),
             "purpose": purpose,
             "product": product,
         })
@@ -262,7 +314,7 @@ def validate_purpose(
     # follow-up rather than silently rejecting the customer's consent.
     if requires_dpia and not _dpia_exists(product):
         violations.append({
-            "code":    "DPIA_MISSING",
+            "code":     "DPIA_MISSING",
             "severity": "advisory",
             "message": (
                 f"Purpose '{purpose}' is high-risk and requires a completed DPIA "
@@ -274,7 +326,9 @@ def validate_purpose(
         })
 
     # ── 3. Branch isolation ─────────────────────────────────────────────────
-    if actor_branch != entity_branch:
+    # Skip if either branch is empty/unset — not all callers have branch context.
+    branch_check_applicable = bool(actor_branch) and bool(entity_branch)
+    if branch_check_applicable and actor_branch != entity_branch:
         is_override_role = actor_role and actor_role.lower() in _BRANCH_OVERRIDE_ROLES
         if not is_override_role:
             allowed = False
@@ -291,18 +345,20 @@ def validate_purpose(
             })
 
     # ── 4. Purpose drift detection ──────────────────────────────────────────
-    if declared_notice_purpose is not None and declared_notice_purpose != purpose:
-        allowed = False
-        violations.append({
-            "code":    "PURPOSE_DRIFT",
-            "message": (
-                f"Purpose drift detected: notice declared '{declared_notice_purpose}' "
-                f"but processing requested '{purpose}'."
-            ),
-            "declared_purpose":   declared_notice_purpose,
-            "processing_purpose": purpose,
-            "product":            product,
-        })
+    if declared_notice_purpose is not None:
+        declared_norm = str(declared_notice_purpose).strip().lower().replace(" ", "_")
+        if declared_norm != purpose:
+            allowed = False
+            violations.append({
+                "code":    "PURPOSE_DRIFT",
+                "message": (
+                    f"Purpose drift detected: notice declared '{declared_norm}' "
+                    f"but processing requested '{purpose}'."
+                ),
+                "declared_purpose":   declared_norm,
+                "processing_purpose": purpose,
+                "product":            product,
+            })
 
     return {
         "allowed":         allowed,
@@ -312,6 +368,55 @@ def validate_purpose(
         "requires_dpia":   requires_dpia,
         "violations":      violations,
     }
+
+
+def validate_purpose_simple(purpose: str) -> bool:
+    """
+    Lightweight boolean purpose check — is this purpose registered?
+
+    This is the one-argument convenience shim for callers (consent_validator,
+    rights_portal, consent_management) that only need to know whether a purpose
+    key is valid before proceeding.
+
+    Does NOT check DPIA, branch isolation, or purpose drift — use the full
+    validate_purpose() for those checks at the orchestration layer.
+
+    Parameters
+    ----------
+    purpose : Purpose string (normalised internally — case-insensitive,
+              spaces converted to underscores).
+
+    Returns
+    -------
+    True  — purpose is registered and may proceed.
+    False — purpose is None, empty, or not in PURPOSE_REGISTRY.
+
+    Usage in consent_validator.py
+    ------------------------------
+        from engine.purpose_enforcer import validate_purpose_simple
+
+        if not validate_purpose_simple(data["purpose"]):
+            return {"status": "error", "reason": "Invalid purpose"}
+    """
+    if not purpose:
+        return False
+    normalised = str(purpose).strip().lower().replace(" ", "_")
+    return normalised in PURPOSE_REGISTRY
+
+
+def is_purpose_registered(purpose: str) -> bool:
+    """Alias for validate_purpose_simple — for backward compatibility."""
+    return validate_purpose_simple(purpose)
+
+
+def get_all_purposes() -> list[str]:
+    """
+    Return a sorted list of all registered purpose keys.
+
+    Used by UI dropdowns in consent_management.py and rights_portal.py
+    so purpose lists are always in sync with the registry.
+    """
+    return sorted(PURPOSE_REGISTRY.keys())
 
 
 # ---------------------------------------------------------------------------
@@ -335,9 +440,9 @@ if __name__ == "__main__":
         ),
     )
 
-    # 2. DPIA missing for marketing
+    # 2. DPIA advisory for marketing (non-blocking)
     _pp(
-        "FAIL | marketing — DPIA missing",
+        "ADVISORY | marketing — DPIA missing (non-blocking)",
         validate_purpose(
             purpose="marketing",
             product="crm_platform",
@@ -392,7 +497,29 @@ if __name__ == "__main__":
         ),
     )
 
-    # 7. Risk multipliers
+    # 7. One-argument call — no crash (branch args optional)
+    _pp(
+        "PASS | one-arg call — no branch context",
+        validate_purpose(purpose="kyc"),
+    )
+
+    # 8. Normalisation — mixed case / spaces
+    _pp(
+        "PASS | normalisation — 'Loan Processing' → loan_processing",
+        validate_purpose(purpose="Loan Processing"),
+    )
+
+    # 9. validate_purpose_simple boolean shim
+    print("\n── validate_purpose_simple() ───────────────────────────")
+    for p in ["kyc", "marketing", "analytics", "fraud_analytics", None, ""]:
+        print(f"  {str(p):<20s} → {validate_purpose_simple(p)}")
+
+    # 10. Risk multipliers
     print("\n── Risk Multipliers ─────────────────────────────────────")
-    for p in PURPOSE_REGISTRY:
-        print(f"  {p:<25s} → ×{get_risk_multiplier(p)}")
+    for p in sorted(PURPOSE_REGISTRY):
+        print(f"  {p:<30s} → ×{get_risk_multiplier(p)}")
+
+    # 11. All registered purposes
+    print("\n── All Registered Purposes ──────────────────────────────")
+    for p in get_all_purposes():
+        print(f"  {p}")

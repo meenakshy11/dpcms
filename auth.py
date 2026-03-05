@@ -742,7 +742,12 @@ def _init_session() -> None:
         "login_error":          None,
         "assisted_submission":  False,
         "mfa_verified":         False,
+        "mfa_required":         False,
         "cross_branch_allowed": False,
+        # OTP flow state — initialised here so show_login() never KeyErrors
+        "otp_sent":             False,
+        "generated_otp":        None,
+        "_temp_username":       None,
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -764,7 +769,28 @@ def _is_session_expired() -> bool:
 # ===========================================================================
 
 def is_authenticated() -> bool:
-    return bool(st.session_state.get("authenticated"))
+    """
+    Return True only when BOTH credential login and OTP verification are complete.
+
+    The two-step check prevents a partial-auth bypass: login() sets
+    authenticated=False and mfa_verified=False; only after OTP verification
+    does show_login() set both to True.
+    """
+    return (
+        bool(st.session_state.get("authenticated"))
+        and bool(st.session_state.get("mfa_verified"))
+    )
+
+
+def is_logged_in() -> bool:
+    """
+    Public alias for is_authenticated().
+    Called by app.py:
+
+        if auth.is_logged_in():
+            auth.render_sidebar_profile()
+    """
+    return is_authenticated()
 
 
 def get_role() -> str | None:
@@ -1036,9 +1062,12 @@ def login(username: str, password: str) -> bool:
     # ── Credential verified — reset lockout counter ───────────────────────────
     _reset_failed_attempts(username_clean)
 
-    # ── Steps 6 + 7 — Write session state (role is immutable from here) ──────
+    # ── Steps 6 + 7 — Write session state ────────────────────────────────────
+    # IMPORTANT: authenticated is set to False here.
+    # It is promoted to True only after OTP verification succeeds in show_login().
+    # This prevents a partial-auth bypass where the page loads before OTP is checked.
     now = datetime.utcnow()
-    st.session_state.authenticated        = True
+    st.session_state.authenticated        = False   # set True only after OTP
     st.session_state.username             = username_clean
     st.session_state.role                 = canonical_role
     st.session_state.full_name            = user["full_name"]
@@ -1157,15 +1186,8 @@ def show_login() -> None:
     import random
     from utils.i18n import t, t_safe
 
-    # ── Session state guards ─────────────────────────────────────────────────
-    if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
-    if "otp_sent" not in st.session_state:
-        st.session_state["otp_sent"] = False
-    if "generated_otp" not in st.session_state:
-        st.session_state["generated_otp"] = None
-    if "_temp_username" not in st.session_state:
-        st.session_state["_temp_username"] = None
+    # Session state is fully initialised by init() → _init_session() in app.py.
+    # No per-call setdefault() needed here.
 
     st.markdown("""
     <style>
@@ -1242,7 +1264,14 @@ def show_login() -> None:
                         st.session_state["generated_otp"] = otp
                         st.session_state["otp_sent"] = True
                         st.session_state["_temp_username"] = username.strip().lower()
-                        st.session_state["_otp_display"] = otp   # TODO: remove in production — replace with SMS/email delivery
+                        # NOTE: In production, deliver OTP via SMS/email.
+                        # The OTP is intentionally NOT displayed on screen.
+                        # For local dev, check the terminal/console log.
+                        import logging as _logging
+                        _logging.getLogger(__name__).warning(
+                            f"[DEV-ONLY OTP] user={username.strip().lower()} otp={otp} "
+                            f"— replace with SMS/email delivery before production."
+                        )
                         st.rerun()
                     else:
                         # Error / lockout display — all keys rendered through t()
@@ -1273,12 +1302,7 @@ def show_login() -> None:
                 unsafe_allow_html=True,
             )
 
-            # ── Demo OTP display — remove in production ───────────────────────
-            if st.session_state.get("_otp_display"):
-                st.info(
-                    f"🔑 **Demo OTP:** `{st.session_state['_otp_display']}`  "
-                    f"— remove this in production and deliver via SMS/email."
-                )
+            # ── Demo OTP display removed — OTP must never appear on screen ────
 
             otp_input = st.text_input(
                 "One-Time Password",
@@ -1297,13 +1321,31 @@ def show_login() -> None:
                 ):
                     if otp_input and otp_input.strip() == st.session_state.get("generated_otp"):
                         # OTP correct — finalise authentication
+                        # authenticated is promoted to True HERE (not in login())
+                        st.session_state["authenticated"] = True
                         st.session_state["mfa_verified"] = True
                         st.session_state["otp_sent"] = False
                         st.session_state["generated_otp"] = None
                         st.session_state["_temp_username"] = None
+                        # Ensure no OTP value is left in session state
                         st.session_state.pop("_otp_display", None)
+                        audit_log(
+                            action=(
+                                f"OTP Verified | user={st.session_state.get('username', 'unknown')}"
+                                f" | role={st.session_state.get('role', 'unknown')}"
+                            ),
+                            user=st.session_state.get("username", "unknown"),
+                            metadata={"mfa_verified": True},
+                        )
                         st.rerun()
                     else:
+                        audit_log(
+                            action=(
+                                f"OTP Failed | user={st.session_state.get('_temp_username', 'unknown')}"
+                            ),
+                            user=st.session_state.get("_temp_username", "unknown"),
+                            metadata={"reason": "invalid otp"},
+                        )
                         st.error("Invalid OTP — please try again.")
 
         with st.expander(t("demo_credentials")):
@@ -1323,7 +1365,7 @@ def show_login() -> None:
 | `board_01`         | `board@2026`    | {t('role_board_member')}            | {t('all_branches_head_office')} | {t('demo_access_board')}       |
 | `dpo_admin`        | `dpo@2026`      | {t('role_dpo')}                     | {t('all_branches_head_office')} | {t('demo_access_dpo')}         |
 """)
-            st.caption("Demo mode: enter any 6-digit number as the OTP.")
+            st.caption("OTP is delivered to your registered device. Contact the administrator if you have not received it.")
 
         st.markdown('</div>', unsafe_allow_html=True)
 
