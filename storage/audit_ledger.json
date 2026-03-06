@@ -35618,5 +35618,3893 @@
     },
     "hash": "8e20287622d415a0070d7bafa40c05f32cfd4db7f05565d3ab75e6fe93e1fb2a",
     "signature": "1bc8a477abdce847dc270c14c9ea1836e0b90084b0a22ecb5abae71de0fdbd0a"
+  },
+  {
+    "block_id": "BLK-63DCCD0FDD37",
+    "index": 1346,
+    "timestamp": "2026-03-06T08:42:07.440822+00:00",
+    "previous_hash": "8e20287622d415a0070d7bafa40c05f32cfd4db7f05565d3ab75e6fe93e1fb2a",
+    "data": {
+      "action": "Login Successful | user=customer_01 | role=customer | branch=- | mfa_required=True",
+      "user": "customer_01",
+      "metadata": {
+        "department": "-",
+        "branch": "-",
+        "region": "-",
+        "canonical_role": "customer",
+        "mfa_required": true
+      }
+    },
+    "hash": "a0ac0a3a43dcd51c5a3b46af62a25375c2f2e5a77804be5b2ff691adf30bffb0",
+    "signature": "82454e0b6b47ccbaf577d9c04a800f319ec77d63fc313c363ddee5881c62c958"
+  },
+  {
+    "block_id": "BLK-B4C5EF1F04A4",
+    "index": 1347,
+    "timestamp": "2026-03-06T08:42:15.494675+00:00",
+    "previous_hash": "a0ac0a3a43dcd51c5a3b46af62a25375c2f2e5a77804be5b2ff691adf30bffb0",
+    "data": {
+      "action": "OTP Verified | user=customer_01 | role=customer",
+      "user": "customer_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "8896a3b74b9b873ea85ec9bd70dd3512d654903db713c9dffcfd7a3b93f9b669",
+    "signature": "d84cc98e87b50f7d5fe02f91b110969bf992729f3c79ca973b527572bb7b35fb"
+  },
+  {
+    "block_id": "BLK-1FC1A11B27D0",
+    "index": 1348,
+    "timestamp": "2026-03-06T08:42:15.742777+00:00",
+    "previous_hash": "8896a3b74b9b873ea85ec9bd70dd3512d654903db713c9dffcfd7a3b93f9b669",
+    "data": {
+      "action": "GovernanceTransaction | action=query_consents | status=committed | tx=TX-E5E4FF82B43C",
+      "user": "customer_01",
+      "metadata": {
+        "transaction_id": "TX-E5E4FF82B43C",
+        "action_type": "query_consents",
+        "payload_keys": [
+          "customer_id"
+        ],
+        "success": true,
+        "reason": "Action 'query_consents' committed successfully.",
+        "timestamp": "2026-03-06T08:42:15.667034+00:00"
+      }
+    },
+    "hash": "8bbe9a5ddbef10b6e88e21faf52aa52adfe6b4140028619dca3af77944f66e9b",
+    "signature": "2b2fe53eff5023c929f51c3ceb6bb631c6b4de6b20bbdc005f5b33498efe099f"
+  },
+  {
+    "block_id": "BLK-6C6E1F24AB95",
+    "index": 1349,
+    "timestamp": "2026-03-06T08:42:28.719891+00:00",
+    "previous_hash": "8bbe9a5ddbef10b6e88e21faf52aa52adfe6b4140028619dca3af77944f66e9b",
+    "data": {
+      "action": "GovernanceTransaction | action=query_consents | status=committed | tx=TX-0C5BD982D08B",
+      "user": "customer_01",
+      "metadata": {
+        "transaction_id": "TX-0C5BD982D08B",
+        "action_type": "query_consents",
+        "payload_keys": [
+          "customer_id"
+        ],
+        "success": true,
+        "reason": "Action 'query_consents' committed successfully.",
+        "timestamp": "2026-03-06T08:42:28.623621+00:00"
+      }
+    },
+    "hash": "f984518342beaea4668f21d6182de48d83c51bd5791f73d0b171d0611c424406",
+    "signature": "847a2cfe58a627670c97b468e36d85437acf25f3eeead2dbbc1335d38b8e235e"
+  },
+  {
+    "block_id": "BLK-600E58CBFABF",
+    "index": 1350,
+    "timestamp": "2026-03-06T08:42:36.123272+00:00",
+    "previous_hash": "f984518342beaea4668f21d6182de48d83c51bd5791f73d0b171d0611c424406",
+    "data": {
+      "action": "GovernanceTransaction | action=query_consents | status=committed | tx=TX-FAF37B620D99",
+      "user": "customer_01",
+      "metadata": {
+        "transaction_id": "TX-FAF37B620D99",
+        "action_type": "query_consents",
+        "payload_keys": [
+          "customer_id"
+        ],
+        "success": true,
+        "reason": "Action 'query_consents' committed successfully.",
+        "timestamp": "2026-03-06T08:42:36.042772+00:00"
+      }
+    },
+    "hash": "9f672e39f38dfe3275253b7bc985cf7b169a4a689102b3d9cb282bcc40d8a68d",
+    "signature": "abc6b4e08acb74bdd64baf14b78703b815b55ee8c8dd8bdb6c71c98d660740c0"
+  },
+  {
+    "block_id": "BLK-F84DD8BF6A22",
+    "index": 1351,
+    "timestamp": "2026-03-06T08:42:51.710171+00:00",
+    "previous_hash": "9f672e39f38dfe3275253b7bc985cf7b169a4a689102b3d9cb282bcc40d8a68d",
+    "data": {
+      "action": "GovernanceTransaction | action=query_consents | status=committed | tx=TX-DC16EAFD16F5",
+      "user": "customer_01",
+      "metadata": {
+        "transaction_id": "TX-DC16EAFD16F5",
+        "action_type": "query_consents",
+        "payload_keys": [
+          "customer_id"
+        ],
+        "success": true,
+        "reason": "Action 'query_consents' committed successfully.",
+        "timestamp": "2026-03-06T08:42:51.615344+00:00"
+      }
+    },
+    "hash": "ff1aaf73640fe3bb4521f8e7ec1c0e4df93e2fe271fcbbd74bbb9367a7610ebf",
+    "signature": "608ff748ea15271da6ef665e9a0a30ed9350b0722e0426395726552481b6f4a8"
+  },
+  {
+    "block_id": "BLK-754BC0D2B730",
+    "index": 1352,
+    "timestamp": "2026-03-06T08:44:36.877167+00:00",
+    "previous_hash": "ff1aaf73640fe3bb4521f8e7ec1c0e4df93e2fe271fcbbd74bbb9367a7610ebf",
+    "data": {
+      "action": "Login Successful | user=support_01 | role=customer_support | branch=Thiruvananthapuram Main | mfa_required=True",
+      "user": "support_01",
+      "metadata": {
+        "department": "Customer Services",
+        "branch": "Thiruvananthapuram Main",
+        "region": "South Zone",
+        "canonical_role": "customer_support",
+        "mfa_required": true
+      }
+    },
+    "hash": "b8a315d5e4703eab053445c6c264b7a3fc71d569c74cdd31a65f313bd6948178",
+    "signature": "02eb3cbd8e36a9ae7fd6bef5445e0f17f4b76e509ac9cafecedde03131151768"
+  },
+  {
+    "block_id": "BLK-4278BB0C0062",
+    "index": 1353,
+    "timestamp": "2026-03-06T08:44:44.268009+00:00",
+    "previous_hash": "b8a315d5e4703eab053445c6c264b7a3fc71d569c74cdd31a65f313bd6948178",
+    "data": {
+      "action": "OTP Verified | user=support_01 | role=customer_support",
+      "user": "support_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "a9d7d165367c1357964b6a2cf2066f49b6c7e4b5bc0517d62fc5de955a3ae20f",
+    "signature": "2592d45b24c9b85386962b06677ae37aea6cda3e4e5173e931d6c9ef893b95d7"
+  },
+  {
+    "block_id": "BLK-7A6DD7B01DD9",
+    "index": 1354,
+    "timestamp": "2026-03-06T08:51:12.409466+00:00",
+    "previous_hash": "a9d7d165367c1357964b6a2cf2066f49b6c7e4b5bc0517d62fc5de955a3ae20f",
+    "data": {
+      "action": "Login Successful | user=officer_01 | role=branch_officer | branch=Thiruvananthapuram Main | mfa_required=True",
+      "user": "officer_01",
+      "metadata": {
+        "department": "Retail Banking",
+        "branch": "Thiruvananthapuram Main",
+        "region": "South Zone",
+        "canonical_role": "branch_officer",
+        "mfa_required": true
+      }
+    },
+    "hash": "69bef95fa361c73bc44378069376e3653e1c2271f196f1aa3d85b47c5ba78f3e",
+    "signature": "b8286e097dfd401247ccb2ac5e0bc43dac6545556dcc681dfd47fba817d9e3ab"
+  },
+  {
+    "block_id": "BLK-71E8868BC5E2",
+    "index": 1355,
+    "timestamp": "2026-03-06T08:51:29.070390+00:00",
+    "previous_hash": "69bef95fa361c73bc44378069376e3653e1c2271f196f1aa3d85b47c5ba78f3e",
+    "data": {
+      "action": "OTP Verified | user=officer_01 | role=branch_officer",
+      "user": "officer_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "3e7ca6f0baa3f9422df081477170f885bba5a35c5b85c0c54ccaee821a4bc4ca",
+    "signature": "1fbe9b049fcf835869d79f7f3e72c88b4b55a05ddac2b5f35be127e6363018eb"
+  },
+  {
+    "block_id": "BLK-A7694FC94ABD",
+    "index": 1356,
+    "timestamp": "2026-03-06T08:52:30.140623+00:00",
+    "previous_hash": "3e7ca6f0baa3f9422df081477170f885bba5a35c5b85c0c54ccaee821a4bc4ca",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-114E12412136",
+      "user": "officer_01",
+      "metadata": {
+        "transaction_id": "TX-114E12412136",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T08:52:30.048297+00:00"
+      }
+    },
+    "hash": "094b15e2482988ba1a79881e9a4ecd30a4a89a9dafddcd3346e603c9bb10bc1d",
+    "signature": "f5f8bade3818c33b9b25a31bf64bd8824e8d86131842efc57edff2ca5f524fae"
+  },
+  {
+    "block_id": "BLK-0D374A7D143E",
+    "index": 1357,
+    "timestamp": "2026-03-06T08:53:35.349547+00:00",
+    "previous_hash": "094b15e2482988ba1a79881e9a4ecd30a4a89a9dafddcd3346e603c9bb10bc1d",
+    "data": {
+      "action": "Login Successful | user=branch_01 | role=branch_privacy_coordinator | branch=Ernakulam Central | mfa_required=True",
+      "user": "branch_01",
+      "metadata": {
+        "department": "Branch Compliance",
+        "branch": "Ernakulam Central",
+        "region": "Central Zone",
+        "canonical_role": "branch_privacy_coordinator",
+        "mfa_required": true
+      }
+    },
+    "hash": "293669cfe9c8c5ebb98448ba402f042b201d6b84e18fc9e2fc7e8016740c6765",
+    "signature": "7ebd64c79651299392c10bbc7d9bc66c4c3c721c3f92fba4c11e008f088c2a67"
+  },
+  {
+    "block_id": "BLK-F18B00B75AD9",
+    "index": 1358,
+    "timestamp": "2026-03-06T08:53:44.392035+00:00",
+    "previous_hash": "293669cfe9c8c5ebb98448ba402f042b201d6b84e18fc9e2fc7e8016740c6765",
+    "data": {
+      "action": "OTP Verified | user=branch_01 | role=branch_privacy_coordinator",
+      "user": "branch_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "d815af01838d55bc79eefbf3a44662ed1d8eec0b62653af8b7edafdeede706c3",
+    "signature": "566409833dd5be2348d4b3df80a9ba02fd8012009c0249f6543d10625b86c911"
+  },
+  {
+    "block_id": "BLK-F19CD01FED14",
+    "index": 1359,
+    "timestamp": "2026-03-06T08:54:23.178590+00:00",
+    "previous_hash": "d815af01838d55bc79eefbf3a44662ed1d8eec0b62653af8b7edafdeede706c3",
+    "data": {
+      "action": "GovernanceTransaction | action=query_dpias | status=committed | tx=TX-E7E200C42ADD",
+      "user": "branch_01",
+      "metadata": {
+        "transaction_id": "TX-E7E200C42ADD",
+        "action_type": "query_dpias",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_dpias' committed successfully.",
+        "timestamp": "2026-03-06T08:54:23.096141+00:00"
+      }
+    },
+    "hash": "659a1a3f187b11c9e6409a7da5e316f5d25a4c08c70e6331dbbe530b281379fa",
+    "signature": "481254c7577997c53b9f557d7940d9c567f795c7b0e3c6eb81e21b42cacb8b12"
+  },
+  {
+    "block_id": "BLK-5AA53BB6530A",
+    "index": 1360,
+    "timestamp": "2026-03-06T08:54:59.522708+00:00",
+    "previous_hash": "659a1a3f187b11c9e6409a7da5e316f5d25a4c08c70e6331dbbe530b281379fa",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-796A8973BFEA",
+      "user": "branch_01",
+      "metadata": {
+        "transaction_id": "TX-796A8973BFEA",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T08:54:59.430831+00:00"
+      }
+    },
+    "hash": "9cf7619a69ae25a9fe33f67c6c17eab7cb455673ffb46ba917b3dc4914371770",
+    "signature": "d49e26733e9387cb14184291c9efb312bf639d5d030fd3c3bc5dc78c188dfdea"
+  },
+  {
+    "block_id": "BLK-CCBF289F7B46",
+    "index": 1361,
+    "timestamp": "2026-03-06T08:55:01.366890+00:00",
+    "previous_hash": "9cf7619a69ae25a9fe33f67c6c17eab7cb455673ffb46ba917b3dc4914371770",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-A9F2E87DEC47",
+      "user": "branch_01",
+      "metadata": {
+        "transaction_id": "TX-A9F2E87DEC47",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T08:55:01.277932+00:00"
+      }
+    },
+    "hash": "e2820a3f85e8737ec0d9c780e74eda9a16ad7914956e1efbea8b4b514dd3b328",
+    "signature": "0ad562b5a8e14003abf7a60ec3647f87091f8e756ade5828bba4dc6642a3036c"
+  },
+  {
+    "block_id": "BLK-8C2015F3F119",
+    "index": 1362,
+    "timestamp": "2026-03-06T08:56:15.810291+00:00",
+    "previous_hash": "e2820a3f85e8737ec0d9c780e74eda9a16ad7914956e1efbea8b4b514dd3b328",
+    "data": {
+      "action": "Login Successful | user=region_01 | role=regional_compliance_officer | branch=All | mfa_required=True",
+      "user": "region_01",
+      "metadata": {
+        "department": "Regional Compliance",
+        "branch": "All",
+        "region": "Central Zone",
+        "canonical_role": "regional_compliance_officer",
+        "mfa_required": true
+      }
+    },
+    "hash": "32353087f9e8c6c4cdca7f7e73809421daeddee684a80fd2f0b1166a3eaa345d",
+    "signature": "e50ce3538da056bcfb046c61eaaef85b0850fdd960a848949d33af287af9177f"
+  },
+  {
+    "block_id": "BLK-59BC546224E0",
+    "index": 1363,
+    "timestamp": "2026-03-06T08:56:25.518027+00:00",
+    "previous_hash": "32353087f9e8c6c4cdca7f7e73809421daeddee684a80fd2f0b1166a3eaa345d",
+    "data": {
+      "action": "OTP Verified | user=region_01 | role=regional_compliance_officer",
+      "user": "region_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "da99077a86e3aaa10b8af7abda46fe1504f61eaf1846b57f649fe3494329aa85",
+    "signature": "678ef78f9286426b66d1afdd211d8f14eec11ae72fe292c8128bbbb43f85d1b7"
+  },
+  {
+    "block_id": "BLK-5BFE28EBE4DC",
+    "index": 1364,
+    "timestamp": "2026-03-06T08:57:23.392334+00:00",
+    "previous_hash": "da99077a86e3aaa10b8af7abda46fe1504f61eaf1846b57f649fe3494329aa85",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-2BC9F176BE2C",
+      "user": "region_01",
+      "metadata": {
+        "transaction_id": "TX-2BC9F176BE2C",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T08:57:23.292683+00:00"
+      }
+    },
+    "hash": "4e37133f6d8d3a8b0c8e810dc0bfb87eaf70a0b20f9d52da64fa5515f174d79f",
+    "signature": "d0a367c4e82bb6c7cabc8430e53e805066a032df3c6788bce8685d29f0ebaf1b"
+  },
+  {
+    "block_id": "BLK-5F4C52395FF5",
+    "index": 1365,
+    "timestamp": "2026-03-06T08:58:28.988172+00:00",
+    "previous_hash": "4e37133f6d8d3a8b0c8e810dc0bfb87eaf70a0b20f9d52da64fa5515f174d79f",
+    "data": {
+      "action": "Login Successful | user=privacy_ops_01 | role=privacy_operations | branch=All | mfa_required=True",
+      "user": "privacy_ops_01",
+      "metadata": {
+        "department": "Privacy Operations",
+        "branch": "All",
+        "region": "All",
+        "canonical_role": "privacy_operations",
+        "mfa_required": true
+      }
+    },
+    "hash": "02201ddd73bc313390252ccbb23162860d072ed870c6e0d66fc7f7d354fc00a1",
+    "signature": "2bffe990132ef70c3cd7f9df1af503da5ced61dfad21a0b97cdc6b8d6594ebec"
+  },
+  {
+    "block_id": "BLK-6BA53E9C49C1",
+    "index": 1366,
+    "timestamp": "2026-03-06T08:58:35.256290+00:00",
+    "previous_hash": "02201ddd73bc313390252ccbb23162860d072ed870c6e0d66fc7f7d354fc00a1",
+    "data": {
+      "action": "OTP Verified | user=privacy_ops_01 | role=privacy_operations",
+      "user": "privacy_ops_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "4a9afa5d9b85443449484cd643b36e8cf8901d253e907f7bc2d26d4673cebbe4",
+    "signature": "1e64889fe94286be51eadbe2296d5978f58ace8c513ccd89657e7a5e725214f4"
+  },
+  {
+    "block_id": "BLK-EF148FA42F90",
+    "index": 1367,
+    "timestamp": "2026-03-06T08:58:40.021705+00:00",
+    "previous_hash": "4a9afa5d9b85443449484cd643b36e8cf8901d253e907f7bc2d26d4673cebbe4",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-720CB18C89EA",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-720CB18C89EA",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T08:58:39.919177+00:00"
+      }
+    },
+    "hash": "c484f223f1da755427c03565de2ab3a86e78083be2f551f00cd9cece82a10772",
+    "signature": "64c562127e030e98871ac944dcde986ca4d9ea518cb3f30870a3251863fb3344"
+  },
+  {
+    "block_id": "BLK-AA626A3C3B67",
+    "index": 1368,
+    "timestamp": "2026-03-06T08:58:40.161169+00:00",
+    "previous_hash": "c484f223f1da755427c03565de2ab3a86e78083be2f551f00cd9cece82a10772",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D59D09FBD31A",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-D59D09FBD31A",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T08:58:40.083310+00:00"
+      }
+    },
+    "hash": "f0b29163d76f0886ef4912fa556dc0d5480c7e59f095618bf1908e5a47915d79",
+    "signature": "2894e240bd8616173046ca4d79ea6464fd7fdbadd86e15aad711f96fb4cc985e"
+  },
+  {
+    "block_id": "BLK-72ED8CC88626",
+    "index": 1369,
+    "timestamp": "2026-03-06T08:58:40.308531+00:00",
+    "previous_hash": "f0b29163d76f0886ef4912fa556dc0d5480c7e59f095618bf1908e5a47915d79",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-88541FBAC196",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-88541FBAC196",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T08:58:40.233174+00:00"
+      }
+    },
+    "hash": "8d194b530ec2f76e02110467d239b1bdd783b8e4c644913f8fbf341a89df3223",
+    "signature": "4669782c0a517ed89f92719db4571c15d06b0985c9a6cf5cd9967b9ba727b812"
+  },
+  {
+    "block_id": "BLK-887EB4DA4892",
+    "index": 1370,
+    "timestamp": "2026-03-06T08:58:40.509280+00:00",
+    "previous_hash": "8d194b530ec2f76e02110467d239b1bdd783b8e4c644913f8fbf341a89df3223",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-ED0D6A294CA5",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-ED0D6A294CA5",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T08:58:40.415660+00:00"
+      }
+    },
+    "hash": "8bf5e3da2cf995650f362af872a541477b4109a99107ea10b4933397a23a162e",
+    "signature": "1bd605bd3a26ada45ae8bd0a9f1f49c99c257040df7965e43cf17596b7c3fb9e"
+  },
+  {
+    "block_id": "BLK-111C0C1AC03F",
+    "index": 1371,
+    "timestamp": "2026-03-06T08:58:40.674711+00:00",
+    "previous_hash": "8bf5e3da2cf995650f362af872a541477b4109a99107ea10b4933397a23a162e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-CF442935689E",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-CF442935689E",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T08:58:40.586347+00:00"
+      }
+    },
+    "hash": "897af8f55bf498e3d64e2375226cd54b57ae4e97fb485290e8fe86d9a44a2ce5",
+    "signature": "597e22ca22a2cdaee504810348469afd6998210983fdc0bedeef8f65f195787f"
+  },
+  {
+    "block_id": "BLK-1588C4519374",
+    "index": 1372,
+    "timestamp": "2026-03-06T08:58:40.828014+00:00",
+    "previous_hash": "897af8f55bf498e3d64e2375226cd54b57ae4e97fb485290e8fe86d9a44a2ce5",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-CA22F871ACA8",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-CA22F871ACA8",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T08:58:40.738705+00:00"
+      }
+    },
+    "hash": "3aa3c46dc32889e4037f8069d3776a4cd3ea33f515e9ecadd059843b3d47aaf0",
+    "signature": "bfe626b7778ef03347a79e659252253df24e5d4890b67a30a289edb81b45b0a6"
+  },
+  {
+    "block_id": "BLK-12E3B327EFEB",
+    "index": 1373,
+    "timestamp": "2026-03-06T08:59:33.411593+00:00",
+    "previous_hash": "3aa3c46dc32889e4037f8069d3776a4cd3ea33f515e9ecadd059843b3d47aaf0",
+    "data": {
+      "action": "GovernanceTransaction | action=query_dpias | status=committed | tx=TX-7506A0BA3FA9",
+      "user": "privacy_ops_01",
+      "metadata": {
+        "transaction_id": "TX-7506A0BA3FA9",
+        "action_type": "query_dpias",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_dpias' committed successfully.",
+        "timestamp": "2026-03-06T08:59:33.307142+00:00"
+      }
+    },
+    "hash": "76877441cfa1d3231b4c526835afc6f00f324afd63eb69ff810bd3b00115142b",
+    "signature": "76577d907cf10e2db6c83bd93ad825022721bb5e1b3cda2e9117970ee9bc0b39"
+  },
+  {
+    "block_id": "BLK-57C354D9D171",
+    "index": 1374,
+    "timestamp": "2026-03-06T09:00:11.847826+00:00",
+    "previous_hash": "76877441cfa1d3231b4c526835afc6f00f324afd63eb69ff810bd3b00115142b",
+    "data": {
+      "action": "GovernanceTransaction | action=query_notices | status=committed | tx=TX-98C1AF58EC9D",
+      "user": "privacy_ops_01",
+      "metadata": {
+        "transaction_id": "TX-98C1AF58EC9D",
+        "action_type": "query_notices",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_notices' committed successfully.",
+        "timestamp": "2026-03-06T09:00:11.750577+00:00"
+      }
+    },
+    "hash": "615d8438d06f109c4cf004d3e69f15e452489d31c7d81c3cc1a1ed443d15cecd",
+    "signature": "86ffa5da481271db87c01592e8d006422177f6726d804b346212e3de1b33bb02"
+  },
+  {
+    "block_id": "BLK-3643070719DD",
+    "index": 1375,
+    "timestamp": "2026-03-06T09:00:12.032907+00:00",
+    "previous_hash": "615d8438d06f109c4cf004d3e69f15e452489d31c7d81c3cc1a1ed443d15cecd",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-E91F12F0BF7C",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-E91F12F0BF7C",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:00:11.930807+00:00"
+      }
+    },
+    "hash": "9f56a365d64b16c24503eb6883a68d0f3d573dc2f20c7cf02266386f3a34b91f",
+    "signature": "997f3c6f8f6221fe232652cf25840dab33cf9739104805d2285079545ff73c5c"
+  },
+  {
+    "block_id": "BLK-D8A44235774D",
+    "index": 1376,
+    "timestamp": "2026-03-06T09:00:12.193690+00:00",
+    "previous_hash": "9f56a365d64b16c24503eb6883a68d0f3d573dc2f20c7cf02266386f3a34b91f",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-CF10424D1C45",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-CF10424D1C45",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:00:12.109336+00:00"
+      }
+    },
+    "hash": "619f75e5f00cd95a46e9705e62c3b37d17ec397b54c96d9b8d11644bba14c9ea",
+    "signature": "28d8cdc330477eec5c611759338d30d0f943d7287e7d4e9371dd2297548ce683"
+  },
+  {
+    "block_id": "BLK-86C594754671",
+    "index": 1377,
+    "timestamp": "2026-03-06T09:00:12.340850+00:00",
+    "previous_hash": "619f75e5f00cd95a46e9705e62c3b37d17ec397b54c96d9b8d11644bba14c9ea",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-5083779F64D0",
+      "user": "privacy_operations",
+      "metadata": {
+        "transaction_id": "TX-5083779F64D0",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:00:12.257728+00:00"
+      }
+    },
+    "hash": "fc4cff4bd92675fab5ccaee1805cc005ce19529e422ce6933027cd80b6b7e4f8",
+    "signature": "fe40b89e4808c3143e9be16a975f0627e7eed0c096e4a4f6b4755381c79150b5"
+  },
+  {
+    "block_id": "BLK-B653B3CAC91F",
+    "index": 1378,
+    "timestamp": "2026-03-06T09:01:51.165345+00:00",
+    "previous_hash": "fc4cff4bd92675fab5ccaee1805cc005ce19529e422ce6933027cd80b6b7e4f8",
+    "data": {
+      "action": "Login Successful | user=soc_analyst_01 | role=soc_analyst | branch=All | mfa_required=True",
+      "user": "soc_analyst_01",
+      "metadata": {
+        "department": "Security Operations",
+        "branch": "All",
+        "region": "All",
+        "canonical_role": "soc_analyst",
+        "mfa_required": true
+      }
+    },
+    "hash": "b1297cf4ea5e4ef03c7a3d837028459feb04accb5d100bdbc00a8662781f0b03",
+    "signature": "a237ca16ffe658b6c5e9da58c28c8cc42d6b90568d68d892f8c46aef10b618f2"
+  },
+  {
+    "block_id": "BLK-B57F7465E1AB",
+    "index": 1379,
+    "timestamp": "2026-03-06T09:02:06.923156+00:00",
+    "previous_hash": "b1297cf4ea5e4ef03c7a3d837028459feb04accb5d100bdbc00a8662781f0b03",
+    "data": {
+      "action": "OTP Verified | user=soc_analyst_01 | role=soc_analyst",
+      "user": "soc_analyst_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "8dfb0e079b5fb3315510dbfc1b5c31d0f37fb3e6461c9c160ae6b7457064d0b4",
+    "signature": "80e88e58ffe3206232e0c85ac6480d4eac82b625b235d00f7bc9295b761c36f4"
+  },
+  {
+    "block_id": "BLK-35B41093CDE4",
+    "index": 1380,
+    "timestamp": "2026-03-06T09:02:07.475205+00:00",
+    "previous_hash": "8dfb0e079b5fb3315510dbfc1b5c31d0f37fb3e6461c9c160ae6b7457064d0b4",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-C52E243216F1",
+      "user": "soc_analyst_01",
+      "metadata": {
+        "transaction_id": "TX-C52E243216F1",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:02:07.398087+00:00"
+      }
+    },
+    "hash": "d6e29fb6e643ee24572f16be9a7e7cfba0552a72b5cea9a1a3d042b953b95816",
+    "signature": "3c4ea90014df55e93b41556f02ec81cc57b43d1ea16bdf987039f91b0462bfa5"
+  },
+  {
+    "block_id": "BLK-B7B2BA9281CB",
+    "index": 1381,
+    "timestamp": "2026-03-06T09:02:46.457795+00:00",
+    "previous_hash": "d6e29fb6e643ee24572f16be9a7e7cfba0552a72b5cea9a1a3d042b953b95816",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-60C5406A71E7",
+      "user": "soc_analyst_01",
+      "metadata": {
+        "transaction_id": "TX-60C5406A71E7",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:02:46.355594+00:00"
+      }
+    },
+    "hash": "1a72c4561e45f5956395ecd9e6dafa6d9b8840ddb085fab274b69cb805b27867",
+    "signature": "bd12d813831cbce7279c28150e6f7cb3fe08a95ed75441687d75a2889d5ed953"
+  },
+  {
+    "block_id": "BLK-62786FBC07E4",
+    "index": 1382,
+    "timestamp": "2026-03-06T09:03:26.226108+00:00",
+    "previous_hash": "1a72c4561e45f5956395ecd9e6dafa6d9b8840ddb085fab274b69cb805b27867",
+    "data": {
+      "action": "Login Successful | user=auditor_01 | role=auditor | branch=All | mfa_required=True",
+      "user": "auditor_01",
+      "metadata": {
+        "department": "Internal Audit",
+        "branch": "All",
+        "region": "All",
+        "canonical_role": "auditor",
+        "mfa_required": true
+      }
+    },
+    "hash": "1dbc78da460bbf1b809fab244bd740e18097381163b2b40eef95057bf513748b",
+    "signature": "4419aa5fb96cc81d1d8992c4b204f2a547a886b80b7daf77094e3bee46279c4e"
+  },
+  {
+    "block_id": "BLK-3E8B4197D1B4",
+    "index": 1383,
+    "timestamp": "2026-03-06T09:03:33.064294+00:00",
+    "previous_hash": "1dbc78da460bbf1b809fab244bd740e18097381163b2b40eef95057bf513748b",
+    "data": {
+      "action": "OTP Verified | user=auditor_01 | role=auditor",
+      "user": "auditor_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "f742120b1464672b3d154c91a46d5b3e83afea60db2899b9b4448a6db91a54ef",
+    "signature": "8f57895b69aef38365a69c18e20beb3fe780706377938b615f85aace5e02388c"
+  },
+  {
+    "block_id": "BLK-38E7069C29E7",
+    "index": 1384,
+    "timestamp": "2026-03-06T09:03:33.630299+00:00",
+    "previous_hash": "f742120b1464672b3d154c91a46d5b3e83afea60db2899b9b4448a6db91a54ef",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-AEBF2DBDA063",
+      "user": "auditor_01",
+      "metadata": {
+        "transaction_id": "TX-AEBF2DBDA063",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:03:33.544450+00:00"
+      }
+    },
+    "hash": "6c017e8f9c9091a69f2b1a52386c1eb9c35333f4640510f97fb2171e5a30a667",
+    "signature": "c83d9aa812b944b78201587b76c9e53162165d935e1ee62c27e0e580a68f5a68"
+  },
+  {
+    "block_id": "BLK-7F0BDCE312F7",
+    "index": 1385,
+    "timestamp": "2026-03-06T09:03:33.822550+00:00",
+    "previous_hash": "6c017e8f9c9091a69f2b1a52386c1eb9c35333f4640510f97fb2171e5a30a667",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-4C9B3D117DCC",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-4C9B3D117DCC",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:33.721162+00:00"
+      }
+    },
+    "hash": "b3778027a1054fdd439a614534aa1df04ba3db662b07f09ddf8d0ea5c29ee6d7",
+    "signature": "5437a4477e23f7e7dd7eed43a2f297858e8d54c435947043d1f3b6eba8ae6f37"
+  },
+  {
+    "block_id": "BLK-381AC221F723",
+    "index": 1386,
+    "timestamp": "2026-03-06T09:03:33.977293+00:00",
+    "previous_hash": "b3778027a1054fdd439a614534aa1df04ba3db662b07f09ddf8d0ea5c29ee6d7",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-8D4C4880B8F2",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-8D4C4880B8F2",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:33.895533+00:00"
+      }
+    },
+    "hash": "9a6f2db236da4190bcc6fb082fafd90365656b166d5d80ed768a74f4d8939b3e",
+    "signature": "208a4301e2b80f9419539d562d0ff5a92c2679c2a2edbed7a9bbd8be55f5ab0a"
+  },
+  {
+    "block_id": "BLK-6E87BD2E0DB9",
+    "index": 1387,
+    "timestamp": "2026-03-06T09:03:34.130412+00:00",
+    "previous_hash": "9a6f2db236da4190bcc6fb082fafd90365656b166d5d80ed768a74f4d8939b3e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-3B320589BBA2",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-3B320589BBA2",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:34.049117+00:00"
+      }
+    },
+    "hash": "ae420914d9dc2a53d38b58c78f423c39e8d73f8dc9bbb795e3565f644b16f1d0",
+    "signature": "73a26f60c4a63978eac6523c57731d54fff22de3c5eddb3ad11173ee9b27d5f6"
+  },
+  {
+    "block_id": "BLK-BEA2BF29FA87",
+    "index": 1388,
+    "timestamp": "2026-03-06T09:03:38.700097+00:00",
+    "previous_hash": "ae420914d9dc2a53d38b58c78f423c39e8d73f8dc9bbb795e3565f644b16f1d0",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-5C37C91367DA",
+      "user": "auditor_01",
+      "metadata": {
+        "transaction_id": "TX-5C37C91367DA",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:03:38.596385+00:00"
+      }
+    },
+    "hash": "f2ed9fc439b42d071be5d18ba7e25db2e36f52c0f99bf6567e0e0b8eeebc190e",
+    "signature": "a50cc61617a56b8aa3b6a8fffe1eff9ac5d326b80cae1cb51500601725d7e688"
+  },
+  {
+    "block_id": "BLK-49443665A8A9",
+    "index": 1389,
+    "timestamp": "2026-03-06T09:03:38.891151+00:00",
+    "previous_hash": "f2ed9fc439b42d071be5d18ba7e25db2e36f52c0f99bf6567e0e0b8eeebc190e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-15D99714D008",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-15D99714D008",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:38.793043+00:00"
+      }
+    },
+    "hash": "25803e491566efd5579beeab6a043c5721d9e0c951f043c23454b575c430da98",
+    "signature": "b10e01db91be9a774ee34364f41bbd85facaf0cde868136b82f67e0bcbd8d457"
+  },
+  {
+    "block_id": "BLK-75473D76F564",
+    "index": 1390,
+    "timestamp": "2026-03-06T09:03:39.055446+00:00",
+    "previous_hash": "25803e491566efd5579beeab6a043c5721d9e0c951f043c23454b575c430da98",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-1A4B6654D323",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-1A4B6654D323",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:38.956093+00:00"
+      }
+    },
+    "hash": "94ea2ccb2383ba6481b65a7d9685e997a417c3b2435f48e613a01d9a70ba8636",
+    "signature": "bcbcfc06350e3664e4e6b2be67f4e21760ffed0bde0e77d890bf11f0a8bc8428"
+  },
+  {
+    "block_id": "BLK-241F84C58621",
+    "index": 1391,
+    "timestamp": "2026-03-06T09:03:39.225032+00:00",
+    "previous_hash": "94ea2ccb2383ba6481b65a7d9685e997a417c3b2435f48e613a01d9a70ba8636",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-11D37034E0D9",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-11D37034E0D9",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:39.125766+00:00"
+      }
+    },
+    "hash": "56fb0a8aa1ce4a76f54c3ae9d6669abe74dae126ab48bb25acd7d771ecb2c806",
+    "signature": "ceb695dd871c3cfefd535ee80b734bcf03481c8832612e82c0597dee39e702eb"
+  },
+  {
+    "block_id": "BLK-9556E220AC24",
+    "index": 1392,
+    "timestamp": "2026-03-06T09:03:43.633691+00:00",
+    "previous_hash": "56fb0a8aa1ce4a76f54c3ae9d6669abe74dae126ab48bb25acd7d771ecb2c806",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-28AB17F1A33D",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-28AB17F1A33D",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:43.551672+00:00"
+      }
+    },
+    "hash": "0422cd6480ecfbb3cac6ca2a8b48921ced81d2ddecad8aa7e6314d3a265ebd58",
+    "signature": "d11512311d020cad84ddb2d6716f8af5ecfa2b70916ebfad22f097b34d093fae"
+  },
+  {
+    "block_id": "BLK-D03B3B857248",
+    "index": 1393,
+    "timestamp": "2026-03-06T09:03:43.788314+00:00",
+    "previous_hash": "0422cd6480ecfbb3cac6ca2a8b48921ced81d2ddecad8aa7e6314d3a265ebd58",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-C30F3D1E5172",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-C30F3D1E5172",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:43.702238+00:00"
+      }
+    },
+    "hash": "1d65bc5ad21b682dbacf9ed93dd2d3fdf51c4cd8fd93c21aa467f2a76a114e8f",
+    "signature": "8be6c8ec2a5260dc3776411762cc967660a426de7b92dda3fcf58f0536adb423"
+  },
+  {
+    "block_id": "BLK-CC93E659B853",
+    "index": 1394,
+    "timestamp": "2026-03-06T09:03:43.947181+00:00",
+    "previous_hash": "1d65bc5ad21b682dbacf9ed93dd2d3fdf51c4cd8fd93c21aa467f2a76a114e8f",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-7D4168DFF8B0",
+      "user": "auditor",
+      "metadata": {
+        "transaction_id": "TX-7D4168DFF8B0",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:03:43.858213+00:00"
+      }
+    },
+    "hash": "bf7dbbbe62240e8095fa71a45e68808862435e533636e9b28372bd171cd17ef9",
+    "signature": "00969ee8798518e2ac335ccfa56c451b583aae0c4d47cb82f6d9c1ffcc0d2a23"
+  },
+  {
+    "block_id": "BLK-EE217D4D250C",
+    "index": 1395,
+    "timestamp": "2026-03-06T09:04:27.912673+00:00",
+    "previous_hash": "bf7dbbbe62240e8095fa71a45e68808862435e533636e9b28372bd171cd17ef9",
+    "data": {
+      "action": "Login Successful | user=board_01 | role=board_member | branch=All | mfa_required=True",
+      "user": "board_01",
+      "metadata": {
+        "department": "Board of Directors",
+        "branch": "All",
+        "region": "All",
+        "canonical_role": "board_member",
+        "mfa_required": true
+      }
+    },
+    "hash": "75a05f25bdcdd71733afa6e7e16dbf103918d328b429ee4ef0e89e35151d1298",
+    "signature": "e6d924359f6fb0f5e909020ba6eb9fd73789ae48c260f001268c232dec53bdb2"
+  },
+  {
+    "block_id": "BLK-89271C3E65E0",
+    "index": 1396,
+    "timestamp": "2026-03-06T09:04:34.917210+00:00",
+    "previous_hash": "75a05f25bdcdd71733afa6e7e16dbf103918d328b429ee4ef0e89e35151d1298",
+    "data": {
+      "action": "OTP Verified | user=board_01 | role=board_member",
+      "user": "board_01",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "c2a9efa9b93265c87b630b49355d1cd331441e12640bc0d8785a13689d1ac31e",
+    "signature": "6e049137a3b009efec47bc923a648be74323b67190a53bc4f74debbd68532279"
+  },
+  {
+    "block_id": "BLK-871F123F730E",
+    "index": 1397,
+    "timestamp": "2026-03-06T09:05:50.190648+00:00",
+    "previous_hash": "c2a9efa9b93265c87b630b49355d1cd331441e12640bc0d8785a13689d1ac31e",
+    "data": {
+      "action": "Login Successful | user=dpo_admin | role=dpo | branch=All | mfa_required=True",
+      "user": "dpo_admin",
+      "metadata": {
+        "department": "Data Protection Office",
+        "branch": "All",
+        "region": "All",
+        "canonical_role": "dpo",
+        "mfa_required": true
+      }
+    },
+    "hash": "a4f6fd3ea54fe615b6b621b913dd3f7b36c6565ae6eac49042b29a503933ffbd",
+    "signature": "9fd2d733047575fe5007a96b5dcf1b6a12c8cd83ca4be38f950b4183d951071f"
+  },
+  {
+    "block_id": "BLK-0EF0F770AA5F",
+    "index": 1398,
+    "timestamp": "2026-03-06T09:05:57.574423+00:00",
+    "previous_hash": "a4f6fd3ea54fe615b6b621b913dd3f7b36c6565ae6eac49042b29a503933ffbd",
+    "data": {
+      "action": "OTP Verified | user=dpo_admin | role=dpo",
+      "user": "dpo_admin",
+      "metadata": {
+        "mfa_verified": true
+      }
+    },
+    "hash": "9a5490d857fb5ebe6051eeea5ed0bfadee0871664241e382e5e153432a9db1fa",
+    "signature": "422b9ec551226f9889878809d0b35700c06662f5fe5ef7a8194dcd5cea397e1c"
+  },
+  {
+    "block_id": "BLK-83664187EDD3",
+    "index": 1399,
+    "timestamp": "2026-03-06T09:05:58.253126+00:00",
+    "previous_hash": "9a5490d857fb5ebe6051eeea5ed0bfadee0871664241e382e5e153432a9db1fa",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-62335B5C8B0F",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-62335B5C8B0F",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:05:58.150805+00:00"
+      }
+    },
+    "hash": "55a0a3404334a48f2db6ab924a1f2eeffcefffd218970deee16b60351bc3d7fc",
+    "signature": "93c376b33ee6371f9505b91a49da9209fc1be2ee392518b78ae99f9ac2d6aaa0"
+  },
+  {
+    "block_id": "BLK-8977969F0354",
+    "index": 1400,
+    "timestamp": "2026-03-06T09:05:58.451667+00:00",
+    "previous_hash": "55a0a3404334a48f2db6ab924a1f2eeffcefffd218970deee16b60351bc3d7fc",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D1C1DA4D203B",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D1C1DA4D203B",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:05:58.352813+00:00"
+      }
+    },
+    "hash": "1d10ecbda18a77dbb33406ceae39bbdbccd89012ec914af25f2ffb139d8bbf45",
+    "signature": "fa64ca887357531d13824d95262f900c510f2171b6ce2c4cdc085e2ca2d6cac3"
+  },
+  {
+    "block_id": "BLK-BCDD13FE74FC",
+    "index": 1401,
+    "timestamp": "2026-03-06T09:05:58.635763+00:00",
+    "previous_hash": "1d10ecbda18a77dbb33406ceae39bbdbccd89012ec914af25f2ffb139d8bbf45",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-1BB8905385CA",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-1BB8905385CA",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:05:58.542494+00:00"
+      }
+    },
+    "hash": "2bca1c4a70a456a9dda38ad5ed42aaa1426aa689a76285f95b8ad150a4718ee6",
+    "signature": "7899dfdfcfd13db64956ebb90abc167ae6784b2302b61b00672b4214e6f59253"
+  },
+  {
+    "block_id": "BLK-B97192A6F47E",
+    "index": 1402,
+    "timestamp": "2026-03-06T09:05:59.168987+00:00",
+    "previous_hash": "2bca1c4a70a456a9dda38ad5ed42aaa1426aa689a76285f95b8ad150a4718ee6",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-EA71BB1BDC9F",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-EA71BB1BDC9F",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:05:59.065395+00:00"
+      }
+    },
+    "hash": "61454b18ef4a635ea70a7a597cbb0d9a63b64550d97bba93bf9a284cbcb2e8b5",
+    "signature": "9619e0d1637b01c8a8f9735758fe9ff21a5466017829fd6d883e3aa150be387c"
+  },
+  {
+    "block_id": "BLK-844D20540520",
+    "index": 1403,
+    "timestamp": "2026-03-06T09:06:38.245367+00:00",
+    "previous_hash": "61454b18ef4a635ea70a7a597cbb0d9a63b64550d97bba93bf9a284cbcb2e8b5",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-F2A5DD679326",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-F2A5DD679326",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:38.148903+00:00"
+      }
+    },
+    "hash": "6751e7d9afcc09d4d17aecc1b511ab653d34e0163584643273761289380fe329",
+    "signature": "52d0771c0ec121371b0cc141c37cb0811650c5501cd6cb8cee2abefebdb20473"
+  },
+  {
+    "block_id": "BLK-D9C599E0EB21",
+    "index": 1404,
+    "timestamp": "2026-03-06T09:06:38.527635+00:00",
+    "previous_hash": "6751e7d9afcc09d4d17aecc1b511ab653d34e0163584643273761289380fe329",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-526A7C429567",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-526A7C429567",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:38.441959+00:00"
+      }
+    },
+    "hash": "4e4be8edb763340e41ff7157f15e9bb50b47eb0d83ebd57d8c53067bc4ed3d10",
+    "signature": "854331a7e29504137c0c72ce629bb21e690ee59123a53763ce7890c6ade89556"
+  },
+  {
+    "block_id": "BLK-B835858D97DF",
+    "index": 1405,
+    "timestamp": "2026-03-06T09:06:38.820162+00:00",
+    "previous_hash": "4e4be8edb763340e41ff7157f15e9bb50b47eb0d83ebd57d8c53067bc4ed3d10",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-9CA0A0E11A35",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-9CA0A0E11A35",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:38.761049+00:00"
+      }
+    },
+    "hash": "31015f37baef213035ec4db5c4dfa4388ee0d2601dac6f24f7ebcc6ef2ad226c",
+    "signature": "b84ddedd99e1f4c85a78395c2e77d3fd3f464d1e71a44a9b20236a5f26ae1eb0"
+  },
+  {
+    "block_id": "BLK-2B5E76BD3FF8",
+    "index": 1406,
+    "timestamp": "2026-03-06T09:06:38.983502+00:00",
+    "previous_hash": "31015f37baef213035ec4db5c4dfa4388ee0d2601dac6f24f7ebcc6ef2ad226c",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D3D6042E5DB5",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D3D6042E5DB5",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:38.916904+00:00"
+      }
+    },
+    "hash": "8101c7580181817beaab9df99937820656af3d19b3d4c06d1d577eb495563fcb",
+    "signature": "4e1e682a902856d07c83c2c923b047396bb4dc24dff31dd4bf6bdc5208e61802"
+  },
+  {
+    "block_id": "BLK-AB78BE189C00",
+    "index": 1407,
+    "timestamp": "2026-03-06T09:06:39.259718+00:00",
+    "previous_hash": "8101c7580181817beaab9df99937820656af3d19b3d4c06d1d577eb495563fcb",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-3E1A38E239AE",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-3E1A38E239AE",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:06:39.205183+00:00"
+      }
+    },
+    "hash": "213af777f3d0ea1d8533143d77a7341dfefc8eca5b4c8b4308830aaec3962906",
+    "signature": "fe273c07a3d1fe8ca7ef9bb6ba0fb98332511d4f6c151c06502c1f8a42933abd"
+  },
+  {
+    "block_id": "BLK-FE88F6A349BC",
+    "index": 1408,
+    "timestamp": "2026-03-06T09:06:43.449780+00:00",
+    "previous_hash": "213af777f3d0ea1d8533143d77a7341dfefc8eca5b4c8b4308830aaec3962906",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-9EB90C8594A8",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-9EB90C8594A8",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:43.389258+00:00"
+      }
+    },
+    "hash": "48d95e8af3201b39e159daf0f8a9ba6ca02e8078142158f3626d28376adcecf0",
+    "signature": "c0699397c8a97bdfae087041977c18086db4fc06880bb0520acfc7f2ef2b9ee4"
+  },
+  {
+    "block_id": "BLK-F602F0C44C4C",
+    "index": 1409,
+    "timestamp": "2026-03-06T09:06:43.578906+00:00",
+    "previous_hash": "48d95e8af3201b39e159daf0f8a9ba6ca02e8078142158f3626d28376adcecf0",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-CAC33F01E0DF",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-CAC33F01E0DF",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:43.515511+00:00"
+      }
+    },
+    "hash": "81974f451156aa378618f082aa045853ff9b51d23786aa4886655415ee7d705e",
+    "signature": "43b8285c370a322090f1c95fa503f5fd58d3d4bb4f467f71dac54856b6c4d7a4"
+  },
+  {
+    "block_id": "BLK-96D53B3078C6",
+    "index": 1410,
+    "timestamp": "2026-03-06T09:06:43.701696+00:00",
+    "previous_hash": "81974f451156aa378618f082aa045853ff9b51d23786aa4886655415ee7d705e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-FE53E27882EF",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-FE53E27882EF",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:43.642041+00:00"
+      }
+    },
+    "hash": "90a8bf45af5986484406ce4fdcc3c6bd8fba9806b40f98421a7ba1066e9ed9f3",
+    "signature": "528391cc28a321f42f2e2f2352b5094eb9e03ac25633309b35d3b5e56f6ae7e4"
+  },
+  {
+    "block_id": "BLK-F89280A70969",
+    "index": 1411,
+    "timestamp": "2026-03-06T09:06:43.930159+00:00",
+    "previous_hash": "90a8bf45af5986484406ce4fdcc3c6bd8fba9806b40f98421a7ba1066e9ed9f3",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-ADA969787197",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-ADA969787197",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:06:43.879256+00:00"
+      }
+    },
+    "hash": "c1b44eb8833e9dd59102ab6bebdd292a12349573a781c54d5c1f95882984a9c6",
+    "signature": "56e3818046f26fae88188e8986a34efae1e6de83480451bc4fb492993dd49091"
+  },
+  {
+    "block_id": "BLK-3E753E203F33",
+    "index": 1412,
+    "timestamp": "2026-03-06T09:06:48.473368+00:00",
+    "previous_hash": "c1b44eb8833e9dd59102ab6bebdd292a12349573a781c54d5c1f95882984a9c6",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D8BC9898F8C8",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D8BC9898F8C8",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:48.396072+00:00"
+      }
+    },
+    "hash": "4a1bb66af274f918d1e399476510b3d35c22bf44085d053590c1411433079613",
+    "signature": "70e137d33568532c97aed7de15b2cd9d2ebbdb177f255c0c027406045ee08245"
+  },
+  {
+    "block_id": "BLK-E94324B15793",
+    "index": 1413,
+    "timestamp": "2026-03-06T09:06:48.601794+00:00",
+    "previous_hash": "4a1bb66af274f918d1e399476510b3d35c22bf44085d053590c1411433079613",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-43841597B48E",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-43841597B48E",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:48.536302+00:00"
+      }
+    },
+    "hash": "6c520b4bce8d7387048c30b5e664cefff2435843259c6fc095a4c0ab071b4183",
+    "signature": "044f6476fb6f965b30a828aa6e36f3aede460b2d16a1d8687f8728afc0b11129"
+  },
+  {
+    "block_id": "BLK-C721D7ACEC6A",
+    "index": 1414,
+    "timestamp": "2026-03-06T09:06:48.731063+00:00",
+    "previous_hash": "6c520b4bce8d7387048c30b5e664cefff2435843259c6fc095a4c0ab071b4183",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-4E9644671865",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-4E9644671865",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:48.668052+00:00"
+      }
+    },
+    "hash": "72ffbc1220f9f661aaea66fa77e84ec12a69d72b67c072d25a25d7675ce30ad3",
+    "signature": "fc9eb589843f53ee50963a3ded7db2ec92af51a724f281f1572dacef5cb13eeb"
+  },
+  {
+    "block_id": "BLK-A792D5E01A6B",
+    "index": 1415,
+    "timestamp": "2026-03-06T09:06:48.968435+00:00",
+    "previous_hash": "72ffbc1220f9f661aaea66fa77e84ec12a69d72b67c072d25a25d7675ce30ad3",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-C011F69C8394",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-C011F69C8394",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:06:48.909268+00:00"
+      }
+    },
+    "hash": "43bd9547608f752fbfd0e2129413b7783dd8a064eb3c109ea14c02b955ffa641",
+    "signature": "8d95bd4ede8f75ada478e154cafbe2b1f00c86e37bca7775e92c015048566e43"
+  },
+  {
+    "block_id": "BLK-4A2C0A69D16A",
+    "index": 1416,
+    "timestamp": "2026-03-06T09:06:53.467417+00:00",
+    "previous_hash": "43bd9547608f752fbfd0e2129413b7783dd8a064eb3c109ea14c02b955ffa641",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-194667B27DAA",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-194667B27DAA",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:53.407546+00:00"
+      }
+    },
+    "hash": "d4bf033aa11698327032e971d82a10e641cf951a9edb1ef164562a2207ff5d08",
+    "signature": "e0db1ad394e080a6045e28f83d50b038fa653b74bb87f9393c14134cfaf6a32f"
+  },
+  {
+    "block_id": "BLK-9C2E8E704893",
+    "index": 1417,
+    "timestamp": "2026-03-06T09:06:53.588834+00:00",
+    "previous_hash": "d4bf033aa11698327032e971d82a10e641cf951a9edb1ef164562a2207ff5d08",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-E03F2E6874A5",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-E03F2E6874A5",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:53.539801+00:00"
+      }
+    },
+    "hash": "1133d005aaa6c797c91ac8d3b29ba4c71f5c3f11e19bc8f7f41fff1330310e5d",
+    "signature": "0ca9fabcfab04849fd21a9c11cd67a43747002c17aa04b909424b33a156f3a30"
+  },
+  {
+    "block_id": "BLK-6AFF525CCE39",
+    "index": 1418,
+    "timestamp": "2026-03-06T09:06:53.728204+00:00",
+    "previous_hash": "1133d005aaa6c797c91ac8d3b29ba4c71f5c3f11e19bc8f7f41fff1330310e5d",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-DAF38E8839D3",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-DAF38E8839D3",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:53.659279+00:00"
+      }
+    },
+    "hash": "02bf246c471285d4f0c066bd414c2156f7de77aa7f1bbc10b88fe75d0c8d0808",
+    "signature": "37bf3b99843226e29c9aae5f9c64882b61bee916422484b03e0b5d109160db8a"
+  },
+  {
+    "block_id": "BLK-92043D829929",
+    "index": 1419,
+    "timestamp": "2026-03-06T09:06:53.986032+00:00",
+    "previous_hash": "02bf246c471285d4f0c066bd414c2156f7de77aa7f1bbc10b88fe75d0c8d0808",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-D935B15991D6",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-D935B15991D6",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:06:53.911165+00:00"
+      }
+    },
+    "hash": "7cf9627bc70fc71d38b7ca4a7de007ed9e51ab5ef28e3149dc476a843eb7c672",
+    "signature": "35e43465dcc7ef0c6cbab7442e745bbbf4d2924cf69e68d206a158694ecd65ec"
+  },
+  {
+    "block_id": "BLK-C2ACDA0A7E29",
+    "index": 1420,
+    "timestamp": "2026-03-06T09:06:58.490333+00:00",
+    "previous_hash": "7cf9627bc70fc71d38b7ca4a7de007ed9e51ab5ef28e3149dc476a843eb7c672",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-6A33B017409E",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-6A33B017409E",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:58.414962+00:00"
+      }
+    },
+    "hash": "e359608ba749325b13197368c44e29d4c5318e613afcebda3c055cabfc697673",
+    "signature": "91611ba1650b40136e68731169b9e52cd952035519534494f23f8ac2e6b777b5"
+  },
+  {
+    "block_id": "BLK-759491D37646",
+    "index": 1421,
+    "timestamp": "2026-03-06T09:06:58.613810+00:00",
+    "previous_hash": "e359608ba749325b13197368c44e29d4c5318e613afcebda3c055cabfc697673",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-A3CDDB4408BD",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-A3CDDB4408BD",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:58.550421+00:00"
+      }
+    },
+    "hash": "3d69112ea12c2e63b941043f5c92c5ae41aad102d109e7cfbae8214ef4ea7a4d",
+    "signature": "bd9533a0d1c55aae804d4942603f818267b44e8f020e2cfcecddcd75e8704a8b"
+  },
+  {
+    "block_id": "BLK-1D5426661EB1",
+    "index": 1422,
+    "timestamp": "2026-03-06T09:06:58.745990+00:00",
+    "previous_hash": "3d69112ea12c2e63b941043f5c92c5ae41aad102d109e7cfbae8214ef4ea7a4d",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-4F41D89AFFE6",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-4F41D89AFFE6",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:06:58.682575+00:00"
+      }
+    },
+    "hash": "b3d0c6d7c7e1e541f8dd8df7ea7a752570c64eaec928d4fd3c93fff01fd24191",
+    "signature": "3c83924af5414b77208071f97d6cad9492e19d260d6a084ecdf5f9b854644bd9"
+  },
+  {
+    "block_id": "BLK-6287752C407F",
+    "index": 1423,
+    "timestamp": "2026-03-06T09:06:59.042773+00:00",
+    "previous_hash": "b3d0c6d7c7e1e541f8dd8df7ea7a752570c64eaec928d4fd3c93fff01fd24191",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-5D712B9091E8",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-5D712B9091E8",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:06:58.980677+00:00"
+      }
+    },
+    "hash": "4a54bb8c309a43bee4f080a73d331f9f00edf0dd9f100385b52929bd888a6c52",
+    "signature": "e26a8e8a9b0b70d03c766c63423d5debf27ed7e6a4dfe4f875774db0239cdec4"
+  },
+  {
+    "block_id": "BLK-B9EC3411C96A",
+    "index": 1424,
+    "timestamp": "2026-03-06T09:07:03.451266+00:00",
+    "previous_hash": "4a54bb8c309a43bee4f080a73d331f9f00edf0dd9f100385b52929bd888a6c52",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-B31980016897",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-B31980016897",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:03.383524+00:00"
+      }
+    },
+    "hash": "3ea385fccb834d0803f604b33b6872e41d26db7c99ef4f36615ca1c304debce4",
+    "signature": "4c0c87416829cf057ddc5dfd9e896d8c9ef730cae0ab7fb115494c2ecde43adc"
+  },
+  {
+    "block_id": "BLK-E4D259D3FB39",
+    "index": 1425,
+    "timestamp": "2026-03-06T09:07:03.584555+00:00",
+    "previous_hash": "3ea385fccb834d0803f604b33b6872e41d26db7c99ef4f36615ca1c304debce4",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-48561EBB9B8C",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-48561EBB9B8C",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:03.521504+00:00"
+      }
+    },
+    "hash": "b27c27e1af09c9d1ea32f4efa53779a90754c3773baf22452b0c73b01d1a0c71",
+    "signature": "6b505f84c34897953e9c3fc23a24559da7b8956e3259ad43de18d7b0d8d99dac"
+  },
+  {
+    "block_id": "BLK-18095637FC80",
+    "index": 1426,
+    "timestamp": "2026-03-06T09:07:03.719524+00:00",
+    "previous_hash": "b27c27e1af09c9d1ea32f4efa53779a90754c3773baf22452b0c73b01d1a0c71",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-FCA1E69FC723",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-FCA1E69FC723",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:03.653797+00:00"
+      }
+    },
+    "hash": "eac5d98ef730a768ab0a6aa11c1ad458e8738c24d8ad750a2c219b43bacd34e0",
+    "signature": "1aab91e6fc065f5d9192950bd7bc31a5bdf173e134387dd0aa92e354a211bcc5"
+  },
+  {
+    "block_id": "BLK-831538A4AE49",
+    "index": 1427,
+    "timestamp": "2026-03-06T09:07:03.950148+00:00",
+    "previous_hash": "eac5d98ef730a768ab0a6aa11c1ad458e8738c24d8ad750a2c219b43bacd34e0",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-D8BFAB85A555",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-D8BFAB85A555",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:03.883136+00:00"
+      }
+    },
+    "hash": "31ba5a768030b8c0a596a2dfc66d76b46949c5ea051ab5b9be1c6e928b0445c4",
+    "signature": "da4ed2f19a744afcc5ddcfa16f0664595631427c98cb2059dc658b66e187f7bd"
+  },
+  {
+    "block_id": "BLK-98B7597137B1",
+    "index": 1428,
+    "timestamp": "2026-03-06T09:07:08.749315+00:00",
+    "previous_hash": "31ba5a768030b8c0a596a2dfc66d76b46949c5ea051ab5b9be1c6e928b0445c4",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D3659E8F8E8D",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D3659E8F8E8D",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:08.683506+00:00"
+      }
+    },
+    "hash": "152a023f81905e8483f9a49ecbc25d450212ac85f7fee3e321c8f1d94ecd88ab",
+    "signature": "38f1984b05b43ec11ba80aac17b860c914cd8d3ec82f681256a8887069d84db9"
+  },
+  {
+    "block_id": "BLK-1DE97EBA1364",
+    "index": 1429,
+    "timestamp": "2026-03-06T09:07:08.868478+00:00",
+    "previous_hash": "152a023f81905e8483f9a49ecbc25d450212ac85f7fee3e321c8f1d94ecd88ab",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-0DEFFDABEBE4",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-0DEFFDABEBE4",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:08.813941+00:00"
+      }
+    },
+    "hash": "c8003bd06bd646c22fd081e78eb157046957f5ac571f9033cc60b32e75856219",
+    "signature": "77189065ec16b5ae1e85a2dbc19adce7c96c39e7382fb5f119c823e9da766642"
+  },
+  {
+    "block_id": "BLK-F88DD7EF1EF0",
+    "index": 1430,
+    "timestamp": "2026-03-06T09:07:09.026646+00:00",
+    "previous_hash": "c8003bd06bd646c22fd081e78eb157046957f5ac571f9033cc60b32e75856219",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-C6743587ED0D",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-C6743587ED0D",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:08.943992+00:00"
+      }
+    },
+    "hash": "9f56c7e03a2a82ffd07ff4229cc91f74820b977af6ca1542d4b9d2afde31460a",
+    "signature": "71a78d2e0994c7373ec40de276bc82323ad337f853c63c10ab2c53d036dee09d"
+  },
+  {
+    "block_id": "BLK-EA465855580E",
+    "index": 1431,
+    "timestamp": "2026-03-06T09:07:09.322697+00:00",
+    "previous_hash": "9f56c7e03a2a82ffd07ff4229cc91f74820b977af6ca1542d4b9d2afde31460a",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-E75E6A7BC222",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-E75E6A7BC222",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:09.255113+00:00"
+      }
+    },
+    "hash": "be9bb64b27d4fb13716c6f0e37e27f681dfc579a013f730b8a0288c0c6c0bb78",
+    "signature": "0367d6aa40948c58489531d94964d6afed6202567ef5574d986ef8a1d4aecbb8"
+  },
+  {
+    "block_id": "BLK-5CB2A0B84226",
+    "index": 1432,
+    "timestamp": "2026-03-06T09:07:13.475821+00:00",
+    "previous_hash": "be9bb64b27d4fb13716c6f0e37e27f681dfc579a013f730b8a0288c0c6c0bb78",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-1587278C1CA2",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-1587278C1CA2",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:13.417220+00:00"
+      }
+    },
+    "hash": "41657c362f4600fd5be5c4408f0d3b8a5231a159e07b011a9b41ba46062ec9ee",
+    "signature": "83b028f1a93004d5f005a205c491004ef91d751510ab0fddc3a2cfdaadf32ff1"
+  },
+  {
+    "block_id": "BLK-933809B37F55",
+    "index": 1433,
+    "timestamp": "2026-03-06T09:07:13.604583+00:00",
+    "previous_hash": "41657c362f4600fd5be5c4408f0d3b8a5231a159e07b011a9b41ba46062ec9ee",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-94BF88ADA087",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-94BF88ADA087",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:13.549164+00:00"
+      }
+    },
+    "hash": "c94d9990f268dce14545780f7e01ae27e6abfbab575cec30bbacebb6e8c7bc06",
+    "signature": "da44862e895262fdda0ec7901d61b5d407352aea367a1680d0cd03d55485d6ec"
+  },
+  {
+    "block_id": "BLK-FB03D03AC255",
+    "index": 1434,
+    "timestamp": "2026-03-06T09:07:13.721708+00:00",
+    "previous_hash": "c94d9990f268dce14545780f7e01ae27e6abfbab575cec30bbacebb6e8c7bc06",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-38E6F27C5DAB",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-38E6F27C5DAB",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:13.671274+00:00"
+      }
+    },
+    "hash": "3acf21df58214e7b68e3ca725cc5133983978ed4a6d7ef84ccb28e3f96d290ca",
+    "signature": "8814b44ac9932ba71928232c9c1d77b8a5ea2c0cf64bac8c21316101911710f6"
+  },
+  {
+    "block_id": "BLK-96EACD66B69A",
+    "index": 1435,
+    "timestamp": "2026-03-06T09:07:13.947244+00:00",
+    "previous_hash": "3acf21df58214e7b68e3ca725cc5133983978ed4a6d7ef84ccb28e3f96d290ca",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-4064AD52D463",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-4064AD52D463",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:13.902797+00:00"
+      }
+    },
+    "hash": "40c132200f344abe40bb3099dbbf6d96f3dc6f47846bf0cfef9fc6d572c4561c",
+    "signature": "2d2996b6ca5b9464414a2238b7ffe1f1047355667dcf65a41de804a4bdc1b9da"
+  },
+  {
+    "block_id": "BLK-933FB7C5BCDE",
+    "index": 1436,
+    "timestamp": "2026-03-06T09:07:18.451698+00:00",
+    "previous_hash": "40c132200f344abe40bb3099dbbf6d96f3dc6f47846bf0cfef9fc6d572c4561c",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D6DFABB971AC",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D6DFABB971AC",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:18.398261+00:00"
+      }
+    },
+    "hash": "0e33ac94637bb65b91d550618274e44a67851ed8d20ef236de1f6433024be450",
+    "signature": "68400c7d569ec845535b645e8d39d38af0eaa7762f0784854762ad5fcd5f81c8"
+  },
+  {
+    "block_id": "BLK-18249B769D2B",
+    "index": 1437,
+    "timestamp": "2026-03-06T09:07:18.584147+00:00",
+    "previous_hash": "0e33ac94637bb65b91d550618274e44a67851ed8d20ef236de1f6433024be450",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-C81A4A30D3FB",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-C81A4A30D3FB",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:18.525413+00:00"
+      }
+    },
+    "hash": "08160c82df34c90d4ef39b7e431b5125f0f1b89cba0b6c6308170acd3a93369c",
+    "signature": "01854919f6f2dfc24bce25dd7c0217bacacb5ccf13406313aed94236a4982ecc"
+  },
+  {
+    "block_id": "BLK-BD44CA29E18E",
+    "index": 1438,
+    "timestamp": "2026-03-06T09:07:18.714932+00:00",
+    "previous_hash": "08160c82df34c90d4ef39b7e431b5125f0f1b89cba0b6c6308170acd3a93369c",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-01A7E4645A47",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-01A7E4645A47",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:18.658341+00:00"
+      }
+    },
+    "hash": "08a49c0f1fe96ce0c1d65f1b336b4e08fb0c2b81c2913e6a17ff4199e105e67d",
+    "signature": "28ada6ad85aed4d20c64150b6c0fe2f1f72847149eaafed89ed8cc332db90c2a"
+  },
+  {
+    "block_id": "BLK-122020C24B0B",
+    "index": 1439,
+    "timestamp": "2026-03-06T09:07:18.948846+00:00",
+    "previous_hash": "08a49c0f1fe96ce0c1d65f1b336b4e08fb0c2b81c2913e6a17ff4199e105e67d",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-A695C5BBD907",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-A695C5BBD907",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:18.888948+00:00"
+      }
+    },
+    "hash": "2a28eb704326536625e8ea17220c708af0f1a15f663b4cfa01a1c4ad48eb9b7b",
+    "signature": "8a8396c5734587db172a116bc77694f37cb654ad52ed015851c26c9fbe6a59fa"
+  },
+  {
+    "block_id": "BLK-2B82BD5125CC",
+    "index": 1440,
+    "timestamp": "2026-03-06T09:07:23.434572+00:00",
+    "previous_hash": "2a28eb704326536625e8ea17220c708af0f1a15f663b4cfa01a1c4ad48eb9b7b",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-CB64A89611E3",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-CB64A89611E3",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:23.386379+00:00"
+      }
+    },
+    "hash": "e4a8e852d4bcc7cb395f4f07d1590e02b58e106d3170e23b8e9a12c6636c8494",
+    "signature": "1019988dbcdebe1fc611893ed7e62297f33c8abbaaaa36c264adc74a647c54f8"
+  },
+  {
+    "block_id": "BLK-FE14EC71A85B",
+    "index": 1441,
+    "timestamp": "2026-03-06T09:07:23.556055+00:00",
+    "previous_hash": "e4a8e852d4bcc7cb395f4f07d1590e02b58e106d3170e23b8e9a12c6636c8494",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-7A01871F6A02",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-7A01871F6A02",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:23.506716+00:00"
+      }
+    },
+    "hash": "b64d8a6379bdec34c19454217a42655cae36eec390e755d429c47499a2400e11",
+    "signature": "07cec02fc3a6de0df20be3e2b5c62668cc57099ee79829b6f12e492ff926d81d"
+  },
+  {
+    "block_id": "BLK-E84BB45531B5",
+    "index": 1442,
+    "timestamp": "2026-03-06T09:07:23.668575+00:00",
+    "previous_hash": "b64d8a6379bdec34c19454217a42655cae36eec390e755d429c47499a2400e11",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-9B41C496F660",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-9B41C496F660",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:23.616293+00:00"
+      }
+    },
+    "hash": "b25aa14794962ecf994957e27fa48ee343d344b4deff8ceb62ee6710edfd629c",
+    "signature": "20c5645ae7509bad321300147f912dfcaed9eb9c15a14e1e5efd4c1648baf5a5"
+  },
+  {
+    "block_id": "BLK-B6098AD33AA7",
+    "index": 1443,
+    "timestamp": "2026-03-06T09:07:23.878449+00:00",
+    "previous_hash": "b25aa14794962ecf994957e27fa48ee343d344b4deff8ceb62ee6710edfd629c",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-475207E8391D",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-475207E8391D",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:23.822129+00:00"
+      }
+    },
+    "hash": "fc7779856020beeeca2022a7d5adebb168f43a9e052163a7492bfe7430e74c2d",
+    "signature": "483150417cacbf47172444a5a634fed17339fa2f6ce46b42079f1ffbee778936"
+  },
+  {
+    "block_id": "BLK-333353AB8513",
+    "index": 1444,
+    "timestamp": "2026-03-06T09:07:28.450582+00:00",
+    "previous_hash": "fc7779856020beeeca2022a7d5adebb168f43a9e052163a7492bfe7430e74c2d",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-6362487BD567",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-6362487BD567",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:28.393582+00:00"
+      }
+    },
+    "hash": "890f44bb641f89f3a0f4e64cc18ff4e954191e0656069c953752bf83f3136bd5",
+    "signature": "f42efe926779c1f4b0b32b22376d114633f9804d28bd4274408a1b7394152157"
+  },
+  {
+    "block_id": "BLK-8903315F9EA7",
+    "index": 1445,
+    "timestamp": "2026-03-06T09:07:28.598457+00:00",
+    "previous_hash": "890f44bb641f89f3a0f4e64cc18ff4e954191e0656069c953752bf83f3136bd5",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-42DA3BC6C914",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-42DA3BC6C914",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:28.529954+00:00"
+      }
+    },
+    "hash": "2204476c8c3ed4f583a18b4f622a5bb5f2a30efbf30c57150deec31bd58a8f47",
+    "signature": "6ea79c91bb82c6cf4440672da08134ffef891fa7704f5748287ed281a5f537b8"
+  },
+  {
+    "block_id": "BLK-4CD2BC5D598E",
+    "index": 1446,
+    "timestamp": "2026-03-06T09:07:28.716645+00:00",
+    "previous_hash": "2204476c8c3ed4f583a18b4f622a5bb5f2a30efbf30c57150deec31bd58a8f47",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-E69718382717",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-E69718382717",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:28.665443+00:00"
+      }
+    },
+    "hash": "adaac4bb32b12c838687221741081a731736214024a5971a625b015e9d06e6cb",
+    "signature": "6df946d75cde170d89412d22fdb27fafa7cc752d52f4c90ae9371335f04fe9f4"
+  },
+  {
+    "block_id": "BLK-8FAD25AA9239",
+    "index": 1447,
+    "timestamp": "2026-03-06T09:07:28.966181+00:00",
+    "previous_hash": "adaac4bb32b12c838687221741081a731736214024a5971a625b015e9d06e6cb",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-8837F07DB7FA",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-8837F07DB7FA",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:28.899276+00:00"
+      }
+    },
+    "hash": "1056113b8ef53c135ace93b265b961250bd2f0d794d424868c67db1306ca4edb",
+    "signature": "9869eb0329c35994227263c29c905b2282961a8a973a7fc13a83822c81e92210"
+  },
+  {
+    "block_id": "BLK-CD02CE0469D9",
+    "index": 1448,
+    "timestamp": "2026-03-06T09:07:33.466255+00:00",
+    "previous_hash": "1056113b8ef53c135ace93b265b961250bd2f0d794d424868c67db1306ca4edb",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-6A2A93ECE05B",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-6A2A93ECE05B",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:33.389685+00:00"
+      }
+    },
+    "hash": "8f6fb4f870ff61e78e4cbf2c13c81e29765f78a108c77978dfd27a329b99ff1b",
+    "signature": "e3fe05d35499fe97f5074b6e073298a6ea8177c181264eee5c64d454f98edc6d"
+  },
+  {
+    "block_id": "BLK-F639DE64065D",
+    "index": 1449,
+    "timestamp": "2026-03-06T09:07:33.599458+00:00",
+    "previous_hash": "8f6fb4f870ff61e78e4cbf2c13c81e29765f78a108c77978dfd27a329b99ff1b",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D07237F8F0CB",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D07237F8F0CB",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:33.533837+00:00"
+      }
+    },
+    "hash": "78a8dfceb9334451fd05b11bcf73ff8f440a80ed35f7ea91515080ae686e7fcc",
+    "signature": "bb2453382874fe0f56f514546b5a852895e915ebed8d3413c1c3225d4936df04"
+  },
+  {
+    "block_id": "BLK-76AEDF304FCE",
+    "index": 1450,
+    "timestamp": "2026-03-06T09:07:33.737203+00:00",
+    "previous_hash": "78a8dfceb9334451fd05b11bcf73ff8f440a80ed35f7ea91515080ae686e7fcc",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-5E9098FA0C13",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-5E9098FA0C13",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:33.668426+00:00"
+      }
+    },
+    "hash": "a73d54f4c2e29192c50a0a9400ae604f24d14d833fa9cb59ceec6df0abb5821f",
+    "signature": "8c683303637f494ba89cf247f64fb43d2ec1b9aeadf6e6cb118bcd1494a50905"
+  },
+  {
+    "block_id": "BLK-D1B96B60E32D",
+    "index": 1451,
+    "timestamp": "2026-03-06T09:07:33.980021+00:00",
+    "previous_hash": "a73d54f4c2e29192c50a0a9400ae604f24d14d833fa9cb59ceec6df0abb5821f",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-7DE56ECCD3A2",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-7DE56ECCD3A2",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:33.914874+00:00"
+      }
+    },
+    "hash": "f2de0602c5080d8456e4dd985aa457508f4c3fbf036c09c10b1a2a8f721581d1",
+    "signature": "c23f94c8989f8a5e53af3a52d33aaaae590ad2723b68e0d060b456f598c0bd68"
+  },
+  {
+    "block_id": "BLK-2142D459C09F",
+    "index": 1452,
+    "timestamp": "2026-03-06T09:07:38.475503+00:00",
+    "previous_hash": "f2de0602c5080d8456e4dd985aa457508f4c3fbf036c09c10b1a2a8f721581d1",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-1A1AD1160F2E",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-1A1AD1160F2E",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:38.384435+00:00"
+      }
+    },
+    "hash": "d479dc020fabba85c27001d2c32a70ac3c836756f519a924383ef8bc1cff1c2e",
+    "signature": "bfed2dcabdc5c335380f5a65e7cf3042cb116a021849d4ff26d054c2c83c3673"
+  },
+  {
+    "block_id": "BLK-F11A0A60D29D",
+    "index": 1453,
+    "timestamp": "2026-03-06T09:07:38.627496+00:00",
+    "previous_hash": "d479dc020fabba85c27001d2c32a70ac3c836756f519a924383ef8bc1cff1c2e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-68D4F091B027",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-68D4F091B027",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:38.549974+00:00"
+      }
+    },
+    "hash": "440318180a3c6936bd54279d659709339c20955694ffc8a0750f8e594a0d1c07",
+    "signature": "565eb0bb0c9941a0e055d3005bc27a50090ae8604b67c604eb1354770cbd49b6"
+  },
+  {
+    "block_id": "BLK-4140E45F292C",
+    "index": 1454,
+    "timestamp": "2026-03-06T09:07:38.799744+00:00",
+    "previous_hash": "440318180a3c6936bd54279d659709339c20955694ffc8a0750f8e594a0d1c07",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-F7D0EF613911",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-F7D0EF613911",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:38.716622+00:00"
+      }
+    },
+    "hash": "b266e24c45425f6fb9c30d942c2720409e153d2d631112991a6b24a9f3f73c20",
+    "signature": "27d62e851aaf9417ad69bcaf3978b25a3dd223745bc675326477d4b973477655"
+  },
+  {
+    "block_id": "BLK-2B91EEC7CA54",
+    "index": 1455,
+    "timestamp": "2026-03-06T09:07:39.086447+00:00",
+    "previous_hash": "b266e24c45425f6fb9c30d942c2720409e153d2d631112991a6b24a9f3f73c20",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-64834F819E9A",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-64834F819E9A",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:39.017316+00:00"
+      }
+    },
+    "hash": "4db208244b62e7f481acaf1d314b57e5ea9cdf8e6dc0b94a3b6f21af90eb5d4e",
+    "signature": "bf355680f07590b8f1666b292e4317b028a69a1a13bfa3b6bc0b22a35c9ba06c"
+  },
+  {
+    "block_id": "BLK-835F3A467EEB",
+    "index": 1456,
+    "timestamp": "2026-03-06T09:07:43.771013+00:00",
+    "previous_hash": "4db208244b62e7f481acaf1d314b57e5ea9cdf8e6dc0b94a3b6f21af90eb5d4e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-BE439FDAA082",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-BE439FDAA082",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:43.709706+00:00"
+      }
+    },
+    "hash": "18b1f9fa4da153bfdadcccdbf5625de1027bdd5b73301f84c8dab67be470aaaf",
+    "signature": "d70448219b7e0d1477451e78d825e0e5cdb6fc368a963ca7e8b412c1c0ed18fe"
+  },
+  {
+    "block_id": "BLK-9B0492AE1123",
+    "index": 1457,
+    "timestamp": "2026-03-06T09:07:43.906607+00:00",
+    "previous_hash": "18b1f9fa4da153bfdadcccdbf5625de1027bdd5b73301f84c8dab67be470aaaf",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-8A67F85E6DB6",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-8A67F85E6DB6",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:43.834155+00:00"
+      }
+    },
+    "hash": "d61605973214b0c3ca0686c647c26be7affaa7a8f425b95aa71814f10d10a73a",
+    "signature": "22f87bafd7b76afbce9ecae4c58929d9ca07cbed7b81ff5302e857571ceb2eca"
+  },
+  {
+    "block_id": "BLK-87B2C909ADD8",
+    "index": 1458,
+    "timestamp": "2026-03-06T09:07:44.047921+00:00",
+    "previous_hash": "d61605973214b0c3ca0686c647c26be7affaa7a8f425b95aa71814f10d10a73a",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-4399CBF6D7B5",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-4399CBF6D7B5",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:43.984111+00:00"
+      }
+    },
+    "hash": "f9b7b1f505351a2cc9a5ed74400ae738c09d58d5d78f2cf0a7317fd1133e4958",
+    "signature": "15363ddff79c0c848b538dfe230977be5f39fee034fab560bfdcd42a40f698e6"
+  },
+  {
+    "block_id": "BLK-6A466345C5B9",
+    "index": 1459,
+    "timestamp": "2026-03-06T09:07:44.314515+00:00",
+    "previous_hash": "f9b7b1f505351a2cc9a5ed74400ae738c09d58d5d78f2cf0a7317fd1133e4958",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-DF0991768851",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-DF0991768851",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:44.254949+00:00"
+      }
+    },
+    "hash": "519d1a5416870cad0da668994d39f672ad0134c873e9a740fd3c3b27ec0912a5",
+    "signature": "965fd797c1214ffacc9d05f7b209dbff3f2891e91f2ac7b692dd8cd8f7bcd4e3"
+  },
+  {
+    "block_id": "BLK-AA3B7C464545",
+    "index": 1460,
+    "timestamp": "2026-03-06T09:07:48.459588+00:00",
+    "previous_hash": "519d1a5416870cad0da668994d39f672ad0134c873e9a740fd3c3b27ec0912a5",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-89372B3390CD",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-89372B3390CD",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:48.389818+00:00"
+      }
+    },
+    "hash": "ff2e3f00a9f2c2e4b818e059bfe05024a0b6f8eaa28e7a5df80ba9be7243d46a",
+    "signature": "d505bf0654636ed4d41358bc9772f091129198b970fed6ad7ef10593f616c30f"
+  },
+  {
+    "block_id": "BLK-9EEEEE96C8D8",
+    "index": 1461,
+    "timestamp": "2026-03-06T09:07:48.587968+00:00",
+    "previous_hash": "ff2e3f00a9f2c2e4b818e059bfe05024a0b6f8eaa28e7a5df80ba9be7243d46a",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-79422CC693D8",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-79422CC693D8",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:48.530192+00:00"
+      }
+    },
+    "hash": "3e746f15a60f668216b99fe5344f8c46c9bf636e298ee6a982ace569c41a6905",
+    "signature": "d91d024f217e72a170ef46faa678bb7203174245348111c7374b9c5ab54009d3"
+  },
+  {
+    "block_id": "BLK-332E61E3B61E",
+    "index": 1462,
+    "timestamp": "2026-03-06T09:07:48.710020+00:00",
+    "previous_hash": "3e746f15a60f668216b99fe5344f8c46c9bf636e298ee6a982ace569c41a6905",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-0340BA2D7071",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-0340BA2D7071",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:48.657201+00:00"
+      }
+    },
+    "hash": "2881b4052687f74abc669a4f2d8dffc5d42ff9d495872df0f4e5310d2f5edaeb",
+    "signature": "ab0b55a9270953832c763426d2027df21994b4a50c2db10a3a9c89b5a06205ef"
+  },
+  {
+    "block_id": "BLK-7DE9FC8EA220",
+    "index": 1463,
+    "timestamp": "2026-03-06T09:07:48.952429+00:00",
+    "previous_hash": "2881b4052687f74abc669a4f2d8dffc5d42ff9d495872df0f4e5310d2f5edaeb",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-902B1AB0E745",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-902B1AB0E745",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:48.897780+00:00"
+      }
+    },
+    "hash": "11fe5e7501d95cfc8efc2f25e97852afd687b7ea0692d6227f650710af34a984",
+    "signature": "83fa0194397dbbd5a319e7a0b717139a9f9645f74b70ad69045ca969e9b7fb03"
+  },
+  {
+    "block_id": "BLK-B99ACEE4B05E",
+    "index": 1464,
+    "timestamp": "2026-03-06T09:07:53.462752+00:00",
+    "previous_hash": "11fe5e7501d95cfc8efc2f25e97852afd687b7ea0692d6227f650710af34a984",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-B2ECDDB8E36E",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-B2ECDDB8E36E",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:53.383870+00:00"
+      }
+    },
+    "hash": "3e4cec42ef9f738e46b8ab2c94ddce8fcf37aa74da502ab13af026879e0a6122",
+    "signature": "94f26de9b601a87ddebeb530f88f934ec99fbca4e87a3b56cc943e9b64120dd8"
+  },
+  {
+    "block_id": "BLK-A71AAE089CE4",
+    "index": 1465,
+    "timestamp": "2026-03-06T09:07:53.587354+00:00",
+    "previous_hash": "3e4cec42ef9f738e46b8ab2c94ddce8fcf37aa74da502ab13af026879e0a6122",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-7C9EFDB4FAD1",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-7C9EFDB4FAD1",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:53.529821+00:00"
+      }
+    },
+    "hash": "ab199d5e0d967a8f46d110e1a45294d6a411e7b7c326a8e7e639493d8be9f528",
+    "signature": "7eb749ef2fa0f385417cca0517402b7af03033611233bca05fdf241ed4f78311"
+  },
+  {
+    "block_id": "BLK-765A57350ADE",
+    "index": 1466,
+    "timestamp": "2026-03-06T09:07:53.708327+00:00",
+    "previous_hash": "ab199d5e0d967a8f46d110e1a45294d6a411e7b7c326a8e7e639493d8be9f528",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-86293282181C",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-86293282181C",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:53.652603+00:00"
+      }
+    },
+    "hash": "c9e793095a603660462ec693c5f06a7ef7f66661fd5eb4e8909063565667d5e0",
+    "signature": "fc98cc423aa155b00d7412e66774a267a8c3e31928f1e96466287cb5ae5b5009"
+  },
+  {
+    "block_id": "BLK-21A9E1657384",
+    "index": 1467,
+    "timestamp": "2026-03-06T09:07:53.948548+00:00",
+    "previous_hash": "c9e793095a603660462ec693c5f06a7ef7f66661fd5eb4e8909063565667d5e0",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-45604D0544F0",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-45604D0544F0",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:53.882320+00:00"
+      }
+    },
+    "hash": "1a5cba41f1f5feedbb0d921d6ef877243b46413a5b12dda14945c8f13ee0759d",
+    "signature": "3024e6ccd8386ca0ab0fbff3050736e01ca3215452bdf3f76cd655de661c0c13"
+  },
+  {
+    "block_id": "BLK-7C356B1221EC",
+    "index": 1468,
+    "timestamp": "2026-03-06T09:07:58.450081+00:00",
+    "previous_hash": "1a5cba41f1f5feedbb0d921d6ef877243b46413a5b12dda14945c8f13ee0759d",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-27173671435A",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-27173671435A",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:58.388468+00:00"
+      }
+    },
+    "hash": "4778a98db2c738e64eeef42e7624cd3c96aed153263115ea37262c5010ddb85e",
+    "signature": "618636e531af33b05ccb62d5212972118daccdeb9307408e94cd361d2b82d3cf"
+  },
+  {
+    "block_id": "BLK-7DB7ACD73431",
+    "index": 1469,
+    "timestamp": "2026-03-06T09:07:58.563698+00:00",
+    "previous_hash": "4778a98db2c738e64eeef42e7624cd3c96aed153263115ea37262c5010ddb85e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-BA4F8D03896B",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-BA4F8D03896B",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:58.513061+00:00"
+      }
+    },
+    "hash": "2159f8582a57a8be2c6f525c330b4b976abc32484b807f389970bb0b8594ea18",
+    "signature": "d8beeb333b3f584110a2bb225444647a1481ab824574ca2a2f9629c63b1f21d9"
+  },
+  {
+    "block_id": "BLK-648B71D354A7",
+    "index": 1470,
+    "timestamp": "2026-03-06T09:07:58.688509+00:00",
+    "previous_hash": "2159f8582a57a8be2c6f525c330b4b976abc32484b807f389970bb0b8594ea18",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-551330C760DF",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-551330C760DF",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:07:58.633013+00:00"
+      }
+    },
+    "hash": "eb8e2b735579515294021d0ca908c36bc5510fa53d2e90db2c8dc0a864c5233b",
+    "signature": "1ef748c288481288323090f29aee01c6af2dcebe4a2e03aa2727892142c56af8"
+  },
+  {
+    "block_id": "BLK-C72E94A65047",
+    "index": 1471,
+    "timestamp": "2026-03-06T09:07:58.917463+00:00",
+    "previous_hash": "eb8e2b735579515294021d0ca908c36bc5510fa53d2e90db2c8dc0a864c5233b",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-F943A7CFC431",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-F943A7CFC431",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:07:58.861201+00:00"
+      }
+    },
+    "hash": "02f084cd47a6f8e647f9c8e09c5371170108de8947f222c0bedc7f22393a8eee",
+    "signature": "f4cbe4e71075886ff52df46246e5e03ab306e9293a592eb231e55775ec0fc7f3"
+  },
+  {
+    "block_id": "BLK-33845B31CA90",
+    "index": 1472,
+    "timestamp": "2026-03-06T09:08:03.480092+00:00",
+    "previous_hash": "02f084cd47a6f8e647f9c8e09c5371170108de8947f222c0bedc7f22393a8eee",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-358CE182284B",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-358CE182284B",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:03.408175+00:00"
+      }
+    },
+    "hash": "9bbb780b64d590c7ab65a4735eb8ef74441384065b63f7380b9e60b513655244",
+    "signature": "64df2f4cc7b2a6a5ad3a7b0df72ff138ce41b1139337e777db73ecb835f6ba85"
+  },
+  {
+    "block_id": "BLK-0CEC201E7E58",
+    "index": 1473,
+    "timestamp": "2026-03-06T09:08:03.620339+00:00",
+    "previous_hash": "9bbb780b64d590c7ab65a4735eb8ef74441384065b63f7380b9e60b513655244",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-1C2F83FC2D61",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-1C2F83FC2D61",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:03.550706+00:00"
+      }
+    },
+    "hash": "3facc46a6b3e5a9319e350e5ac606220b245ccaab13b763a3f0e8856138ecf54",
+    "signature": "ed95fb202228cc6e20911cd036fcb6efa9d8126b4c3c203ddf0295d7588030f0"
+  },
+  {
+    "block_id": "BLK-DFC3D0171061",
+    "index": 1474,
+    "timestamp": "2026-03-06T09:08:03.755482+00:00",
+    "previous_hash": "3facc46a6b3e5a9319e350e5ac606220b245ccaab13b763a3f0e8856138ecf54",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D0F8CFFB1D54",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D0F8CFFB1D54",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:03.690877+00:00"
+      }
+    },
+    "hash": "7fad79ebdd3d11ffa7174754dd44acc4892c8a19cb77ae8f199541b8a73cc403",
+    "signature": "442d56b1f4f833cfa682ac5e1bc45f77c636a52c9a1643045d61cb93fa9f2a1f"
+  },
+  {
+    "block_id": "BLK-5CD405FE6441",
+    "index": 1475,
+    "timestamp": "2026-03-06T09:08:04.047723+00:00",
+    "previous_hash": "7fad79ebdd3d11ffa7174754dd44acc4892c8a19cb77ae8f199541b8a73cc403",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-DEDE674B10A3",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-DEDE674B10A3",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:08:03.978112+00:00"
+      }
+    },
+    "hash": "0133f1ac005541d4f6ee983cb9b7e6e91d58305d15bc8c6fa29d7b4a90265274",
+    "signature": "3bc5fb83d7969bbe78ea208c89980bf7bfc5e1cd4c6aea28fc6c324f05a4aaf6"
+  },
+  {
+    "block_id": "BLK-CB6CA3C5C7C1",
+    "index": 1476,
+    "timestamp": "2026-03-06T09:08:08.168840+00:00",
+    "previous_hash": "0133f1ac005541d4f6ee983cb9b7e6e91d58305d15bc8c6fa29d7b4a90265274",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-10B671BD9302",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-10B671BD9302",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:08.093024+00:00"
+      }
+    },
+    "hash": "e11614c01fc2f3555a0af1065346755acea0d8e8038d68d05c85e5d7ec525621",
+    "signature": "62e83a26688ea7d02e4152365c7fa8ca4a9b0ddbfb53746e56f1ddd9cd5c55de"
+  },
+  {
+    "block_id": "BLK-42577514131E",
+    "index": 1477,
+    "timestamp": "2026-03-06T09:08:08.312425+00:00",
+    "previous_hash": "e11614c01fc2f3555a0af1065346755acea0d8e8038d68d05c85e5d7ec525621",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-01C95C084F06",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-01C95C084F06",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:08.252823+00:00"
+      }
+    },
+    "hash": "2e4e7b784dc6ea4fc0d0eeb049b6610a7eeaf59f453166b25a934df519c42048",
+    "signature": "4b38a6baaa40e1df21cf6f8f532e974a1f67c24eb3d2c78107c3df7aa0ee121f"
+  },
+  {
+    "block_id": "BLK-C3E485C4A8B6",
+    "index": 1478,
+    "timestamp": "2026-03-06T09:08:08.463122+00:00",
+    "previous_hash": "2e4e7b784dc6ea4fc0d0eeb049b6610a7eeaf59f453166b25a934df519c42048",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-BFD6893E5B07",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-BFD6893E5B07",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:08.390112+00:00"
+      }
+    },
+    "hash": "c583a2c95ba55f210803da4e4325398c024038e5de42cc50d24fd95484d1cc93",
+    "signature": "e8b69441f1e15a51e97bbce414fa1b4e1bdfbe3692d541f56b566cb9873a97c1"
+  },
+  {
+    "block_id": "BLK-5B7ECFBFEFA7",
+    "index": 1479,
+    "timestamp": "2026-03-06T09:08:08.692201+00:00",
+    "previous_hash": "c583a2c95ba55f210803da4e4325398c024038e5de42cc50d24fd95484d1cc93",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-8100818E9F09",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-8100818E9F09",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:08.566062+00:00"
+      }
+    },
+    "hash": "f1d90f8ca0e5fa421233260216d6231797018b5a896863f41947d6f52e4f3e56",
+    "signature": "b131a7662f922ba94442b0135aaa72db356eb19b839e691b11d99cf89069a007"
+  },
+  {
+    "block_id": "BLK-E2912136812F",
+    "index": 1480,
+    "timestamp": "2026-03-06T09:08:08.830789+00:00",
+    "previous_hash": "f1d90f8ca0e5fa421233260216d6231797018b5a896863f41947d6f52e4f3e56",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-777CDBEEC88B",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-777CDBEEC88B",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:08.764512+00:00"
+      }
+    },
+    "hash": "274f8de4ec71c19b800a1020cb941e302db7ccb1f37554ec259cab8b33abc2dc",
+    "signature": "9b6d278228f977e97d112f9d4636b9bcfb0c7634ccc9555067cf646470f31b6b"
+  },
+  {
+    "block_id": "BLK-E1BD31931118",
+    "index": 1481,
+    "timestamp": "2026-03-06T09:08:08.956197+00:00",
+    "previous_hash": "274f8de4ec71c19b800a1020cb941e302db7ccb1f37554ec259cab8b33abc2dc",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-6F04D0E7B4A1",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-6F04D0E7B4A1",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:08.897676+00:00"
+      }
+    },
+    "hash": "83557ddbe7b09f987e0a180ab3c5cff887697bcbfb0c85cf5bd27d1637a1f239",
+    "signature": "b07d3172cdfda81fc69226175ff2352d6186b499392a0f55f76ef994d3133334"
+  },
+  {
+    "block_id": "BLK-563C6F26A9AD",
+    "index": 1482,
+    "timestamp": "2026-03-06T09:08:36.161971+00:00",
+    "previous_hash": "83557ddbe7b09f987e0a180ab3c5cff887697bcbfb0c85cf5bd27d1637a1f239",
+    "data": {
+      "action": "GovernanceTransaction | action=query_dpias | status=committed | tx=TX-C2E7EF3C1E47",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-C2E7EF3C1E47",
+        "action_type": "query_dpias",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_dpias' committed successfully.",
+        "timestamp": "2026-03-06T09:08:36.086830+00:00"
+      }
+    },
+    "hash": "941401a7da75f87cc26a941686a6fc68a6cdd91ba7ce1250436ee005beefb86a",
+    "signature": "5bed157ce9223ac3997b4c9ba75b11f9e2d12cfe37474f8ddad8a6df1ad355a3"
+  },
+  {
+    "block_id": "BLK-86DF2FE69269",
+    "index": 1483,
+    "timestamp": "2026-03-06T09:08:36.308585+00:00",
+    "previous_hash": "941401a7da75f87cc26a941686a6fc68a6cdd91ba7ce1250436ee005beefb86a",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-C4550F8055B0",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-C4550F8055B0",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:36.240154+00:00"
+      }
+    },
+    "hash": "6db97655c7aea8a25c35852901136ebf6615e8378d783e956b1d1473c3e94a0e",
+    "signature": "01bde47588234eca77f15d1326fa9e1c95cf1410d714c8f5b8b260fd7334003e"
+  },
+  {
+    "block_id": "BLK-3D86E386BB1E",
+    "index": 1484,
+    "timestamp": "2026-03-06T09:08:36.429251+00:00",
+    "previous_hash": "6db97655c7aea8a25c35852901136ebf6615e8378d783e956b1d1473c3e94a0e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-13BEE787209B",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-13BEE787209B",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:36.373305+00:00"
+      }
+    },
+    "hash": "2a57d98fd63938e331d415b8952bca748a6e92665c34088913e4cb45696ae6c4",
+    "signature": "6de670c260ea8f7fa2010dcfe63b9bd0e52e59bccdca9955ebf195bf3a6453b8"
+  },
+  {
+    "block_id": "BLK-F9D1D1720ECD",
+    "index": 1485,
+    "timestamp": "2026-03-06T09:08:36.557735+00:00",
+    "previous_hash": "2a57d98fd63938e331d415b8952bca748a6e92665c34088913e4cb45696ae6c4",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-3E7FDF283212",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-3E7FDF283212",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:36.496647+00:00"
+      }
+    },
+    "hash": "d5dd9ffee622c981a6af16c48e882f9cc6aef54f3f0c6a67ca0427f186e8ea0b",
+    "signature": "e3413a7036ce6fa01e5697b85d21d725b410bba994b1a20799708115d0c4c648"
+  },
+  {
+    "block_id": "BLK-BD8D03572EED",
+    "index": 1486,
+    "timestamp": "2026-03-06T09:08:36.821697+00:00",
+    "previous_hash": "d5dd9ffee622c981a6af16c48e882f9cc6aef54f3f0c6a67ca0427f186e8ea0b",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-140DF3F40235",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-140DF3F40235",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:36.757988+00:00"
+      }
+    },
+    "hash": "f1fd59d360a514d48c87049c4e856ce66dbd1a8809741083005145739f489a2d",
+    "signature": "73fb4a7fa6c41f53bc01d1d65034aaf4b4af4c7e149070498a26f0e28c267a6f"
+  },
+  {
+    "block_id": "BLK-4A7E040D904C",
+    "index": 1487,
+    "timestamp": "2026-03-06T09:08:36.964023+00:00",
+    "previous_hash": "f1fd59d360a514d48c87049c4e856ce66dbd1a8809741083005145739f489a2d",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-620195414E6D",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-620195414E6D",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:36.887031+00:00"
+      }
+    },
+    "hash": "c68bc6de71455d72d1ad04c6bf5d4e9b08cf2fe5401e6ac9d038081a99a0d55e",
+    "signature": "f6774ad083cca1c3792333c17b3584c3b8714154492c2616bf171f199dc0f911"
+  },
+  {
+    "block_id": "BLK-E0688878C884",
+    "index": 1488,
+    "timestamp": "2026-03-06T09:08:37.119428+00:00",
+    "previous_hash": "c68bc6de71455d72d1ad04c6bf5d4e9b08cf2fe5401e6ac9d038081a99a0d55e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-BD39FBDE0EEB",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-BD39FBDE0EEB",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:08:37.044817+00:00"
+      }
+    },
+    "hash": "937e21a7c319c44847f691a9bd70ede1f9b7d9ae1cbbad55f65aaf2ae2516f99",
+    "signature": "dcfb8052235a070b69d734b46b32568f968f7334891891d5302c2a6c99893875"
+  },
+  {
+    "block_id": "BLK-AD8B924D51C9",
+    "index": 1489,
+    "timestamp": "2026-03-06T09:09:14.711717+00:00",
+    "previous_hash": "937e21a7c319c44847f691a9bd70ede1f9b7d9ae1cbbad55f65aaf2ae2516f99",
+    "data": {
+      "action": "GovernanceTransaction | action=query_breaches | status=committed | tx=TX-2D27D1FA9653",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-2D27D1FA9653",
+        "action_type": "query_breaches",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_breaches' committed successfully.",
+        "timestamp": "2026-03-06T09:09:14.649059+00:00"
+      }
+    },
+    "hash": "c462be0be35de6a251b312d9d8643c94c76f38dbafec211775b66ca93d574e21",
+    "signature": "67b72924e8137b1b42426cb32b521580cd039cfc1a00fad2256208c5c6e2d41c"
+  },
+  {
+    "block_id": "BLK-64C47A21F0E5",
+    "index": 1490,
+    "timestamp": "2026-03-06T09:09:14.860239+00:00",
+    "previous_hash": "c462be0be35de6a251b312d9d8643c94c76f38dbafec211775b66ca93d574e21",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-AA7479B7118B",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-AA7479B7118B",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:14.802619+00:00"
+      }
+    },
+    "hash": "ffb1e026dc15a69b5354272c8ad9dde697dfaa34b74dbaf9ff50fb09bf5ff3d3",
+    "signature": "12e5f5615c3086e7c703c870e6e20fdc779408f99231c9c07f692967d4ec4414"
+  },
+  {
+    "block_id": "BLK-BE664282ADB7",
+    "index": 1491,
+    "timestamp": "2026-03-06T09:09:15.006368+00:00",
+    "previous_hash": "ffb1e026dc15a69b5354272c8ad9dde697dfaa34b74dbaf9ff50fb09bf5ff3d3",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-68A8A06FDF88",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-68A8A06FDF88",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:14.941732+00:00"
+      }
+    },
+    "hash": "13e6d772e25dbfa03618560b2d54365d3ec09952a6a4a9543a67ff1a5058fb7a",
+    "signature": "cc6cadccdb37fc1567f7f14f0e7f1e16aa8ffd8ebdc505f650b488a7024ea9b8"
+  },
+  {
+    "block_id": "BLK-01B25346712D",
+    "index": 1492,
+    "timestamp": "2026-03-06T09:09:15.143136+00:00",
+    "previous_hash": "13e6d772e25dbfa03618560b2d54365d3ec09952a6a4a9543a67ff1a5058fb7a",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D3076BC13801",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D3076BC13801",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:15.077441+00:00"
+      }
+    },
+    "hash": "b73e613de7951a575ada21fd316d708cf36d6ba36c01ba76d2463ec0ba06950e",
+    "signature": "04196f76952cac65c46c4373ada981a29cf1509dda535439235ebb4b38509c7a"
+  },
+  {
+    "block_id": "BLK-3F4FB2E003E9",
+    "index": 1493,
+    "timestamp": "2026-03-06T09:09:15.389243+00:00",
+    "previous_hash": "b73e613de7951a575ada21fd316d708cf36d6ba36c01ba76d2463ec0ba06950e",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D2964D6D2EAE",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D2964D6D2EAE",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:15.315518+00:00"
+      }
+    },
+    "hash": "050b771a2aad2e716fe5d1a1eb15dabb4d6900454a9f123d3f222a13e372a505",
+    "signature": "0d440e3ab6f5bb6457d76bd2952a9bd48e5ff0039808ec3e892de7c03beac529"
+  },
+  {
+    "block_id": "BLK-A26D2C7549CE",
+    "index": 1494,
+    "timestamp": "2026-03-06T09:09:15.529883+00:00",
+    "previous_hash": "050b771a2aad2e716fe5d1a1eb15dabb4d6900454a9f123d3f222a13e372a505",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-B01AF1992AC4",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-B01AF1992AC4",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:15.468742+00:00"
+      }
+    },
+    "hash": "6e6d7d73014b2b650bb9c8e08a5084531302361989e4e97015bf5e436ad8eddd",
+    "signature": "81f0a48cf3577bbe77937d377773644ba8d2cde6a549f7ef2c08f7881ec6d122"
+  },
+  {
+    "block_id": "BLK-2A2B97C48C07",
+    "index": 1495,
+    "timestamp": "2026-03-06T09:09:15.680489+00:00",
+    "previous_hash": "6e6d7d73014b2b650bb9c8e08a5084531302361989e4e97015bf5e436ad8eddd",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-475046086793",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-475046086793",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:15.596833+00:00"
+      }
+    },
+    "hash": "c88cddcd490f7ab9c7b8a635425b28a0370252c08a846de953dc032f6a72bc34",
+    "signature": "2525421cdb7d1d33ce684adcec0d2c67e8f6226ef5c80b42b5f057aa7c0d998e"
+  },
+  {
+    "block_id": "BLK-9650155D00FC",
+    "index": 1496,
+    "timestamp": "2026-03-06T09:09:23.335344+00:00",
+    "previous_hash": "c88cddcd490f7ab9c7b8a635425b28a0370252c08a846de953dc032f6a72bc34",
+    "data": {
+      "action": "GovernanceTransaction | action=query_notices | status=committed | tx=TX-F9115F571B4A",
+      "user": "dpo_admin",
+      "metadata": {
+        "transaction_id": "TX-F9115F571B4A",
+        "action_type": "query_notices",
+        "payload_keys": [],
+        "success": true,
+        "reason": "Action 'query_notices' committed successfully.",
+        "timestamp": "2026-03-06T09:09:23.261388+00:00"
+      }
+    },
+    "hash": "5673f409eab76ec3b7273ca8942a7d507a20f0e5f910b2bab5e38df2da67aca1",
+    "signature": "3fce861253004fd643af2fc7219d3c749f322703db6efc3c3bb75a3926a2268b"
+  },
+  {
+    "block_id": "BLK-FD3FC5278F8F",
+    "index": 1497,
+    "timestamp": "2026-03-06T09:09:23.496352+00:00",
+    "previous_hash": "5673f409eab76ec3b7273ca8942a7d507a20f0e5f910b2bab5e38df2da67aca1",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-2565084A6B6C",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-2565084A6B6C",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:23.428779+00:00"
+      }
+    },
+    "hash": "de81641e8f690d2b9a96bf6989b08f0b204ab5385667f1e187e53201a196ada5",
+    "signature": "f68bbd0a381cfbd0a95482141ac28e6af4062b2450fcabea33ff8fddd07aa3d1"
+  },
+  {
+    "block_id": "BLK-17C09383E30F",
+    "index": 1498,
+    "timestamp": "2026-03-06T09:09:23.645839+00:00",
+    "previous_hash": "de81641e8f690d2b9a96bf6989b08f0b204ab5385667f1e187e53201a196ada5",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-158DE138F676",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-158DE138F676",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:23.574675+00:00"
+      }
+    },
+    "hash": "4a752201464e533268a1d4c6192f55d4f1073ef51d1f6d75338396e61ddad7ed",
+    "signature": "33e9fbf3ec8f71509a1afbc216e936370db75551cf0acde2fffbfbc4509be00f"
+  },
+  {
+    "block_id": "BLK-114D9F6CBD02",
+    "index": 1499,
+    "timestamp": "2026-03-06T09:09:23.785335+00:00",
+    "previous_hash": "4a752201464e533268a1d4c6192f55d4f1073ef51d1f6d75338396e61ddad7ed",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-5CEBC8661EAA",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-5CEBC8661EAA",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:23.719935+00:00"
+      }
+    },
+    "hash": "0a97308d5cab190286f3b800fac9fa9cb6c4e24cb78e3a59483bdffd52cae061",
+    "signature": "c5db9ed94f30d57433f3955db37a54fd3a02e92c6abc6d4a95b36c2effff19f1"
+  },
+  {
+    "block_id": "BLK-078C1E1D621B",
+    "index": 1500,
+    "timestamp": "2026-03-06T09:09:26.741997+00:00",
+    "previous_hash": "0a97308d5cab190286f3b800fac9fa9cb6c4e24cb78e3a59483bdffd52cae061",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-FC6A19109295",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-FC6A19109295",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:26.683064+00:00"
+      }
+    },
+    "hash": "1a2cb85f510fc14b2a3e862222abf784e066a5f91c6938724dd781de922fdad1",
+    "signature": "c3f1507211238a4db59dc4d7cf00007ed62f7f40d38bd632f9684ae3e32333e7"
+  },
+  {
+    "block_id": "BLK-B3EE773B75FB",
+    "index": 1501,
+    "timestamp": "2026-03-06T09:09:26.905400+00:00",
+    "previous_hash": "1a2cb85f510fc14b2a3e862222abf784e066a5f91c6938724dd781de922fdad1",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-D56B1139C75E",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-D56B1139C75E",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:26.819556+00:00"
+      }
+    },
+    "hash": "87e9b46bb822a95d67a73797e785273572e805cd438a2819c2183658e7d0b120",
+    "signature": "dadfabf1314e1ca846f41756b3561140be7dcc9b1aa479b5216858b56a5fa5b0"
+  },
+  {
+    "block_id": "BLK-45010F759DCC",
+    "index": 1502,
+    "timestamp": "2026-03-06T09:09:27.049819+00:00",
+    "previous_hash": "87e9b46bb822a95d67a73797e785273572e805cd438a2819c2183658e7d0b120",
+    "data": {
+      "action": "GovernanceTransaction | action=export_generated | status=committed | tx=TX-006B2E141A42",
+      "user": "dpo",
+      "metadata": {
+        "transaction_id": "TX-006B2E141A42",
+        "action_type": "export_generated",
+        "payload_keys": [
+          "export_type",
+          "format",
+          "module",
+          "record_count",
+          "export_hash",
+          "generated_at",
+          "actor_role"
+        ],
+        "success": true,
+        "reason": "Action 'export_generated' committed successfully.",
+        "timestamp": "2026-03-06T09:09:26.982866+00:00"
+      }
+    },
+    "hash": "c83ebea27a18799d16a5e93f3d1b2ec1540089b8445522fcde7c4b2d6621fb12",
+    "signature": "62e536bed397bae12d4f658ef7dab961e9e2025406d00cbce6228b66042945bd"
   }
 ]

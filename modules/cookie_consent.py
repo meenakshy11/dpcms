@@ -13,15 +13,19 @@ Responsibilities:
   - Provide a full Cookie Preferences settings panel (for logged-in users)
   - Expose cookie audit summary for compliance reporting
 
-Fixes applied:
-  ✔ Popup appears exactly once per login session (cookie_choice guard)
-  ✔ Accept / Reject / Customise buttons all set cookie_choice and rerun
-  ✔ Preferences saved per-user (username-keyed JSON on disk)
-  ✔ Preferences restored from disk on login — banner suppressed for returning users
-  ✔ Popup never reappears after any choice is made this session
-  ✔ show() restricted for audit/board roles
-  ✔ Main-box container header
-  ✔ Essential cookies always True — cannot be overridden by any save path
+Role-access model for show() (the settings panel):
+  customer / customer_assisted    Full panel — manage own cookie preferences
+  branch_officer / branch_privacy_coordinator /
+  regional_officer / regional_compliance_officer /
+  privacy_steward / privacy_operations /
+  soc_analyst / dpo / customer_support  Full panel — manage own preferences
+  auditor / internal_auditor      Informational only — no preference management
+  board_member                    Informational only — no preference management
+
+show_cookie_banner() — called from app.py, no role gate (pre-login context):
+  Shown once per session for any authenticated user.
+  Suppressed for returning users (disk prefs restored automatically).
+  Suppressed if cookie_choice already set in session state.
 
 Design contract:
   - NO direct browser cookie access (Streamlit does not expose browser cookies).
@@ -31,16 +35,62 @@ Design contract:
     This is the single source of truth for whether the banner has been dismissed.
   - Secondary key: "cookie_consent" (dict of category → bool) — holds active prefs.
   - Essential cookies are always True and cannot be disabled.
+  - Preferences stored per-user with ISO timestamp on every save.
   - All UI strings go through t_safe().
+
+Change log:
+  ✔ require_session() added as first guard in show() (auth Step 6 contract).
+  ✔ Role in show() sourced from get_current_user()["role"] (canonical code)
+    rather than bare st.session_state.get("role") — consistent with other modules.
+  ✔ datetime imported; ISO timestamp written into every preference save
+    (instruction doc Steps 8, 9, 10 require it).
+  ✔ _apply_choice() now includes "timestamp" in the preference dict written to disk.
+  ✔ save_user_preferences() now includes "timestamp" in the saved record.
+  ✔ Page header in show() upgraded from bare class="main-box" div to inline-styled
+    container, consistent with compliance.py, breach.py, and audit.py.
+  ✔ show_cookie_banner() guard: if no authenticated username is found (pre-login),
+    the banner is not shown — prevents rendering for unauthenticated users.
+  ✔ _denied_panel_roles set defined for the show() role gate — auditor,
+    internal_auditor, board_member see an informational message, no write controls.
+  ✔ t_safe imported from utils.i18n (existing); local _t_safe fallback defined
+    as a module-level guard in case the utils.i18n signature differs.
 """
 
 from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 
 import streamlit as st
-from utils.i18n import t, t_safe
+
+try:
+    from utils.i18n import t, t_safe as _i18n_t_safe
+    def t_safe(key: str, fallback: str = "") -> str:  # type: ignore[misc]
+        """Delegate to utils.i18n.t_safe; if that raises, return fallback."""
+        try:
+            result = _i18n_t_safe(key, fallback)
+            return result if result else (fallback or key)
+        except Exception:
+            return fallback or key
+except ImportError:
+    def t(key: str) -> str:  # type: ignore[misc]
+        return key
+    def t_safe(key: str, fallback: str = "") -> str:  # type: ignore[misc]
+        return fallback or key
+
+
+# ---------------------------------------------------------------------------
+# Role sets for the show() panel gate
+# ---------------------------------------------------------------------------
+
+# Roles that see the informational message only — no preference write controls
+_PANEL_INFO_ONLY_ROLES: frozenset[str] = frozenset({
+    "auditor",
+    "internal_auditor",
+    "board_member",
+})
+
 
 # ---------------------------------------------------------------------------
 # Persistent storage — preferences saved to disk per user
@@ -82,6 +132,7 @@ def get_user_preferences(username: str) -> dict[str, bool]:
     Return the saved cookie preferences for a specific user.
     Falls back to privacy-first defaults (only essential enabled) if not found.
     Essential cookies are always True and cannot be overridden.
+    The "timestamp" field, if present, is stripped before returning the bool-only dict.
     """
     prefs    = load_cookie_preferences()
     defaults: dict[str, bool] = {
@@ -90,9 +141,12 @@ def get_user_preferences(username: str) -> dict[str, bool]:
         "analytics":  False,
         "marketing":  False,
     }
-    saved              = prefs.get(username, defaults)
-    saved["essential"] = True   # immutable
-    return saved
+    saved = prefs.get(username, defaults)
+    # Strip non-bool fields (e.g. "timestamp") before returning consent dict
+    bool_saved = {k: bool(v) for k, v in saved.items() if k != "timestamp"}
+    merged               = {**defaults, **bool_saved}
+    merged["essential"]  = True   # immutable
+    return merged
 
 
 def save_user_preferences(username: str, prefs: dict[str, bool]) -> None:
@@ -101,23 +155,25 @@ def save_user_preferences(username: str, prefs: dict[str, bool]) -> None:
 
     Steps:
       1. Force essential=True.
-      2. Load all users' saved prefs from disk.
-      3. Update this user's entry.
-      4. Write back to disk.
-      5. Mirror to session state so the current session reflects saved values.
-      6. Set cookie_choice so the banner is permanently suppressed this session.
+      2. Add ISO timestamp to the saved record.
+      3. Load all users' saved prefs from disk.
+      4. Update this user's entry.
+      5. Write back to disk.
+      6. Mirror to session state so the current session reflects saved values.
+      7. Set cookie_choice so the banner is permanently suppressed this session.
     """
-    prefs["essential"] = True
+    prefs["essential"]  = True
+    prefs["timestamp"]  = datetime.utcnow().isoformat()
 
-    # Per-user save — username-keyed so users never overwrite each other
-    username = username or _get_current_username()
-    all_prefs          = load_cookie_preferences()
+    username   = username or _get_current_username()
+    all_prefs  = load_cookie_preferences()
     all_prefs[username] = prefs
     save_cookie_preferences(all_prefs)
 
-    # Mirror to session state
-    st.session_state[_STATE_KEY]                   = prefs
-    st.session_state["cookie_preferences_saved"]   = True
+    # Mirror consent booleans to session state (strip timestamp)
+    consent_only = {k: v for k, v in prefs.items() if k != "timestamp"}
+    st.session_state[_STATE_KEY]                 = consent_only
+    st.session_state["cookie_preferences_saved"] = True
     # Set cookie_choice so banner never fires again this session
     if "cookie_choice" not in st.session_state:
         st.session_state["cookie_choice"] = "customised"
@@ -216,7 +272,6 @@ def classify_cookie(cookie_name: str) -> str:
 def scan_cookies(cookie_store: list[str]) -> list[dict]:
     """
     Classify a list of cookie names and return structured scan results.
-
     Returns list[dict] with keys: cookie, category, required, label
     """
     return [
@@ -261,12 +316,16 @@ def set_consent(preferences: dict[str, bool]) -> None:
     Sets cookie_choice so the banner is permanently suppressed this session.
     """
     preferences["essential"] = True
-    st.session_state[_STATE_KEY] = preferences
+    # Only store bool-typed values in session state
+    consent_only = {k: bool(v) for k, v in preferences.items() if k != "timestamp"}
+    st.session_state[_STATE_KEY] = consent_only
 
     username = _get_current_username()
     if username and username != "guest":
         all_prefs           = load_cookie_preferences()
-        all_prefs[username] = preferences
+        record              = dict(preferences)
+        record["timestamp"] = datetime.utcnow().isoformat()
+        all_prefs[username] = record
         save_cookie_preferences(all_prefs)
 
 
@@ -275,6 +334,10 @@ def _get_current_username() -> str:
     Return the authenticated username from session state.
     Tries multiple session state keys for compatibility.
     Returns 'guest' if no authenticated session exists.
+
+    NOTE: This function is intentionally lightweight — it is called from
+    show_cookie_banner() which may run before a full session is established.
+    For the show() panel, use get_current_user() from auth instead.
     """
     username = st.session_state.get("username")
     if username:
@@ -310,6 +373,7 @@ def consent_banner_dismissed() -> bool:
 # ---------------------------------------------------------------------------
 # Internal helper — apply a full accept/reject/customise action
 # Handles set_consent + cookie_choice + disk save in one call.
+# Writes a timestamp into the per-user preference record.
 # ---------------------------------------------------------------------------
 
 def _apply_choice(prefs: dict[str, bool], choice: str) -> None:
@@ -318,20 +382,19 @@ def _apply_choice(prefs: dict[str, bool], choice: str) -> None:
 
     Parameters
     ----------
-    prefs  : The preference dict to save.
-    choice : Human-readable label ("accepted" | "rejected" | "customised").
+    prefs  : The preference dict to save (bool values per category).
+    choice : Label for this action ("accepted" | "rejected" | "customised").
+
+    Steps:
+      1. Force essential=True.
+      2. Call set_consent() — writes booleans to session state and disk with timestamp.
+      3. Set cookie_preferences_saved flag.
+      4. Set cookie_choice — banner guard that prevents repeat popup.
     """
     prefs["essential"] = True
     set_consent(prefs)
     st.session_state["cookie_preferences_saved"] = True
     st.session_state[_CHOICE_KEY] = choice   # banner guard — prevents repeat popup
-
-    # Persist per-user to disk
-    username = _get_current_username()
-    if username and username != "guest":
-        all_prefs           = load_cookie_preferences()
-        all_prefs[username] = prefs
-        save_cookie_preferences(all_prefs)
 
 
 # ===========================================================================
@@ -365,10 +428,13 @@ def _cookie_dialog() -> None:
         unsafe_allow_html=True,
     )
 
-    # Action buttons — each sets cookie_choice so banner never shows again
+    # ── STEP 7 — Action buttons (Accept / Reject / Customise) ────────────────
+    # Each of Accept and Reject calls _apply_choice() which sets cookie_choice,
+    # ensuring the banner never shows again this session.
     ca, ce, cc = st.columns(3)
 
     with ca:
+        # ── STEP 8 — Accept All logic ─────────────────────────────────────────
         if st.button(
             "✅ Accept All Cookies",
             key="ck_modal_all",
@@ -379,6 +445,7 @@ def _cookie_dialog() -> None:
             st.rerun()
 
     with ce:
+        # ── STEP 9 — Reject logic ─────────────────────────────────────────────
         if st.button(
             "🔒 Reject Non-Essential",
             key="ck_modal_essential",
@@ -388,6 +455,7 @@ def _cookie_dialog() -> None:
             st.rerun()
 
     with cc:
+        # ── STEP 10 — Customise toggle ────────────────────────────────────────
         if st.button(
             "⚙ Customise",
             key="ck_modal_customise",
@@ -443,32 +511,38 @@ def show_cookie_banner() -> None:
     """
     Show the cookie consent popup (post-login, once per session).
 
-    Guard: if cookie_choice is already set in session state, return immediately.
-    This is the ONLY correct guard — it fires only after a button is clicked,
-    not when preferences are merely loaded from disk.
+    Guard sequence:
+      1. If cookie_choice is already set this session → return immediately.
+      2. If no authenticated username is found (pre-login) → return (don't show).
+      3. If returning user has disk prefs → restore and suppress banner.
+      4. New user → show the banner dialog (or inline fallback).
 
     For returning users whose preferences are already saved on disk:
     the banner is suppressed because saved preferences are treated as a prior choice.
 
     Falls back to an inline panel for Streamlit < 1.35.
     """
-    # ── Primary guard — already made a choice this session ──────────────────
+    # ── STEP 11 — Primary guard: already made a choice this session ───────────
     if consent_banner_dismissed():
         return
 
-    # ── Returning user — disk prefs exist → suppress banner ─────────────────
+    # ── STEP 4 — Session state guard: do not show before authentication ───────
+    # If no username is found, the user is not logged in yet — skip banner.
     username = _get_current_username()
-    if username and username != "guest":
-        all_prefs = load_cookie_preferences()
-        if username in all_prefs:
-            # Load their saved prefs into session state and mark as chosen
-            prefs = all_prefs[username]
-            prefs["essential"] = True
-            st.session_state[_STATE_KEY] = prefs
-            st.session_state[_CHOICE_KEY] = "restored"
-            return
+    if not username or username == "guest":
+        return
 
-    # ── New user / guest — show the banner ───────────────────────────────────
+    # ── STEP 5 — Returning user: disk prefs exist → restore and suppress ──────
+    all_prefs = load_cookie_preferences()
+    if username in all_prefs:
+        raw   = all_prefs[username]
+        prefs = {k: bool(v) for k, v in raw.items() if k != "timestamp"}
+        prefs["essential"] = True
+        st.session_state[_STATE_KEY] = prefs
+        st.session_state[_CHOICE_KEY] = "restored"
+        return
+
+    # ── New user / guest — show the banner ────────────────────────────────────
     try:
         _cookie_dialog()
     except Exception:
@@ -482,6 +556,7 @@ def _show_cookie_banner_fallback() -> None:
     """
     lang = st.session_state.get("lang", "en")
 
+    # ── STEP 6 — Banner UI ────────────────────────────────────────────────────
     st.markdown(
         """
         <div style="background:#f0f5ff;border-left:5px solid #0A3D91;
@@ -512,21 +587,23 @@ def _show_cookie_banner_fallback() -> None:
     col_a, col_e, col_c, _ = st.columns([1.6, 1.8, 1.4, 3.2])
 
     with col_a:
+        # ── STEP 8 — Accept All (fallback) ────────────────────────────────────
         if st.button("✅ Accept All Cookies", key="cookie_fb_all",
                      use_container_width=True, type="primary"):
             _apply_choice(_ACCEPT_ALL_CONSENT.copy(), "accepted")
             st.rerun()
 
     with col_e:
+        # ── STEP 9 — Reject (fallback) ────────────────────────────────────────
         if st.button("🔒 Reject Non-Essential", key="cookie_fb_essential",
                      use_container_width=True):
             _apply_choice(_DEFAULT_CONSENT.copy(), "rejected")
             st.rerun()
 
     with col_c:
+        # ── STEP 10 — Customise toggle (fallback) ─────────────────────────────
         if st.button("⚙ Customise", key="cookie_fb_customise",
                      use_container_width=True):
-            # Toggle — does NOT set cookie_choice until Save is clicked
             st.session_state["_cookie_customise_open"] = not st.session_state.get(
                 "_cookie_customise_open", False
             )
@@ -568,40 +645,55 @@ def _render_customise_inline(lang: str = "en") -> None:
 def show() -> None:
     """
     Full cookie preferences management panel.
+
     Accessible from the sidebar or as a standalone settings page.
 
     Role guard:
       - Auditors, Internal Auditors, and Board members do not manage cookie prefs.
-        These roles are blocked at entry.
+        These roles see an informational message only and the function returns.
 
     Session guard:
-      - The panel itself is always accessible to permitted roles regardless of
-        whether the banner has been shown. The banner and the settings panel are
-        independent surfaces.
+      - require_session() called first — consistent with auth Step 6 contract.
+      - The panel is accessible to all other permitted roles regardless of whether
+        the banner has been shown. The banner and the settings panel are independent.
     """
-    from utils.ui_helpers import render_page_title
+    import auth as _auth
 
-    # ── Step 11 — Role guard ─────────────────────────────────────────────────
-    # Auditors and board members do not interact with cookie settings.
-    role = st.session_state.get("role", "")
-    if role in ("auditor", "internal_auditor", "board_member"):
+    # ── Session guard — halts before any data load ────────────────────────────
+    if not _auth.require_session():
+        return
+
+    # ── Canonical user from session ───────────────────────────────────────────
+    current_user = _auth.get_current_user()
+    if not current_user:
+        st.error(t_safe("session_not_found", "Session not found. Please log in."))
+        st.info(t_safe("contact_dpo_access", "Contact your administrator if this is an error."))
+        return
+
+    role     = current_user["role"]      # canonical code — always
+    username = current_user["username"]
+
+    # ── STEP 1 — Role gate: auditor / board see informational message only ────
+    if role in _PANEL_INFO_ONLY_ROLES:
         st.info(
             t_safe(
                 "cookie_not_applicable",
                 "Cookie preferences are managed by individual users and are not "
-                "applicable for this role.",
+                "applicable for this governance role.",
             )
         )
         return
 
-    # ── Page header — main-box container ─────────────────────────────────────
+    # ── STEP 2 — Page header — inline-styled container ───────────────────────
     st.markdown(
-        '<div class="main-box"><h2>Cookie Consent Management</h2></div>',
+        '<div style="background:#f4f6fa;padding:18px 24px;border-radius:8px;'
+        'border:1px solid #e5e9ef;margin-bottom:20px;">'
+        '<h2 style="margin:0;color:#0A3D91;">Cookie Consent Management</h2>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
-    lang     = st.session_state.get("lang", "en")
-    username = _get_current_username()
+    lang = st.session_state.get("lang", "en")
 
     # ── Policy notice ─────────────────────────────────────────────────────────
     st.markdown(
@@ -679,7 +771,6 @@ def show() -> None:
             use_container_width=True,
             key="cookie_save_btn",
         ):
-            # Per-user save
             _apply_choice(new_prefs, "customised")
             st.success(
                 t_safe("cookie_preferences_saved", "✔ Cookie preferences saved successfully.")
@@ -693,7 +784,7 @@ def show() -> None:
             key="cookie_reset_btn",
         ):
             _apply_choice(_DEFAULT_CONSENT.copy(), "rejected")
-            # Bump version so checkboxes re-render with fresh default values
+            # Bump form version so checkboxes re-render with fresh default values
             st.session_state["_cookie_form_version"] = (
                 st.session_state.get("_cookie_form_version", 0) + 1
             )

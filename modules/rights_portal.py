@@ -32,6 +32,18 @@ Governance matrix enforced:
   - Auditor: read-only
   - Export: Internal Auditor, Board, Privacy Operations only
 
+Access control — Consent-driven architecture:
+  - "Access My Data" has been REMOVED from the customer-facing request dropdown.
+  - Data access is an official-initiated action managed in modules/access_requests.py.
+  - Customers can only submit: Correction, Erasure, Revoke Consent,
+    Nominate Representative, Raise Grievance.
+  - CUSTOMER_REQUEST_TYPES further restricts the customer UI to the three
+    most common self-service types (Correction, Erasure, Grievance).
+  - Customer ID is auto-loaded from session state — never manually entered.
+  - Customer identity is displayed masked (last 4 chars only).
+  - Customers may only view their own requests; cross-customer data is blocked.
+  - Consent artefact download is available on the customer's My Requests tab.
+
 Design contract:
   - NO storage reads/writes (json.load / json.dump) in this module.
   - NO audit_log() calls.
@@ -64,7 +76,9 @@ from utils.ui_helpers import more_info, mask_identifier
 # ---------------------------------------------------------------------------
 
 REQUEST_TYPE_MAP: dict[str, str] = {
-    "Access My Data":          "data_access_request",
+    # NOTE: "Access My Data" is intentionally removed.
+    # Data access must be requested by officials via the official access request
+    # workflow (modules/access_requests.py), NOT self-initiated by customers.
     "Correct My Data":         "data_correction_request",
     "Erase My Data":           "data_erasure_request",
     "Revoke Consent":          "consent_withdrawal_action",
@@ -72,14 +86,19 @@ REQUEST_TYPE_MAP: dict[str, str] = {
     "Raise Grievance":         "grievance_redressal",
 }
 
+# Customer-facing subset — officials use REQUEST_TYPE_MAP directly
+CUSTOMER_REQUEST_TYPES: list[str] = [
+    "Correct My Data",
+    "Erase My Data",
+    "Raise Grievance",
+]
+
 CONSENT_GATED_TYPES: dict[str, str] = {
-    "Access My Data":  "kyc",
     "Correct My Data": "kyc",
     "Erase My Data":   "kyc",
 }
 
 CLAUSE_MAP: dict[str, str] = {
-    "Access My Data":  "data_access",
     "Correct My Data": "data_correction",
     "Erase My Data":   "data_erasure",
 }
@@ -132,7 +151,7 @@ KERALA_DISTRICTS: list[str] = [
 # ---------------------------------------------------------------------------
 
 _REQUEST_TYPE_I18N: dict[str, str] = {
-    "Access My Data":          "access_my_data",
+    # "Access My Data" removed — data access is an official-only workflow.
     "Correct My Data":         "correct_my_data",
     "Erase My Data":           "erase_my_data",
     "Revoke Consent":          "revoke_consent",
@@ -584,21 +603,33 @@ def _handle_submission_result(result: dict, request_type: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def render_customer_view() -> None:
+    # ── STEP 6: Role guard — only Customer roles may enter this view ──────────
+    if st.session_state.get("role") not in ("customer", "customer_assisted"):
+        st.warning(t("access_restricted"))
+        return
+
     import auth as _auth
     _cu         = _auth.get_current_user() or {}
     user        = _cu.get("username", st.session_state.get("username", "customer"))
-    customer_id = user
+    # ── STEP 4: Customer ID is always auto-loaded from session — never manual ─
+    customer_id = st.session_state.user.get("customer_id") if hasattr(st.session_state, "user") and isinstance(st.session_state.user, dict) else _cu.get("customer_id", user)
 
     st.header(t("rights_portal"))
     st.caption(t("customer_portal_caption"))
 
-    # Load via orchestration query (read-only)
+    # ── STEP 5: Show masked customer identity at page top ─────────────────────
+    masked_id = "****" + str(customer_id)[-4:] if customer_id and len(str(customer_id)) > 4 else "****"
+    st.info(f"🪪 {t('customer_id')}: **{masked_id}**")
+
+    # Load via orchestration query (read-only) — STEP 10: own requests only
     query_result = orchestration.execute_action(
         action_type="query_rights_requests",
         payload={"customer_id": customer_id},
         actor=user,
     )
     my_reqs   = query_result.get("records", [])
+    # ── STEP 10: Enforce customer sees ONLY their own requests ────────────────
+    my_reqs   = [r for r in my_reqs if r.get("customer_id") == customer_id]
     my_open   = [r for r in my_reqs if r["status"] in OPEN_STATUSES]
     my_closed = [r for r in my_reqs if r["status"] in CLOSED_STATUSES]
 
@@ -622,11 +653,16 @@ def render_customer_view() -> None:
 
         col1, col2 = st.columns(2)
         with col1:
-            st.text_input(t("customer_id"), value=customer_id, disabled=True)
-            _rt_display_options     = [_t_request_type(k) for k in REQUEST_TYPE_MAP.keys()]
-            _rt_display_to_internal = {_t_request_type(k): k for k in REQUEST_TYPE_MAP.keys()}
-            rt_display   = st.selectbox(t("request_type"), _rt_display_options)
-            request_type = _rt_display_to_internal[rt_display]
+            # ── STEP 4 & 5: ID is auto-loaded; display masked, never editable ──
+            st.text_input(t("customer_id"), value=masked_id, disabled=True)
+
+            # ── STEP 2: Customer dropdown excludes "Access My Data" ────────────
+            # Only Correction, Erasure, and Grievance are permitted for customers.
+            # "Access My Data" is an official-initiated workflow (access_requests.py).
+            _customer_rt_display_options     = [_t_request_type(k) for k in CUSTOMER_REQUEST_TYPES]
+            _customer_rt_display_to_internal = {_t_request_type(k): k for k in CUSTOMER_REQUEST_TYPES}
+            rt_display   = st.selectbox(t("request_type"), _customer_rt_display_options)
+            request_type = _customer_rt_display_to_internal[rt_display]
 
             # ── Banking identity fields ────────────────────────────────────────
             aadhaar        = st.text_input("Aadhaar Number", max_chars=12, placeholder="12-digit Aadhaar")
@@ -663,14 +699,16 @@ def render_customer_view() -> None:
                 st.markdown(f"**District:** {district}")
 
         if st.button(t("submit_request"), type="primary", use_container_width=True):
-            if not customer_id.strip():
+            if not customer_id or not str(customer_id).strip():
                 st.error(t("customer_id_required"))
             else:
+                # ── STEP 3: Correct request payload structure ─────────────────
                 result = orchestration.execute_action(
                     action_type="create_rights_request",
                     payload={
                         "request_type":       request_type,
                         "customer_id":        customer_id,
+                        "submitted_by":       st.session_state.get("username", user),
                         "aadhaar":            aadhaar.strip() if aadhaar else "",
                         "account_number":     account_number.strip() if account_number else "",
                         "ifsc_code":          ifsc_code.strip() if ifsc_code else "",
@@ -678,8 +716,8 @@ def render_customer_view() -> None:
                         "notes":              notes or "",
                         "supporting_details": notes or "",
                         "description":        notes or "",
-                        "submitted_by":       st.session_state.get("role", "customer"),
-                        "status":             "submitted",
+                        "status":             "Pending",
+                        "sla_status":         "Within SLA",
                         "assisted":           False,
                         "identity_verified":  False,
                         "submitted_time":     datetime.utcnow().isoformat(),
@@ -746,6 +784,33 @@ def render_customer_view() -> None:
                             st.caption(
                                 f"{detail['remaining_days']} {t('days_remaining_until')} {t('deadline').lower()}."
                             )
+
+        # ── STEP 9: Consent Artefact Download ─────────────────────────────────
+        st.divider()
+        st.subheader(t("consent_history") if "consent_history" in dir() else "Consent History")
+        try:
+            consent_result = orchestration.execute_action(
+                action_type="query_consents",
+                payload={"customer_id": customer_id},
+                actor=user,
+            )
+            customer_consents = [
+                c for c in consent_result.get("records", [])
+                if c.get("customer_id") == customer_id
+            ]
+            if customer_consents:
+                consent_df = pd.DataFrame(customer_consents)
+                st.dataframe(consent_df, use_container_width=True, hide_index=True)
+                st.download_button(
+                    label="⬇️ Download Consent Artefact",
+                    data=consent_df.to_csv(index=False),
+                    file_name="consent_history.csv",
+                    mime="text/csv",
+                )
+            else:
+                st.info(t("no_consent_records") if "no_consent_records" in dir() else "No consent records found for your account.")
+        except Exception:
+            st.info("Consent history is not available at this time.")
 
 
 # ---------------------------------------------------------------------------
@@ -909,8 +974,9 @@ def render_officer_console() -> None:
                             "assisted":           True,
                             "verification_mode":  verify_mode,
                             "identity_verified":  identity_verified,
-                            "submitted_by":       st.session_state.get("role", "customer_support"),
-                            "status":             "submitted",
+                            "submitted_by":       st.session_state.get("username", st.session_state.get("role", "customer_support")),
+                            "status":             "Pending",
+                            "sla_status":         "Within SLA",
                             "submitted_time":     datetime.utcnow().isoformat(),
                         },
                         actor=user,
@@ -1063,8 +1129,9 @@ def render_dpo_console() -> None:
                         "assisted":           True,
                         "verification_mode":  verify_mode,
                         "identity_verified":  identity_verified,
-                        "submitted_by":       st.session_state.get("role", "dpo"),
-                        "status":             "submitted",
+                        "submitted_by":       st.session_state.get("username", st.session_state.get("role", "dpo")),
+                        "status":             "Pending",
+                        "sla_status":         "Within SLA",
                         "submitted_time":     datetime.utcnow().isoformat(),
                     },
                     actor=user,

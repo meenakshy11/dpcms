@@ -17,6 +17,15 @@ Security Model (Step 15 hardening):
   7   branch + region locked from user record into session state
   8   All UI strings strictly through t() — no hardcoded English
 
+Customer Identity Model (consent-driven architecture):
+  C1  customer_id, aadhaar, account_number stored in USERS registry per customer.
+  C2  On login, customer identity fields are written to session state automatically.
+  C3  mask_value() masks all sensitive identifiers — only last 4 chars shown.
+  C4  get_current_user() returns identity fields for customer role.
+  C5  Customers NEVER manually enter their own customer_id, aadhaar, or
+      account_number in any module — identity is always loaded from session.
+  C6  require_session() guard prevents any module rendering without a valid session.
+
 Role Hierarchy:
   Customer         Data Principal — rights submission, own records only
   Officer          Branch-level operations — consent, rights (own branch)
@@ -57,6 +66,39 @@ from datetime import datetime, timedelta, timezone
 import streamlit as st
 
 from engine.audit_ledger import audit_log
+
+
+# ===========================================================================
+# STEP 3 — mask_value(): Sensitive identifier masking utility
+#
+# Used by all customer-facing UI that must display but not expose personal IDs.
+# Only the last 4 characters are shown; the rest is replaced with "****".
+# Never show raw customer_id, aadhaar, or account_number in any UI component.
+# ===========================================================================
+
+def mask_value(value: str | None) -> str:
+    """
+    Mask a sensitive identifier, showing only the last 4 characters.
+
+    Examples:
+        mask_value("CUST4582")       → "****4582"
+        mask_value("456789123456")   → "****3456"
+        mask_value("876543219876")   → "****9876"
+        mask_value(None)             → ""
+        mask_value("AB12")           → "****"   (too short to reveal)
+
+    Args:
+        value: The raw identifier string to mask.
+
+    Returns:
+        Masked string, or empty string if value is falsy.
+    """
+    if not value:
+        return ""
+    value = str(value).strip()
+    if len(value) <= 4:
+        return "****"
+    return "****" + value[-4:]
 
 
 # ===========================================================================
@@ -439,6 +481,15 @@ USERS: dict[str, dict] = {
         "region":        "-",
         "mfa_secret":    _MFA_CUST,
         "mfa_required":  True,
+        # ── STEP 2: Customer identity fields ──────────────────────────────────
+        # These are loaded into session state at login and exposed ONLY via
+        # mask_value() — they are NEVER entered manually by the customer in any UI.
+        # Replace with real values per customer before production deployment.
+        "customer_id":     "CUST4582",
+        "aadhaar":         "456789123456",
+        "account_number":  "876543219876",
+        "ifsc_code":       "KLBK0001234",
+        "district":        "Thiruvananthapuram",
     },
     "privacy_ops_01": {
         "password_hash": _H_OPS,
@@ -748,6 +799,14 @@ def _init_session() -> None:
         "otp_sent":             False,
         "generated_otp":        None,
         "_temp_username":       None,
+        # ── STEP 2 / STEP 7: Customer identity fields ─────────────────────────
+        # Populated at login() for customer role; None for all other roles.
+        # Modules must NEVER ask customers to enter these manually.
+        "customer_id":     None,
+        "aadhaar":         None,
+        "account_number":  None,
+        "ifsc_code":       None,
+        "district":        None,
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -875,7 +934,7 @@ def get_current_user() -> dict | None:
     Return a dict representing the currently authenticated user, built from
     session state fields written by login().
 
-    Keys returned:
+    Keys returned (all roles):
         role         — canonical role code (e.g. "dpo", "branch_officer")
         username     — login username
         full_name    — display name
@@ -885,17 +944,28 @@ def get_current_user() -> dict | None:
         mfa_verified — bool
         mfa_required — bool
 
+    Additional keys for customer role (STEP 2):
+        customer_id    — raw customer identifier (use mask_value() before display)
+        aadhaar        — raw Aadhaar number     (use mask_value() before display)
+        account_number — raw account number      (use mask_value() before display)
+        ifsc_code      — IFSC code
+        district       — home district
+
     Returns None if no authenticated session exists.
 
     Usage:
         user = auth.get_current_user()
         role = user["role"]
         modules = auth.ROLE_PERMISSIONS.get(role, [])
+
+    Customer identity access (NEVER display raw — always mask first):
+        cid    = user.get("customer_id")
+        masked = auth.mask_value(cid)  # → "****4582"
     """
     if not is_authenticated():
         return None
 
-    return {
+    base = {
         "role":         st.session_state.get("role", ""),
         "username":     st.session_state.get("username", ""),
         "full_name":    st.session_state.get("full_name", ""),
@@ -905,6 +975,18 @@ def get_current_user() -> dict | None:
         "mfa_verified": st.session_state.get("mfa_verified", False),
         "mfa_required": st.session_state.get("mfa_required", False),
     }
+
+    # ── STEP 2 — Include customer identity fields for customer role ────────────
+    # These are written to session by login() and are read-only after that.
+    # Modules must never allow the customer to overwrite them.
+    if base["role"] in ("customer", "customer_assisted"):
+        base["customer_id"]    = st.session_state.get("customer_id")
+        base["aadhaar"]        = st.session_state.get("aadhaar")
+        base["account_number"] = st.session_state.get("account_number")
+        base["ifsc_code"]      = st.session_state.get("ifsc_code")
+        base["district"]       = st.session_state.get("district")
+
+    return base
 
 
 def get_role_legacy() -> str:
@@ -1084,6 +1166,24 @@ def login(username: str, password: str) -> bool:
     st.session_state.mfa_verified         = False
     st.session_state.mfa_required         = canonical_role in MFA_REQUIRED_ROLES
 
+    # ── STEP 2 — Write customer identity fields for customer roles ─────────────
+    # Identity is locked from the USERS registry at login time.
+    # Customers can NEVER overwrite these values through any UI form.
+    # All modules must read identity from session, never from user input.
+    if canonical_role in ("customer", "customer_assisted"):
+        st.session_state.customer_id    = user.get("customer_id", username_clean)
+        st.session_state.aadhaar        = user.get("aadhaar", "")
+        st.session_state.account_number = user.get("account_number", "")
+        st.session_state.ifsc_code      = user.get("ifsc_code", "")
+        st.session_state.district       = user.get("district", "")
+    else:
+        # Non-customer roles: clear identity fields so they are never readable
+        st.session_state.customer_id    = None
+        st.session_state.aadhaar        = None
+        st.session_state.account_number = None
+        st.session_state.ifsc_code      = None
+        st.session_state.district       = None
+
     audit_log(
         action=(
             f"Login Successful | user={username_clean} "
@@ -1116,6 +1216,39 @@ def logout() -> None:
     for _key in list(st.session_state.keys()):
         del st.session_state[_key]
     st.session_state["lang"] = "en"   # reset language to English
+
+
+# ===========================================================================
+# STEP 6 — require_session(): module-level session guard
+#
+# Call at the very top of any protected module's show() function.
+# If no authenticated session exists, the page is halted immediately.
+#
+# Usage (place at top of every module show()):
+#     import auth
+#     if not auth.require_session():
+#         return
+# ===========================================================================
+
+def require_session() -> bool:
+    """
+    Guard that prevents any module from rendering without a valid,
+    fully authenticated session (credentials + OTP verified).
+
+    Returns:
+        True  — session is valid; module may continue rendering.
+        False — no valid session; st.stop() is called to halt execution.
+
+    This replaces ad-hoc `if "user" not in st.session_state: st.stop()`
+    patterns across modules with a single, audited guard point.
+    """
+    if not is_authenticated():
+        from utils.i18n import t_safe
+        st.error(t_safe("session_not_found", "Session not found. Please log in."))
+        st.info(t_safe("contact_dpo_access", "If this is an error, contact your administrator."))
+        st.stop()
+        return False
+    return True
 
 
 # ===========================================================================
@@ -1440,6 +1573,31 @@ def show_sidebar_user_panel() -> None:
             st.markdown(f"**{t('branch_label')}:** {branch}")
             if region and region not in ("-", "All", ""):
                 st.markdown(f"**{t('region_label')}:** {region}")
+
+        # ── STEP 4 — Masked customer identity display ─────────────────────────
+        # Shown immediately after login for customer role.
+        # Identifiers are masked: only the last 4 characters are visible.
+        # This satisfies the requirement: "Customer ID visible but masked".
+        if role in ("customer", "customer_assisted"):
+            raw_cid     = st.session_state.get("customer_id", "")
+            raw_aadhaar = st.session_state.get("aadhaar", "")
+            raw_account = st.session_state.get("account_number", "")
+
+            masked_cid     = mask_value(raw_cid)
+            masked_aadhaar = mask_value(raw_aadhaar)
+            masked_account = mask_value(raw_account)
+
+            st.markdown("---")
+            st.markdown(
+                f"<div style='background:#e8f4fd;border:1px solid #5a9ef5;"
+                f"border-radius:8px;padding:10px 14px;font-size:0.82rem'>"
+                f"<b>🪪 Your Identity</b><br>"
+                f"Customer ID: <code>{masked_cid or '—'}</code><br>"
+                f"Aadhaar: <code>{masked_aadhaar or '—'}</code><br>"
+                f"Account: <code>{masked_account or '—'}</code>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
 
         # ── MFA status indicator — i18n strings via t_safe() ─────────────────
         from utils.i18n import t_safe as _t_safe

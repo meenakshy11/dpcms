@@ -6,13 +6,25 @@ Compliance & SLA Monitoring dashboard — Regulatory Grade.
 Architecture (updated):
     UI  →  compliance_engine API (read-only)  →  display
 
-Role-access model:
-  DPO         Full access — all tabs, clause detail, trend, export
-  Auditor     Full read access — all tabs (read-only by nature)
-  Board       Simplified KPI + export only
-  Officer     Restricted (clause-level detail hidden; summary only)
-  SystemAdmin Access restricted
-  Customer    Access restricted
+Role-access model (canonical codes):
+  dpo                          Full access — all tabs, clause detail, trend, export
+  auditor / internal_auditor   Full read access — all tabs (read-only by nature)
+  privacy_operations           Full compliance monitoring scope (no write)
+  board_member                 Executive summary + export only (no clause evidence)
+  branch_officer /
+  branch_privacy_coordinator   Branch-scope summary only — score KPIs, no evidence
+  regional_officer /
+  regional_compliance_officer  Regional-scope summary — score KPIs, no evidence
+  privacy_steward              Summary view — score KPIs, no evidence
+
+Roles explicitly DENIED (no compliance data exposed):
+  customer                     Access denied
+  customer_assisted            Access denied (not in VALID_ROLES; handled defensively)
+  customer_support             Access denied — intake role only, no compliance access
+  soc_analyst                  Routed to Data Breach module, not this module
+
+Export permitted roles (canonical codes):
+  dpo, board_member, auditor, internal_auditor, privacy_operations
 
 Design contract:
   - NO manual compliance calculation in UI.
@@ -26,12 +38,32 @@ Design contract:
   - Clause evidence rendered for audit defensibility.
   - Trend chart and drift alert rendered when engine signals them.
   - All user-visible strings go through t().
+  - Global CSS table styling injected once in show() — never inline per-table.
+  - Export buttons wrapped in _can_export() — never exposed to officer roles.
+  - Role sourced exclusively from get_current_user()["role"] (canonical code).
+  - require_session() guard halts rendering before any engine call.
 
 Frameworks covered:
   DPDP Act 2023 + DPDP Rules 2025
   RBI Cyber Security Framework
   NABARD IT Guidelines
   CERT-IN Directions 2022
+
+Change log:
+  - Removed dead import: `get_role_display as get_role` was imported but never
+    used (role is always sourced from get_current_user()["role"]). Replaced with
+    a clean `import auth as _auth` pattern consistent with breach.py and
+    consent_management.py.
+  - require_session() now called first in show(), before get_current_user(),
+    consistent with auth.py Step 6 contract.
+  - customer_assisted added to _DENIED_ROLES docstring note: it is not in
+    VALID_ROLES but is checked defensively in case of future additions.
+  - All role-set constants promoted to module-level frozensets with explicit
+    canonical codes; no legacy display names used anywhere.
+  - _can_export() reads from session_state["role"] (canonical) — unchanged, but
+    now consistent with the removed legacy import.
+  - Board view: `st.metric` delta parameter corrected to omit `delta_color` when
+    delta is None (avoids Streamlit deprecation warning in recent versions).
 """
 
 from __future__ import annotations
@@ -41,7 +73,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-from auth import require_access, get_role_display as get_role
 from engine.compliance_engine import (
     evaluate_compliance,
     get_compliance_history,
@@ -54,20 +85,62 @@ from utils.dpdp_clauses import get_clause
 
 
 # ---------------------------------------------------------------------------
-# Constants
+# i18n safe helper — never raises, returns fallback if key missing
 # ---------------------------------------------------------------------------
 
-# Canonical role codes — mirrors auth.py VALID_ROLES
-_FULL_ACCESS_ROLES:    frozenset[str] = frozenset({"dpo", "auditor"})
-_PRIVACY_OPS_ROLES:    frozenset[str] = frozenset({"privacy_operations"})
-_BOARD_ROLES:          frozenset[str] = frozenset({"board_member"})
-# Officer-level: branch, regional, steward all get summary view
-_OFFICER_ROLES:        frozenset[str] = frozenset({
-    "branch_officer", "regional_officer", "privacy_steward"
+def t_safe(key: str, fallback: str = "") -> str:
+    try:
+        result = t(key)
+        return result if result != key else (fallback or key)
+    except Exception:
+        return fallback or key
+
+
+# ---------------------------------------------------------------------------
+# Constants — all canonical role codes (no legacy display names)
+# ---------------------------------------------------------------------------
+
+# Full access: clause detail, trend chart, all tabs, export
+_FULL_ACCESS_ROLES: frozenset[str] = frozenset({
+    "dpo",
+    "auditor",
+    "internal_auditor",   # governance alias — same read-only scope as auditor
 })
-_ALL_ALLOWED_ROLES:    frozenset[str] = (
+_PRIVACY_OPS_ROLES: frozenset[str] = frozenset({"privacy_operations"})
+_BOARD_ROLES:       frozenset[str] = frozenset({"board_member"})
+
+# Officer-level: branch, regional, steward — summary KPIs only, no clause evidence.
+# Includes Step 3/4 governance aliases: branch_privacy_coordinator,
+# regional_compliance_officer.
+_OFFICER_ROLES: frozenset[str] = frozenset({
+    "branch_officer",
+    "branch_privacy_coordinator",    # Step 3 — branch-scope summary only
+    "regional_officer",
+    "regional_compliance_officer",   # Step 4 — regional-scope summary only
+    "privacy_steward",
+})
+
+_ALL_ALLOWED_ROLES: frozenset[str] = (
     _FULL_ACCESS_ROLES | _PRIVACY_OPS_ROLES | _BOARD_ROLES | _OFFICER_ROLES
 )
+
+# Roles explicitly blocked — checked first in show() before any engine call.
+# customer_assisted is not in auth.VALID_ROLES but is checked defensively.
+_DENIED_ROLES: frozenset[str] = frozenset({
+    "customer",
+    "customer_assisted",   # not in VALID_ROLES; defensive catch for future changes
+    "customer_support",    # intake role only — no compliance access
+    "soc_analyst",         # SOC uses the Breach module, not this one
+})
+
+# Export-permitted roles — canonical codes (Step 10)
+_EXPORT_PERMITTED: frozenset[str] = frozenset({
+    "dpo",
+    "board_member",
+    "auditor",
+    "internal_auditor",
+    "privacy_operations",
+})
 
 _DRIFT_THRESHOLD: int = 5   # points — alert if score dropped more than this
 
@@ -76,6 +149,11 @@ _STATUS_HEX: dict[str, str] = {
     "partial":       "#f9a825",
     "non_compliant": "#c62828",
 }
+
+
+def _can_export() -> bool:
+    """Return True only for roles permitted to download compliance data."""
+    return st.session_state.get("role", "") in _EXPORT_PERMITTED
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +228,6 @@ def _render_trend(history: list[dict]) -> None:
         xaxis=dict(title=t("date")),
         margin=dict(l=0, r=0, t=40, b=0),
     )
-    # Add threshold lines
     fig.add_hline(y=90, line_dash="dot", line_color="#1a9e5c",
                   annotation_text=t("compliant_threshold"),
                   annotation_position="bottom right")
@@ -167,8 +244,8 @@ def _render_trend(history: list[dict]) -> None:
 def _render_drift_banner(drift: dict) -> None:
     """
     Display drift alert if engine signals a compliance regression.
-    drift: {"drift_detected": bool, "delta": int, "from_score": int, "to_score": int,
-            "snapshot_at": str, "threshold": int}
+    drift: {"drift_detected": bool, "delta": int, "from_score": int,
+            "to_score": int, "snapshot_at": str, "threshold": int}
     """
     if not drift or not drift.get("drift_detected"):
         return
@@ -201,35 +278,97 @@ def _render_drift_banner(drift: dict) -> None:
 def show() -> None:
     import auth as _auth
 
-    # ── Session guard — canonical role from get_current_user() ───────────────
+    # ── STEP 6: Session guard — halts rendering before any engine call ────────
+    # require_session() calls st.stop() internally on failure; the `return`
+    # below is a defensive no-op that satisfies static analysers.
+    if not _auth.require_session():
+        return
+
+    # ── Canonical user from session — single source of truth ─────────────────
     current_user = _auth.get_current_user()
     if not current_user:
         st.error(t("session_not_found"))
         st.info(t("contact_dpo_access"))
         return
 
-    role        = current_user["role"]      # canonical code always
+    role        = current_user["role"]      # canonical code — always
     user        = current_user["username"]
     user_branch = current_user["branch"]
 
-    # ── Role-access gate ─────────────────────────────────────────────────────
+    # ── STEP 1 — Explicit deny: customers and support blocked first ───────────
+    # Checked before _ALL_ALLOWED_ROLES so the message is role-specific.
+    if role in _DENIED_ROLES:
+        st.warning(
+            t_safe(
+                "compliance_access_denied",
+                "The Compliance & SLA Monitoring module is not available for your role. "
+                "Please use the Rights Portal or Consent Management module.",
+            )
+        )
+        st.info(t("contact_dpo_access"))
+        return
+
+    # ── Role-access gate — catch any other unlisted role ─────────────────────
     if role not in _ALL_ALLOWED_ROLES:
-        st.warning(t("compliance_access_restricted").format(role=role))
+        _msg = t_safe(
+            "compliance_access_restricted",
+            "You do not have permission to access the Compliance module.",
+        )
+        # Only format if the translation actually contains {role}
+        if "{role}" in _msg:
+            _msg = _msg.format(role=role)
+        st.warning(_msg)
         st.info(t("contact_dpo_access"))
         return
 
     # ── Role convenience flags — all canonical codes ──────────────────────────
-    is_full_access  = role in _FULL_ACCESS_ROLES     # dpo, auditor
-    is_privacy_ops  = role in _PRIVACY_OPS_ROLES     # privacy_operations
-    is_board        = role in _BOARD_ROLES           # board_member
-    is_officer      = role in _OFFICER_ROLES         # branch/regional/steward
-    is_auditor      = role == "auditor"
-    is_dpo          = role == "dpo"
+    is_full_access = role in _FULL_ACCESS_ROLES     # dpo, auditor, internal_auditor
+    is_privacy_ops = role in _PRIVACY_OPS_ROLES     # privacy_operations
+    is_board       = role in _BOARD_ROLES           # board_member
+    is_officer     = role in _OFFICER_ROLES         # branch/regional/steward + aliases
+    is_auditor     = role in ("auditor", "internal_auditor")
+    is_dpo         = role == "dpo"
 
-    # ── Header ────────────────────────────────────────────────────────────────
-    st.header(t("compliance"))
+    # ── STEP 2 — Container-box page heading ───────────────────────────────────
+    st.markdown(
+        '<div style="background:#f4f6fa;padding:18px 24px;border-radius:8px;'
+        'border:1px solid #e5e9ef;margin-bottom:20px;">'
+        f'<h2 style="margin:0;color:#0A3D91;">'
+        f'{t_safe("compliance_monitoring_title", "Compliance Monitoring &amp; Controls")}'
+        f'</h2>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
     st.caption(t("compliance_caption"))
     more_info(t("compliance_more_info"))
+
+    # ── STEP 9 — Global CSS table styling — injected once ─────────────────────
+    st.markdown(
+        """
+        <style>
+        /* Compliance module table styling */
+        div[data-testid="stMarkdownContainer"] table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        div[data-testid="stMarkdownContainer"] th {
+            background-color: #003366;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        div[data-testid="stMarkdownContainer"] td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        div[data-testid="stMarkdownContainer"] tr:hover td {
+            background-color: #f5f8ff;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if is_auditor:
         st.info(t("auditor_read_only"))
@@ -300,31 +439,27 @@ def show() -> None:
     st.divider()
 
     # =========================================================================
-    # Board view — simplified: score + export only, no clause internals
+    # Board view — executive compliance summary + export only (no clause evidence)
     # =========================================================================
-    # ── Board view — executive compliance summary + export ───────────────────
     if is_board:
-        # Executive headline metrics
         st.subheader("Executive Compliance Summary")
         b1, b2, b3, b4 = st.columns(4)
-        colour = _score_colour(overall)
+        score_colour = _score_colour(overall)
         with b1:
             st.markdown(
-                f'<div style="border-top:4px solid {colour};border-radius:8px;'
+                f'<div style="border-top:4px solid {score_colour};border-radius:8px;'
                 f'padding:18px 20px;background:#fafafa;text-align:center;">'
-                f'<div style="font-size:2rem;font-weight:800;color:{colour}">{overall}%</div>'
+                f'<div style="font-size:2rem;font-weight:800;color:{score_colour}">{overall}%</div>'
                 f'<div style="font-size:0.9rem;color:#444">{t("overall_compliance_score")}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
         with b2:
-            st.metric(t("compliant_clauses"),     compliant_count,
-                      delta=None, delta_color="normal")
+            st.metric(t("compliant_clauses"), compliant_count)
         with b3:
-            st.metric(t("partial"),               partial_count)
+            st.metric(t("partial"), partial_count)
         with b4:
-            st.metric(t("non_compliant_clauses"), non_compliant_count,
-                      delta=None, delta_color="inverse")
+            st.metric(t("non_compliant_clauses"), non_compliant_count)
 
         # Status summary table (no evidence — board-level view)
         if clauses:
@@ -352,52 +487,130 @@ def show() -> None:
         else:
             st.success("✅ All clauses compliant — no open observations.")
 
-        # Export
+        # Export — Step 10: board_member is in _EXPORT_PERMITTED
         st.divider()
         st.subheader(t("board_ready_export"))
         st.caption(t("export_caption"))
-        render_export_buttons("compliance")
-        if clauses:
-            export_rows = [
-                {
-                    "clause_id":           c.get("clause_id", ""),
-                    "description":         c.get("description", ""),
-                    "status":              c.get("status", ""),
-                    "score":               c.get("score", 0),
-                    "weight":              c.get("weight", 1.0),
-                    "weighted_score":      _weighted_score(c),
-                    "amendment_reference": c.get("amendment_reference", ""),
-                }
-                for c in clauses
-            ]
-            df_export = pd.DataFrame(export_rows)
-            st.download_button(
-                label=t("download_clause_csv"),
-                data=df_export.to_csv(index=False).encode("utf-8"),
-                file_name="compliance_clause_report.csv",
-                mime="text/csv",
+        if _can_export():
+            render_export_buttons("compliance")
+            if clauses:
+                export_rows = [
+                    {
+                        "clause_id":           c.get("clause_id", ""),
+                        "description":         c.get("description", ""),
+                        "status":              c.get("status", ""),
+                        "score":               c.get("score", 0),
+                        "weight":              c.get("weight", 1.0),
+                        "weighted_score":      _weighted_score(c),
+                        "amendment_reference": c.get("amendment_reference", ""),
+                    }
+                    for c in clauses
+                ]
+                df_export = pd.DataFrame(export_rows)
+                st.download_button(
+                    label=t("download_clause_csv"),
+                    data=df_export.to_csv(index=False).encode("utf-8"),
+                    file_name="compliance_clause_report.csv",
+                    mime="text/csv",
+                )
+        else:
+            st.caption(
+                "🔒 Export is available to authorised roles only "
+                "(DPO, Auditor, Internal Auditor, Privacy Operations, Board)."
             )
         return
 
     # =========================================================================
-    # Officer view — summary metrics only, no clause evidence or trend internals
-    # Regional officers and Privacy Stewards also see branch-scope note
+    # Officer view: branch and regional scope summary
+    # branch_officer / branch_privacy_coordinator  → branch KPIs only
+    # regional_officer / regional_compliance_officer / privacy_steward → regional KPIs
+    # No clause evidence, no trend chart, no export.
     # =========================================================================
     if is_officer:
-        st.info(t("officer_compliance_limited_view"))
-        if user_branch and user_branch not in ("All", "-", None):
-            st.caption(f"**{t('branch_label')}:** {user_branch}")
+        _is_branch_role   = role in ("branch_officer", "branch_privacy_coordinator")
+        _is_regional_role = role in (
+            "regional_officer", "regional_compliance_officer", "privacy_steward"
+        )
+
+        if _is_branch_role:
+            st.subheader(t_safe("branch_compliance_status", "Branch Compliance Status"))
+            if user_branch and user_branch not in ("All", "-", None):
+                st.info(
+                    f"🏢 **{t('branch_label')}:** {user_branch}  |  "
+                    f"{t_safe('branch_scope_note', 'Showing metrics for your assigned branch only.')}"
+                )
+            else:
+                st.info(t_safe("branch_not_assigned", "Branch not assigned — contact your administrator."))
+        else:
+            user_region = current_user.get("region", "—")
+            st.subheader(t_safe("regional_compliance_monitoring", "Regional Compliance Monitoring"))
+            st.info(
+                f"🗺️ **{t('region_label')}:** {user_region}  |  "
+                f"{t_safe('regional_scope_note', 'Showing aggregated metrics for your region.')}"
+            )
+
+        # Summary KPI cards
         m1, m2, m3 = st.columns(3)
-        with m1: st.metric(t("overall_compliance_score"), f"{overall}%")
-        with m2: st.metric(t("compliant_clauses"),     compliant_count)
-        with m3: st.metric(t("non_compliant_clauses"), non_compliant_count)
+        score_colour = _score_colour(overall)
+        with m1:
+            st.markdown(
+                f'<div style="border-top:4px solid {score_colour};border-radius:8px;'
+                f'padding:14px 18px;background:#fafafa;">'
+                f'<div style="font-size:1.8rem;font-weight:800;color:{score_colour}">{overall}%</div>'
+                f'<div style="font-size:0.9rem;color:#444">{t("overall_compliance_score")}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with m2:
+            st.metric(t("compliant_clauses"), compliant_count)
+        with m3:
+            st.metric(t("non_compliant_clauses"), non_compliant_count)
+
+        st.caption(
+            t_safe(
+                "officer_compliance_limited_view",
+                "Detailed clause evidence and trend data are available to DPO, "
+                "Auditor, and Privacy Operations roles.",
+            )
+        )
+
+        # Non-compliant clause names — summary only, no evidence
+        non_compliant_clauses = [
+            c for c in clauses if c.get("status") in ("partial", "non_compliant")
+        ]
+        if non_compliant_clauses:
+            st.warning(
+                f"⚠️ **{len(non_compliant_clauses)} clause(s) require attention.** "
+                "Raise with your Privacy Coordinator or DPO."
+            )
+            summary_rows = [
+                {
+                    t_safe("clause", "Clause"):           c.get("clause_id", "—"),
+                    t_safe("description", "Description"): c.get("description", "—"),
+                    t_safe("status", "Status"):           c.get("status", "—").replace("_", " ").title(),
+                    t_safe("score", "Score"):              c.get("score", 0),
+                }
+                for c in non_compliant_clauses
+            ]
+            st.dataframe(
+                pd.DataFrame(summary_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.success("✅ All clauses compliant in your scope.")
+
+        # Export not available for officer roles (Step 10)
+        st.caption(
+            "🔒 Export is available to authorised roles only "
+            "(DPO, Auditor, Internal Auditor, Privacy Operations, Board)."
+        )
         return
 
     # =========================================================================
     # Full access: DPO, Auditor, and Privacy Operations — tabs
     # =========================================================================
 
-    # Privacy Operations sees all tabs with a scope banner
     if is_privacy_ops:
         st.info(
             "🔍 **Privacy Operations** — Full compliance monitoring scope: "
@@ -444,20 +657,19 @@ def show() -> None:
                     hover_title += f" — {amend_ref}"
 
                 row = st.columns([3, 1, 1, 1, 4])
-
                 row[0].markdown(
                     f'{clause_id} '
                     f'<span title="{hover_title}" '
                     f'style="cursor:help;font-size:0.85rem;">ℹ</span>',
                     unsafe_allow_html=True,
                 )
-                # Raw score + weighted score
-                row[1].markdown(f"**{score_val}** <span style='font-size:0.75rem;color:#888;'>(×{weight}={w_score})</span>", unsafe_allow_html=True)
-                # Weight
+                row[1].markdown(
+                    f"**{score_val}** "
+                    f"<span style='font-size:0.75rem;color:#888;'>(×{weight}={w_score})</span>",
+                    unsafe_allow_html=True,
+                )
                 row[2].markdown(f"`{weight}`")
-                # Colour block only — no colour-name text
                 row[3].markdown(_status_dot(status), unsafe_allow_html=True)
-                # Evidence (first 2 items for heatmap view)
                 evidence_text = " · ".join(evidence[:2]) if evidence else "—"
                 row[4].caption(evidence_text)
 
@@ -553,7 +765,10 @@ def show() -> None:
                         + f" &nbsp; {t(status)}",
                         unsafe_allow_html=True,
                     )
-                    st.markdown(f"**{t('score')}:** {c.get('score', 0)} &nbsp;×&nbsp; **{t('weight')}** {weight} = **{w_score}**")
+                    st.markdown(
+                        f"**{t('score')}:** {c.get('score', 0)} "
+                        f"&nbsp;×&nbsp; **{t('weight')}** {weight} = **{w_score}**"
+                    )
                     st.markdown(f"**{t('evidence')}:**")
                     if evidence:
                         for ev in evidence:
@@ -612,12 +827,12 @@ def show() -> None:
             st.subheader(t("snapshot_history"))
             hist_rows = [
                 {
-                    t("snapshot_date"):    (h.get("snapshot_at") or "")[:10],
+                    t("snapshot_date"):     (h.get("snapshot_at") or "")[:10],
                     t("overall_score_pct"): h.get("overall_score", 0),
-                    t("compliant"):        h.get("compliant_count", "—"),
-                    t("partial"):          h.get("partial_count",   "—"),
-                    t("non_compliant"):    h.get("non_compliant_count", "—"),
-                    t("triggered_by"):     h.get("triggered_by", "system"),
+                    t("compliant"):         h.get("compliant_count", "—"),
+                    t("partial"):           h.get("partial_count",   "—"),
+                    t("non_compliant"):     h.get("non_compliant_count", "—"),
+                    t("triggered_by"):      h.get("triggered_by", "system"),
                 }
                 for h in history
             ]
@@ -635,54 +850,64 @@ def show() -> None:
 
     # =========================================================================
     # TAB 4 — Export
+    # Step 10: All download buttons restricted to _EXPORT_PERMITTED roles.
+    # Officer roles see a lock notice; they may NOT download compliance data.
     # =========================================================================
     with tab4:
         st.subheader(t("board_ready_export"))
         st.caption(t("export_caption"))
 
-        render_export_buttons("compliance")
-
-        if clauses:
-            export_rows = [
-                {
-                    "clause_id":           c.get("clause_id", ""),
-                    "description":         c.get("description", ""),
-                    "status":              c.get("status", ""),
-                    "score":               c.get("score", 0),
-                    "weight":              c.get("weight", 1.0),
-                    "weighted_score":      _weighted_score(c),
-                    "amendment_reference": c.get("amendment_reference", ""),
-                    "evidence":            " | ".join(c.get("evidence", [])),
-                }
-                for c in clauses
-            ]
-            df_export = pd.DataFrame(export_rows)
-            st.download_button(
-                label=t("download_clause_csv"),
-                data=df_export.to_csv(index=False).encode("utf-8"),
-                file_name="compliance_clause_report.csv",
-                mime="text/csv",
+        if not _can_export():
+            st.warning(
+                "🔒 **Export not available for your role.**  \n"
+                "Compliance data export is restricted to DPO, Auditor, "
+                "Internal Auditor, Privacy Operations, and Board roles. "
+                "Contact your DPO if you require a compliance report."
             )
+        else:
+            render_export_buttons("compliance")
 
-            if len(history := []) == 0:
-                try:
-                    history = get_compliance_history()
-                except Exception:
-                    history = []
-
-            if history:
-                hist_export = [
+            if clauses:
+                export_rows = [
                     {
-                        "snapshot_date":  (h.get("snapshot_at") or "")[:10],
-                        "overall_score":  h.get("overall_score", 0),
-                        "triggered_by":   h.get("triggered_by", "system"),
+                        "clause_id":           c.get("clause_id", ""),
+                        "description":         c.get("description", ""),
+                        "status":              c.get("status", ""),
+                        "score":               c.get("score", 0),
+                        "weight":              c.get("weight", 1.0),
+                        "weighted_score":      _weighted_score(c),
+                        "amendment_reference": c.get("amendment_reference", ""),
+                        "evidence":            " | ".join(c.get("evidence", [])),
                     }
-                    for h in history
+                    for c in clauses
                 ]
-                df_hist_export = pd.DataFrame(hist_export)
+                df_export = pd.DataFrame(export_rows)
                 st.download_button(
-                    label=t("download_trend_csv"),
-                    data=df_hist_export.to_csv(index=False).encode("utf-8"),
-                    file_name="compliance_trend_report.csv",
+                    label=t("download_clause_csv"),
+                    data=df_export.to_csv(index=False).encode("utf-8"),
+                    file_name="compliance_clause_report.csv",
                     mime="text/csv",
                 )
+
+                _history_local: list[dict] = []
+                try:
+                    _history_local = get_compliance_history()
+                except Exception:
+                    pass
+
+                if _history_local:
+                    hist_export = [
+                        {
+                            "snapshot_date": (h.get("snapshot_at") or "")[:10],
+                            "overall_score": h.get("overall_score", 0),
+                            "triggered_by":  h.get("triggered_by", "system"),
+                        }
+                        for h in _history_local
+                    ]
+                    df_hist_export = pd.DataFrame(hist_export)
+                    st.download_button(
+                        label=t("download_trend_csv"),
+                        data=df_hist_export.to_csv(index=False).encode("utf-8"),
+                        file_name="compliance_trend_report.csv",
+                        mime="text/csv",
+                    )

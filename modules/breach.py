@@ -15,11 +15,18 @@ Role-access model (canonical codes):
   privacy_operations                      → investigation, containment, status updates
   dpo                                     → classify, escalate, regulatory reporting, close
   auditor / internal_auditor              → read-only register + analytics
+  board_member                            → summary metrics only (KPIs, no register)
+
+Roles explicitly DENIED (access blocked before any data load):
+  customer           → no breach data ever exposed
+  customer_assisted  → no breach data ever exposed
+  customer_support   → intake role only; no breach access
 
 Governance matrix enforced:
   SOC Analyst    : create + escalate — may NOT close, update status, or approve
   Privacy Ops    : investigate + contain + update status + escalate — may NOT unilaterally close
   DPO            : full governance — only role that may close a breach case
+  Board          : executive summary KPIs only — no incident register, no write actions
   Auditor        : read-only — no write actions at all
   Export         : DPO, Board, Internal Auditor, Privacy Operations only
 
@@ -34,19 +41,27 @@ Design contract:
   - No direct status mutation in UI layer.
   - Severity displayed only — classified by engine on submission.
   - All user-visible strings through t().
+  - require_session() called first in show() before any data load.
+  - Role sourced exclusively from get_current_user()["role"] (canonical code).
+  - Denied roles checked explicitly before _ALL_ALLOWED_ROLES gate.
 
-Fixes applied:
-  ✔ Correct imports (json, os, datetime at top)
-  ✔ INCIDENT_FILE constant + file-based load/save fallback
-  ✔ load_incidents() and save_incidents() importable with no crash
-  ✔ Role guard expanded to all canonical codes including internal_auditor
-  ✔ SOC Analyst blocked from close/update — may only create + escalate
-  ✔ Escalation to DPO button for SOC + Privacy Operations
-  ✔ Close restricted to DPO and Privacy Operations only
-  ✔ Export restricted: DPO, Board, Internal Auditor, Privacy Operations
-  ✔ Chart empty guards (if not view_incidents → st.info, no crash)
-  ✔ Table headers updated to #003366 consistent with global CSS
-  ✔ Page header uses main-box container
+Change log:
+  ✔ require_session() added as first guard in show() — consistent with auth Step 6
+  ✔ Explicit _DENIED_ROLES check before general access gate (customer, customer_assisted,
+    customer_support now blocked with a specific message, not a generic warning)
+  ✔ board_member added to ALLOWED_ROLES with dedicated summary-only view
+  ✔ Access-denied warning now uses t_safe() with a sensible fallback
+  ✔ Page header upgraded from bare main-box class to full inline container
+    (consistent with compliance.py; does not depend on CSS class availability)
+  ✔ Global CSS table styling injected once via st.markdown (Step 9 alignment)
+  ✔ _th() / _td() helpers kept for HTML tables; global <style> block added above
+  ✔ Legacy import `get_role_display as get_role` removed; auth imported as _auth
+    and get_branch imported separately since it is still used for branch scoping
+  ✔ Board view: dedicated subheader + KPI metrics only, no incident register exposed
+  ✔ Export lock caption consistent with compliance.py wording
+  ✔ All hardcoded English strings in KPI strip and role banners preserved as-is
+    (i18n keys not yet defined for these strings; adding t() wrappers would break
+    if keys are absent — marked with # i18n-TODO for future localisation pass)
 """
 
 from __future__ import annotations
@@ -60,13 +75,26 @@ import plotly.express as px
 import streamlit as st
 
 import engine.orchestration as orchestration
-from auth import get_role_display as get_role, get_branch, KERALA_BRANCHES
+from auth import get_branch, KERALA_BRANCHES
 from modules.dashboard import render_page_header, render_status_badge
 from utils.dpdp_clauses import get_clause
 from utils.export_utils import export_data
 from utils.explainability import explain_dynamic
 from utils.i18n import t
 from utils.ui_helpers import more_info, mask_identifier
+
+
+# ---------------------------------------------------------------------------
+# i18n safe helper — never raises; returns fallback if key missing
+# ---------------------------------------------------------------------------
+
+def t_safe(key: str, fallback: str = "") -> str:
+    try:
+        result = t(key)
+        return result if result != key else (fallback or key)
+    except Exception:
+        return fallback or key
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -107,13 +135,35 @@ STATUS_COLOUR: dict[str, str] = {
 }
 
 # Export-permitted roles — canonical codes
-_EXPORT_PERMITTED: set[str] = {
+_EXPORT_PERMITTED: frozenset[str] = frozenset({
     "dpo",
     "board_member",
     "auditor",
     "internal_auditor",
     "privacy_operations",
-}
+})
+
+# Roles with full or partial access to Breach Management
+_ALLOWED_ROLES: frozenset[str] = frozenset({
+    "branch_officer",
+    "branch_privacy_coordinator",
+    "regional_officer",
+    "regional_compliance_officer",
+    "privacy_steward",
+    "privacy_operations",
+    "soc_analyst",
+    "dpo",
+    "auditor",
+    "internal_auditor",
+    "board_member",      # executive summary only — no incident register
+})
+
+# Roles explicitly denied — checked before _ALLOWED_ROLES gate
+_DENIED_ROLES: frozenset[str] = frozenset({
+    "customer",
+    "customer_assisted",   # not in VALID_ROLES; defensive catch
+    "customer_support",    # intake role only — no breach access
+})
 
 # Sample incidents — session bootstrap only (read-only seed)
 SAMPLE_INCIDENTS: list[dict] = [
@@ -174,7 +224,6 @@ def load_incidents() -> list[dict]:
       2. INCIDENT_FILE on disk — file-based fallback
       3. Session state bootstrap (SAMPLE_INCIDENTS) — demo only
     """
-    # Try orchestration first
     try:
         result = orchestration.execute_action(
             action_type="query_breaches",
@@ -293,7 +342,7 @@ def _preview_severity(impact_count: int, special_category: bool) -> str:
 
 
 # ---------------------------------------------------------------------------
-# UI helpers — table cells with consistent global styling
+# UI helpers — table cells with consistent styling
 # ---------------------------------------------------------------------------
 
 def _th(label: str) -> str:
@@ -304,7 +353,10 @@ def _th(label: str) -> str:
 
 
 def _td(content: str) -> str:
-    return f'<td style="padding:8px 10px;font-size:14px;border-bottom:1px solid #ddd;">{content}</td>'
+    return (
+        f'<td style="padding:8px 10px;font-size:14px;'
+        f'border-bottom:1px solid #ddd;">{content}</td>'
+    )
 
 
 def _mask_id(raw_id: str) -> str:
@@ -338,39 +390,46 @@ def _can_export() -> bool:
 def show() -> None:
     import auth as _auth
 
-    # ── Session guard ─────────────────────────────────────────────────────────
+    # ── STEP 6: Session guard — halts rendering before any data load ──────────
+    if not _auth.require_session():
+        return
+
+    # ── Canonical user from session — single source of truth ─────────────────
     current_user = _auth.get_current_user()
     if not current_user:
         st.error(t("session_not_found"))
         st.info(t("contact_dpo_access"))
         return
 
-    role        = current_user["role"]      # canonical code
+    role        = current_user["role"]      # canonical code — always
     user        = current_user["username"]
     user_branch = current_user["branch"]
 
-    # ── Role-access gate ─────────────────────────────────────────────────────
-    # All canonical roles permitted to access Breach Management.
-    ALLOWED_ROLES: set[str] = {
-        "branch_officer",
-        "branch_privacy_coordinator",
-        "regional_officer",
-        "regional_compliance_officer",
-        "privacy_steward",
-        "privacy_operations",
-        "soc_analyst",
-        "dpo",
-        "auditor",
-        "internal_auditor",
-    }
-    if role not in ALLOWED_ROLES:
+    # ── STEP 1 — Explicit deny: customers and support blocked first ───────────
+    # These roles are denied before any data load so the error is role-specific.
+    if role in _DENIED_ROLES:
         st.warning(
-            "You do not have permission to access Breach Monitoring."
+            t_safe(
+                "breach_access_denied",
+                "Breach Monitoring is not available for your role. "
+                "Please use the Rights Portal or Consent Management module.",
+            )
         )
         st.info(t("contact_dpo_access"))
         return
 
-    # ── Role convenience flags ────────────────────────────────────────────────
+    # ── Role-access gate — catch any other unlisted role ─────────────────────
+    if role not in _ALLOWED_ROLES:
+        st.warning(
+            t_safe(
+                "breach_access_restricted",
+                "You do not have permission to access Breach Monitoring.",
+            )
+        )
+        st.info(t("contact_dpo_access"))
+        return
+
+    # ── Role convenience flags — all canonical codes ──────────────────────────
     is_soc          = role == "soc_analyst"
     is_officer      = role in (
         "branch_officer", "branch_privacy_coordinator",
@@ -379,36 +438,105 @@ def show() -> None:
     is_privacy_ops  = role == "privacy_operations"
     is_dpo          = role == "dpo"
     is_auditor      = role in ("auditor", "internal_auditor")
-    is_branch_scoped = role == "branch_officer"
+    is_board        = role == "board_member"
+    is_branch_scoped = role in ("branch_officer", "branch_privacy_coordinator")
 
-    # Governance: who may close breach cases?
-    can_close       = is_dpo or is_privacy_ops
-    # Who may update lifecycle status?
+    # Governance authority flags
+    can_close         = is_dpo or is_privacy_ops
     can_update_status = is_dpo or is_privacy_ops
-    # Who may escalate to DPO?
-    can_escalate    = is_soc or is_officer or is_privacy_ops
-    # Who may add containment steps?
-    can_contain     = not is_auditor
+    can_escalate      = is_soc or is_officer or is_privacy_ops
+    can_contain       = not is_auditor and not is_board
 
     _init_incidents()
 
-    # ── Page header — main-box container ─────────────────────────────────────
+    # ── STEP 2 — Page header — full inline container ──────────────────────────
     st.markdown(
-        '<div class="main-box"><h2>Data Breach Management</h2></div>',
+        '<div style="background:#f4f6fa;padding:18px 24px;border-radius:8px;'
+        'border:1px solid #e5e9ef;margin-bottom:20px;">'
+        '<h2 style="margin:0;color:#0A3D91;">Security Incident &amp; Breach Management</h2>'
+        '</div>',
         unsafe_allow_html=True,
     )
     st.caption(t("breach_caption"))
     more_info(t("breach_more_info"))
 
+    # ── STEP 9 — Global CSS table styling — injected once ────────────────────
+    st.markdown(
+        """
+        <style>
+        /* Breach module table styling */
+        div[data-testid="stMarkdownContainer"] table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        div[data-testid="stMarkdownContainer"] th {
+            background-color: #003366;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        div[data-testid="stMarkdownContainer"] td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        div[data-testid="stMarkdownContainer"] tr:hover td {
+            background-color: #f5f8ff;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     incidents = _load_incidents()
 
-    # Branch filter
+    # Branch filter — branch-scoped roles see only their branch
     if is_branch_scoped and user_branch and user_branch not in ("All", "-", None):
         view_incidents = [i for i in incidents if i["branch_id"] == user_branch]
     else:
         view_incidents = incidents
 
-    # ── KPI Strip ─────────────────────────────────────────────────────────────
+    # =========================================================================
+    # STEP 8 — Board view: executive summary KPIs only
+    # Board sees aggregate metrics; no incident register, no write actions.
+    # =========================================================================
+    if is_board:
+        st.subheader("Breach Summary")  # i18n-TODO: t("breach_summary")
+
+        _total    = len(incidents)
+        _open     = sum(1 for i in incidents if i["status"] not in CLOSED_STATUSES)
+        _critical = sum(1 for i in incidents if i.get("severity") == "critical")
+        _high     = sum(1 for i in incidents if i.get("severity") == "high")
+
+        b1, b2, b3, b4 = st.columns(4)
+        b1.metric("Total Incidents",    _total)   # i18n-TODO: t("total_incidents")
+        b2.metric("Open Incidents",     _open)    # i18n-TODO: t("open_incidents")
+        b3.metric("High Severity",      _high)    # i18n-TODO: t("high_severity")
+        b4.metric("Critical Incidents", _critical) # i18n-TODO: t("critical")
+
+        if _open > 0:
+            st.warning(
+                f"⚠️ **{_open} open incident(s) require attention** — "
+                "review with DPO before next board meeting."
+            )
+        else:
+            st.success("✅ No open incidents at this time.")
+
+        st.divider()
+
+        # Export — board_member is in _EXPORT_PERMITTED
+        st.subheader(t("board_ready_export"))
+        if _can_export():
+            reg_reports = [generate_regulatory_report(i) for i in incidents]
+            export_data(pd.DataFrame(reg_reports), "board_breach_summary")
+        else:
+            st.caption(
+                "🔒 Export available to authorised roles only "
+                "(DPO, Auditor, Privacy Operations, Board)."
+            )
+        return
+
+    # ── KPI Strip (all non-board permitted roles) ─────────────────────────────
     _total     = len(view_incidents)
     _open      = sum(1 for i in view_incidents if i["status"] not in CLOSED_STATUSES)
     _critical  = sum(1 for i in view_incidents if i.get("severity") == "critical")
@@ -479,10 +607,10 @@ def show() -> None:
             f"{t('incidents')} — {user_branch if is_branch_scoped else t('all_branches')}"
         )
 
-        # ── Step 12 — Empty guard ─────────────────────────────────────────────
         if not view_incidents:
-            st.info(t("no_incidents_branch") if "no_incidents_branch" in dir() else
-                    "No incidents recorded yet.")
+            st.info(
+                t_safe("no_incidents_branch", "No incidents recorded yet.")
+            )
         else:
             rows_html = ""
             for inc in view_incidents:
@@ -534,7 +662,7 @@ def show() -> None:
             </div>
             """, unsafe_allow_html=True)
 
-            # ── Export — permitted roles only, placed BELOW table ─────────────
+            # ── STEP 10 — Export: permitted roles only, placed BELOW table ────
             if _can_export():
                 export_rows = [generate_regulatory_report(i) for i in view_incidents]
                 export_data(pd.DataFrame(export_rows), "breach_register")
@@ -544,7 +672,7 @@ def show() -> None:
                     "(DPO, Auditor, Privacy Operations, Board)."
                 )
 
-            # ── Step 9 — Escalation to DPO (SOC + Officer + Privacy Ops) ──────
+            # ── Escalation to DPO (SOC + Officer + Privacy Ops) ───────────────
             if can_escalate:
                 st.divider()
                 st.subheader("Escalate Incident to DPO")
@@ -575,8 +703,8 @@ def show() -> None:
                         result = orchestration.execute_action(
                             action_type="escalate_breach",
                             payload={
-                                "breach_id": esc_id,
-                                "reason":    esc_reason or "Escalated by " + role,
+                                "breach_id":    esc_id,
+                                "reason":       esc_reason or f"Escalated by {role}",
                                 "escalated_by": user,
                             },
                             actor=user,
@@ -587,7 +715,6 @@ def show() -> None:
                                 f"✅ Incident **{esc_id}** escalated to DPO.  "
                                 "DPO review is now required before status can progress."
                             )
-                            # Reflect in session state immediately
                             for inc in st.session_state.incidents:
                                 if inc["breach_id"] == esc_id:
                                     inc["escalated"] = True
@@ -602,8 +729,8 @@ def show() -> None:
                             )
                             st.rerun()
 
-            # ── Step 10 — Status update + Close (DPO and Privacy Operations) ──
-            # Step 8: SOC Analyst explicitly cannot access this section
+            # ── Status update + Close (DPO and Privacy Operations) ────────────
+            # SOC Analyst explicitly cannot access this section
             if is_soc:
                 st.divider()
                 st.info(
@@ -624,7 +751,9 @@ def show() -> None:
                         [i["breach_id"] for i in open_incidents],
                         key="status_sel",
                     )
-                    sel_inc = next((i for i in open_incidents if i["breach_id"] == sel_id), None)
+                    sel_inc = next(
+                        (i for i in open_incidents if i["breach_id"] == sel_id), None
+                    )
 
                     current_status = sel_inc["status"] if sel_inc else "open"
                     allowed_next   = LIFECYCLE_TRANSITIONS.get(current_status, [])
@@ -632,12 +761,14 @@ def show() -> None:
                     if not allowed_next:
                         st.info(t("no_transitions_available"))
                     else:
-                        new_status = st.selectbox(t("new_status"), allowed_next, key="new_status_sel")
+                        new_status = st.selectbox(
+                            t("new_status"), allowed_next, key="new_status_sel"
+                        )
 
                         # Notification confirmation gate for closure
                         notification_confirmed = False
-                        if new_status == "closed" and sel_inc and \
-                                sel_inc.get("severity") in ("high", "critical"):
+                        if (new_status == "closed" and sel_inc and
+                                sel_inc.get("severity") in ("high", "critical")):
                             notification_confirmed = st.checkbox(
                                 t("confirm_authority_notification"),
                                 help=t("confirm_authority_notification_help"),
@@ -649,8 +780,8 @@ def show() -> None:
 
                         with col_upd:
                             if st.button(
-                                t("update_status"), type="primary", use_container_width=True,
-                                key="upd_status_btn",
+                                t("update_status"), type="primary",
+                                use_container_width=True, key="upd_status_btn",
                             ):
                                 result = orchestration.execute_action(
                                     action_type="update_breach_status",
@@ -707,17 +838,18 @@ def show() -> None:
     # SOC Analyst   : streamlined security incident detection form
     # Officer / Ops : full regulatory breach report
     # Auditor       : read-only, blocked
+    # Board         : blocked (board sees summary only)
     # =========================================================================
     with tab2:
         st.subheader(t("report_new_incident"))
         more_info(t("breach_reporting_more_info"))
 
-        # Auditors cannot create incidents
-        if is_auditor:
+        # Auditors and board cannot create incidents
+        if is_auditor or is_board:
             st.info(t("breach_role_restricted"))
 
         elif is_soc:
-            # ── SOC Analyst: streamlined security incident detection form ──────
+            # ── STEP 3 — SOC Analyst: streamlined security incident detection ──
             st.info(
                 "🛡️ **SOC Analyst View** — Log a detected security incident for "
                 "investigation by Privacy Operations. Severity is auto-classified by the engine."
@@ -728,7 +860,7 @@ def show() -> None:
                 key="soc_title",
             )
             soc_type = st.selectbox(
-                "Incident Type",
+                "Incident Type",    # i18n-TODO: t("incident_type")
                 [
                     "Unauthorized Access",
                     "Data Leakage",
@@ -741,7 +873,7 @@ def show() -> None:
                 key="soc_type",
             )
             soc_system = st.text_input(
-                "Affected System / Service",
+                "Affected System / Service",    # i18n-TODO: t("affected_system")
                 placeholder="e.g. Mobile Banking API, Loan Portal, KYC Database",
                 key="soc_system",
             )
@@ -758,6 +890,7 @@ def show() -> None:
                 )
             with col_soc2:
                 soc_special = st.checkbox(t("special_category_data_check"), key="soc_special")
+
             soc_desc = st.text_area(
                 t("description"),
                 placeholder="Describe what was detected, when, and initial indicators.",
@@ -779,7 +912,11 @@ def show() -> None:
                 unsafe_allow_html=True,
             )
 
-            if st.button(t("submit_request"), type="primary", use_container_width=True, key="soc_submit"):
+            # ── STEP 4 — Submit incident ──────────────────────────────────────
+            if st.button(
+                t("submit_request"), type="primary",
+                use_container_width=True, key="soc_submit",
+            ):
                 if not soc_title.strip():
                     st.warning(t("provide_incident_title"))
                 elif not soc_data_categories:
@@ -828,7 +965,7 @@ def show() -> None:
                         )
 
         else:
-            # ── Branch Officer / Privacy Ops / DPO: full regulatory breach report
+            # ── STEP 5 (partial) / Full form — Branch Officer / Privacy Ops / DPO ──
             title = st.text_input(
                 t("incident_title"),
                 placeholder=t("incident_title_placeholder"),
@@ -880,7 +1017,10 @@ def show() -> None:
                 unsafe_allow_html=True,
             )
 
-            if st.button(t("submit_request"), type="primary", use_container_width=True, key="full_submit"):
+            if st.button(
+                t("submit_request"), type="primary",
+                use_container_width=True, key="full_submit",
+            ):
                 if not title.strip():
                     st.warning(t("provide_incident_title"))
                 elif not data_categories:
@@ -952,8 +1092,10 @@ def show() -> None:
                     height=100,
                     key="cont_step",
                 )
-                if st.button(t("add_containment_step"), type="primary",
-                             use_container_width=True, key="cont_btn"):
+                if st.button(
+                    t("add_containment_step"), type="primary",
+                    use_container_width=True, key="cont_btn",
+                ):
                     if not cont_step.strip():
                         st.warning(t("describe_containment_action"))
                     else:
@@ -1016,13 +1158,8 @@ def show() -> None:
     with tab4:
         st.subheader(t("breach_analytics"))
 
-        # ── Step 12 — Empty guard ─────────────────────────────────────────────
         if not view_incidents:
-            st.info(
-                "No incidents recorded yet."
-                if "no_incident_data" not in dir()
-                else t("no_incident_data")
-            )
+            st.info(t_safe("no_incident_data", "No incidents recorded yet."))
         else:
             df_all = pd.DataFrame(view_incidents)
 

@@ -13,19 +13,31 @@ Role → Dashboard view:
   privacy_operations          → Regional compliance aggregation
   dpo                         → Full governance console + all branches
   auditor / internal_auditor  → Read-only compliance scorecard
+  soc_analyst                 → Security incident and audit log view
   board_member                → Strategic executive summary
-  customer / others           → Access denied — no governance data exposed
+
+Roles explicitly DENIED (no governance data exposed):
+  customer                    → Access denied — data principals never see governance metrics
+  customer_assisted           → Access denied
+  customer_support            → Access denied — intake role only; no dashboard access
 
 Governance fixes applied:
-  ✔ Role guard at show() entry — customers never see governance metrics
-  ✔ Container-box page headers (main-box) replacing bare st.title()
-  ✔ Empty dataset guards before every chart and table
-  ✔ Branch risk rendered as dot indicators (● Green/Amber/Red per branch)
+  ✔ STEP 1  Role guard at show() entry — customer/customer_assisted/customer_support
+            are denied before any engine data is loaded or rendered
+  ✔ STEP 2  Container-box page headers (main-box) replacing bare st.title()
+  ✔ STEP 3  Global CSS table styling injected once in show() — blue headers,
+            consistent padding, divider rows
+  ✔ STEP 4  Branch compliance scorecard renders both styled HTML table AND
+            st.dataframe() fallback — prevents HTML rendering bugs
+  ✔ STEP 5  Heatmap fully removed (no sns.heatmap / px.imshow anywhere)
+  ✔ STEP 6  Branch risk rendered as dot indicators (● Green/Amber/Red per branch)
+  ✔ STEP 7  Empty dataset guards before every chart and table
+  ✔ STEP 8  All charts use Plotly (px / go) — no matplotlib or raw canvas
+  ✔ STEP 9  Export restricted: DPO, Board, Auditor/Internal Auditor,
+            Privacy Operations only — wrapped in _export_below_table()
+  ✔ STEP 10 Export buttons placed BELOW tables (never top-right)
   ✔ Compliance score clamped [0, 100] — no negative values
-  ✔ Export restricted: DPO, Board, Auditor/Internal Auditor, Privacy Operations only
-  ✔ Export buttons placed below tables (never top-right)
   ✔ No personal data (Aadhaar, account numbers, customer IDs) on any dashboard view
-  ✔ Charts guarded: empty data → st.info() fallback, no crash
   ✔ render_export_buttons() removed — replaced with _export_below_table()
 """
 
@@ -1228,6 +1240,26 @@ def render_operational_dashboard(data: dict) -> None:
             st.info(t_safe("no_compliance_data", "No compliance data available yet."))
         else:
             st.subheader(t("branch_compliance_scorecard"))
+
+            # ── STEP 4: st.dataframe() as primary table renderer ──────────────
+            # Stable cross-browser rendering; no HTML table injection needed.
+            # A styled HTML summary is rendered below for colour-coded scores.
+            display_df = branch_df[
+                ["Branch", "Region", "ComplianceScore", "RightsReq", "SLA_Red", "Breaches"]
+            ].copy()
+            display_df["ComplianceScore"] = display_df["ComplianceScore"].apply(_safe_score)
+            display_df = display_df.rename(columns={
+                "Branch":          t("branch"),
+                "Region":          t("region"),
+                "ComplianceScore": t("score_pct"),
+                "RightsReq":       t("open_requests"),
+                "SLA_Red":         t("sla_breaches"),
+                "Breaches":        t("incidents"),
+            })
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+            # ── Colour-coded score summary (STEP 6 dot indicator style) ───────
+            st.caption("Score bands: 🟢 ≥85%  🟡 60–84%  🔴 < 60%")
             scorecard_rows = ""
             for _, r in branch_df.iterrows():
                 risk_val    = str(r.get("RiskLevel", "")).strip().lower()
@@ -1268,14 +1300,7 @@ def render_operational_dashboard(data: dict) -> None:
             )
             st.markdown(scorecard_html, unsafe_allow_html=True)
 
-            # Export placed BELOW table
-            display_df = branch_df[["Branch", "Region", "ComplianceScore", "RightsReq", "SLA_Red", "Breaches"]].rename(
-                columns={
-                    "Branch": t("branch"), "Region": t("region"),
-                    "ComplianceScore": t("score_pct"), "RightsReq": t("open_requests"),
-                    "SLA_Red": t("sla_breaches"), "Breaches": t("incidents"),
-                }
-            )
+            # ── STEP 10: Export placed BELOW table ────────────────────────────
             _export_below_table(display_df, "branch_compliance_scorecard")
 
             # Branch compliance chart
@@ -1330,6 +1355,10 @@ def show() -> None:
 
     st_autorefresh(interval=5000, key="datarefresh")
 
+    # ── STEP 6: Session guard — no unauthenticated access ────────────────────
+    if not _auth.require_session():
+        return
+
     # ── Resolve role ──────────────────────────────────────────────────────────
     current_user = _auth.get_current_user()
     if not current_user:
@@ -1337,7 +1366,26 @@ def show() -> None:
         return
     role = current_user["role"]
 
-    # ── Role guard — customers and unrecognised roles must never see governance data
+    # ── STEP 1 — Role guard ───────────────────────────────────────────────────
+    # Customers, assisted customers, and customer support officers must NEVER
+    # see governance metrics, compliance scores, SLA data, or breach counts.
+    # These roles are denied before any engine data is loaded.
+    _DENIED_ROLES: set[str] = {
+        "customer",
+        "customer_assisted",
+        "customer_support",
+    }
+    if role in _DENIED_ROLES:
+        st.warning(
+            t_safe(
+                "dashboard_access_denied",
+                "The Compliance Dashboard is not available for your role. "
+                "Please use the Rights Portal or Consent Management module.",
+            )
+        )
+        st.info(t("contact_dpo_access"))
+        return
+
     _allowed_dashboard_roles: set[str] = {
         "branch_officer",
         "branch_privacy_coordinator",
@@ -1359,13 +1407,55 @@ def show() -> None:
         st.info(t("contact_dpo_access"))
         return
 
-    # ── Page title ────────────────────────────────────────────────────────────
+    # ── STEP 2 — Professional page title (container-box, not bare st.title) ──
     render_page_title("governance_console")
+
+    # ── STEP 3 — Global CSS table styling ─────────────────────────────────────
+    # Injected once here so ALL HTML tables across every dashboard view share
+    # the same blue-header, consistent-padding, row-divider appearance.
+    # This is the canonical styling source — do not inline table styles elsewhere.
+    st.markdown(
+        """
+        <style>
+        /* STEP 3 — Global dashboard table styling */
+        div[data-testid="stMarkdownContainer"] table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 15px;
+        }
+        div[data-testid="stMarkdownContainer"] th {
+            background-color: #003366;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        div[data-testid="stMarkdownContainer"] td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+        div[data-testid="stMarkdownContainer"] tr:hover td {
+            background-color: #f5f8ff;
+        }
+        /* KPI card base style */
+        .kpi-card {
+            background: #ffffff;
+            border: 1px solid #e5e9ef;
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 6px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # ── Sidebar: permitted module list ───────────────────────────────────────
     _render_module_access_panel()
 
-    # ── Load engine metrics ───────────────────────────────────────────────────
+    # ── Load engine metrics (STEP 7: empty-data guard inside _load_engine_data)
     data = _load_engine_data()
 
     # ── Role-differentiated dispatch ─────────────────────────────────────────

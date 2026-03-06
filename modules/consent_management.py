@@ -7,13 +7,13 @@ Architecture (updated):
     UI  →  orchestration.execute_action()  →  Engine  →  Audit / SLA / Compliance
 
 Role-access model (canonical codes):
-  customer                    Create own consent (Tab 1 — direct, self-service or branch-assisted)
+  customer                    Create own consent, view/approve/deny official access requests
   customer_assisted           Create consent via branch assistance
-  customer_support            Assisted consent capture on behalf of customer (intake only)
+  customer_support            Assisted consent capture + submit official access requests
   branch_officer /
   branch_privacy_coordinator  Assisted consent capture + branch register view (monitor only)
   regional_officer /
-  regional_compliance_officer Assisted consent capture + regional scope
+  regional_compliance_officer Assisted consent capture + regional scope + access requests
   privacy_steward             Assisted consent capture + governance
   privacy_operations          Full governance — capture, operational processing (NO revoke/modify)
   dpo                         Full governance — revoke, renew, analytics (NO consent creation)
@@ -23,13 +23,32 @@ Governance matrix enforced:
   - Customer Support Officer: may register consent, may NOT revoke or modify records
   - Branch Privacy Coordinator: monitor only (read + assisted capture), may NOT modify records
   - Privacy Operations: operational capture + processing, may NOT unilaterally revoke on behalf of customer
-  - Customer / Assisted: give or revoke OWN consent only
+  - Customer / Assisted: give or revoke OWN consent only; approve/deny official access requests
   - Export: DPO, Board, Internal Auditor, Privacy Operations only
 
+Consent mediation workflow (DPDP model):
+  Official  → requests customer data access (render_official_request_interface)
+  Customer  → views, approves, or denies the request (render_customer_requests)
+  System    → records consent decision in storage/rights_requests.json
+  Official  → queries result status
+
+Access request storage:
+  storage/rights_requests.json — shared with the rights portal.
+  Official data access requests are identified by:
+      request_category == "official_data_access"
+  Rights portal entries (corrections, erasures, grievances) are identified by
+  the absence of request_category, or request_category == "rights_portal".
+  load_access_requests() filters to official_data_access only.
+  save_access_requests() preserves all non-official_data_access entries intact.
+
+Customer identity:
+  Customers NEVER manually enter customer_id, aadhaar, or account_number.
+  All identity fields are auto-loaded from st.session_state at login (auth.py).
+  Tab 1 customer form reads identity from session and displays masked values.
+
 Design contract:
-  - NO storage writes, NO hash generation, NO SLA calls, NO audit_log calls here.
-  - NO validation logic (expiry, DPIA, branch, drift) — all delegated to engine.
-  - NO compliance_engine calls — orchestration triggers recalculation post-commit.
+  - Consent creation still goes through orchestration.execute_action() via _exec_consent().
+  - Access request save/load uses direct file I/O against storage/rights_requests.json.
   - All mutations go through orchestration.execute_action() via _exec_consent().
   - All user-visible strings go through t() — zero hardcoded English strings.
 """
@@ -37,6 +56,7 @@ Design contract:
 from __future__ import annotations
 
 import json
+import os
 import uuid
 import streamlit as st
 import pandas as pd
@@ -96,6 +116,63 @@ KERALA_DISTRICTS: list[str] = [
 ]
 
 # ---------------------------------------------------------------------------
+# STEP 1 — Access Request storage path
+# Official → Customer data access request mediation (DPDP consent model)
+#
+# Stored in storage/rights_requests.json — the same file used by the rights
+# portal — discriminated by request_category == "official_data_access".
+# Rights portal entries (corrections, erasures, grievances) have no
+# request_category field, so they are never touched by these functions.
+# ---------------------------------------------------------------------------
+
+ACCESS_REQUEST_FILE = "storage/rights_requests.json"
+
+# Discriminator value written to every new official data access request.
+# Allows load_access_requests() to filter without corrupting rights portal data.
+_ACCESS_REQUEST_CATEGORY = "official_data_access"
+
+# Official roles permitted to submit access requests to customers
+OFFICIAL_REQUEST_ROLES: set[str] = {
+    "customer_support",
+    "branch_officer",
+    "branch_privacy_coordinator",
+    "regional_officer",
+    "regional_compliance_officer",
+    "privacy_steward",
+    "privacy_operations",
+    "dpo",
+}
+
+# Data fields officials may request access to
+ACCESS_REQUEST_FIELDS: list[str] = [
+    "Aadhaar Details",
+    "PAN Details",
+    "Account Information",
+    "Address Information",
+    "Transaction History",
+    "KYC Documents",
+]
+
+# Permitted purposes for official data access requests
+ACCESS_REQUEST_PURPOSES: list[str] = [
+    "Loan Processing",
+    "KYC Verification",
+    "Fraud Investigation",
+    "Regulatory Compliance",
+    "Account Servicing",
+    "Credit Assessment",
+]
+
+# DPDP denial clause options (Step 10)
+DENIAL_CLAUSES: list[str] = [
+    "Right to Restrict Processing",
+    "Purpose Not Clear",
+    "Unnecessary Data Requested",
+    "Consent Not Required for Stated Purpose",
+    "Data Minimisation Violation",
+]
+
+# ---------------------------------------------------------------------------
 # Consent submission — allowed canonical roles
 # ---------------------------------------------------------------------------
 
@@ -130,6 +207,89 @@ _EXPORT_PERMITTED: set[str] = {
 
 def _can_export() -> bool:
     return st.session_state.get("role", "") in _EXPORT_PERMITTED
+
+
+# ---------------------------------------------------------------------------
+# STEP 2 — Load access requests from shared rights_requests.json
+# Filters to official_data_access records only — never touches rights portal
+# entries (corrections, erasures, grievances) which have no request_category.
+# ---------------------------------------------------------------------------
+
+def load_access_requests() -> list[dict]:
+    """
+    Load only official data access requests from storage/rights_requests.json.
+
+    The file is shared with the rights portal. Records are distinguished by:
+        request_category == "official_data_access"
+
+    Rights portal entries (no request_category field, or request_category ==
+    "rights_portal") are filtered out and never returned here.
+
+    Returns an empty list if the file does not yet exist or is malformed.
+    """
+    if not os.path.exists(ACCESS_REQUEST_FILE):
+        return []
+    try:
+        with open(ACCESS_REQUEST_FILE) as f:
+            all_records = json.load(f)
+        # Filter: only return official data access requests
+        return [
+            r for r in all_records
+            if r.get("request_category") == _ACCESS_REQUEST_CATEGORY
+        ]
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+# ---------------------------------------------------------------------------
+# STEP 3 — Persist access requests to shared storage/rights_requests.json
+# Preserves ALL existing rights portal entries — only official_data_access
+# records are replaced.  Never corrupts grievances, corrections, erasures.
+# ---------------------------------------------------------------------------
+
+def save_access_requests(data: list[dict]) -> None:
+    """
+    Write the updated official data access request list back to
+    storage/rights_requests.json, preserving all rights portal entries intact.
+
+    Strategy:
+      1. Load the full file (all record categories).
+      2. Strip out any existing official_data_access records.
+      3. Append the new set of official_data_access records.
+      4. Write the merged result back atomically.
+
+    Each record in `data` must already contain:
+        request_category == "official_data_access"
+    This is enforced by render_official_request_interface() which always sets
+    the field before appending.
+
+    Args:
+        data: Full list of official_data_access records (the current state
+              after any mutations — replaces all previous official_data_access
+              entries in the file).
+    """
+    os.makedirs(os.path.dirname(ACCESS_REQUEST_FILE), exist_ok=True)
+
+    # Load existing file — default to empty list if absent or corrupt
+    existing: list[dict] = []
+    if os.path.exists(ACCESS_REQUEST_FILE):
+        try:
+            with open(ACCESS_REQUEST_FILE) as f:
+                existing = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            existing = []
+
+    # Keep rights portal entries; discard old official_data_access records
+    preserved = [
+        r for r in existing
+        if r.get("request_category") != _ACCESS_REQUEST_CATEGORY
+    ]
+
+    # Merge: rights portal entries first, then updated official access requests
+    merged = preserved + data
+
+    with open(ACCESS_REQUEST_FILE, "w") as f:
+        json.dump(merged, f, indent=4)
 
 
 # ---------------------------------------------------------------------------
@@ -359,6 +519,450 @@ def _render_identity_fields(
 
 
 # ---------------------------------------------------------------------------
+# STEPS 4-6 — Official data access request interface
+# Officials request customer data; customer is notified for approval/denial.
+# ---------------------------------------------------------------------------
+
+def render_official_request_interface() -> None:
+    """
+    Render the official data access request form (embedded in Tab 5).
+    Officials specify: customer ID, purpose, and requested data fields.
+    The request is stored in access_requests.json with status "Pending".
+    The customer then sees the request in render_customer_requests() and decides.
+
+    Permitted roles: customer_support, branch_officer, branch_privacy_coordinator,
+    regional_officer, regional_compliance_officer, privacy_steward,
+    privacy_operations, dpo.
+    """
+    import auth as _auth
+    _cu  = _auth.get_current_user() or {}
+    user = _cu.get("username", st.session_state.get("username", "officer"))
+
+    st.subheader("📋 Submit Data Access Request to Customer")
+    st.caption(
+        "Request access to specific customer data fields for a stated purpose. "
+        "The customer will receive this request and must approve or deny it."
+    )
+    st.info(
+        "🔒 **DPDP Act 2023 — Section 7**: Data processing is lawful only with the "
+        "customer's explicit consent. Submit this form to notify the customer and "
+        "await their decision."
+    )
+
+    # ── STEP 4 — Customer ID + Purpose ───────────────────────────────────────
+    col1, col2 = st.columns(2)
+    with col1:
+        customer_id = st.text_input(
+            "Customer ID",
+            placeholder="e.g. CUST001",
+            key="off_access_cid",
+        )
+        purpose = st.selectbox(
+            "Purpose",
+            ACCESS_REQUEST_PURPOSES,
+            key="off_access_purpose",
+        )
+
+    # ── STEP 5 — Select requested data fields ─────────────────────────────────
+    with col2:
+        fields = st.multiselect(
+            "Select Data Fields Required",
+            ACCESS_REQUEST_FIELDS,
+            key="off_access_fields",
+            help="Select only the fields strictly necessary for the stated purpose.",
+        )
+        justification = st.text_area(
+            "Justification / Additional Notes",
+            height=100,
+            key="off_access_notes",
+            placeholder="Briefly explain why these specific fields are needed.",
+        )
+
+    if fields:
+        st.caption(
+            f"⚠️ You are requesting access to **{len(fields)}** field(s): "
+            + ", ".join(f"`{f}`" for f in fields)
+        )
+
+    # ── STEP 6 — Submit access request ────────────────────────────────────────
+    if st.button(
+        "📨 Submit Access Request to Customer",
+        type="primary",
+        use_container_width=True,
+        key="off_access_submit",
+    ):
+        if not customer_id.strip():
+            st.error("Customer ID is required.")
+        elif not fields:
+            st.error("Please select at least one data field to request access to.")
+        else:
+            all_requests = load_access_requests()
+            # Per-field schema — each field carries its own decision + reason slot.
+            # UUID-based request_id prevents collision when multiple officials
+            # submit requests for the same customer simultaneously (Step 7).
+            request_data = {
+                "request_id":       f"REQ-{uuid.uuid4().hex[:6].upper()}",
+                "request_category": _ACCESS_REQUEST_CATEGORY,   # discriminator — never omit
+                "customer_id":      customer_id.strip(),
+                "purpose":          purpose,
+                "justification":    justification or "",
+                "requested_by":     user,
+                "requested_role":   st.session_state.get("role", "officer"),
+                "status":           "Pending",
+                "timestamp":        datetime.utcnow().isoformat(),
+                "decided_at":       None,
+                "dpdp_clause":      None,
+                # Per-field consent tracking — replaces flat fields list
+                "fields": [
+                    {"field_name": f, "decision": "Pending", "reason": None}
+                    for f in fields
+                ],
+            }
+            all_requests.append(request_data)
+            save_access_requests(all_requests)
+            st.success(
+                f"✅ Access request **{request_data['request_id']}** submitted to "
+                f"customer **{customer_id.strip()}**. Awaiting their consent decision."
+            )
+            st.info(
+                "The customer will see this request in the **Consent Management → "
+                "Access Requests** tab and must approve or deny each field before "
+                "you can access the requested data."
+            )
+            st.rerun()
+
+    # ── Show this official's submitted requests ────────────────────────────────
+    st.divider()
+    st.subheader("My Submitted Access Requests")
+    all_requests = load_access_requests()
+    my_requests  = [r for r in all_requests if r.get("requested_by") == user]
+
+    if not my_requests:
+        st.info("You have not submitted any access requests yet.")
+    else:
+        for r in my_requests:
+            with st.expander(
+                f"**{r['request_id']}** — {r['purpose']} | Customer: `{r['customer_id']}` | "
+                f"Status: `{r['status']}` | Submitted: {r['timestamp'][:10]}",
+                expanded=False,
+            ):
+                st.caption(f"Requested by: {r.get('requested_by', '—')} ({r.get('requested_role', '—')})")
+                if r.get("justification"):
+                    st.caption(f"Justification: {r['justification']}")
+
+                # Per-field decision table
+                field_rows = [
+                    {
+                        "Field":       f["field_name"],
+                        "Decision":    f["decision"],
+                        "DPDP Reason": f.get("reason") or "—",
+                    }
+                    for f in r.get("fields", [])
+                ]
+                if field_rows:
+                    st.markdown("**Field-level Consent Decisions:**")
+                    st.dataframe(
+                        pd.DataFrame(field_rows),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                st.caption(
+                    f"Overall Status: **{r['status']}** | "
+                    f"Decided At: {(r.get('decided_at') or '—')[:10]}"
+                )
+
+
+# ---------------------------------------------------------------------------
+# STEPS 7-14 — Customer view: approve/deny official access requests
+# Also shows consent history, revocation, and artefact download.
+# ---------------------------------------------------------------------------
+
+def render_customer_requests() -> None:
+    """
+    Render the customer-facing access request mediation panel (embedded in Tab 5).
+
+    Allowed actions for the customer:
+      ✅ View pending official access requests
+      ✅ Approve or deny each request (with DPDP denial clause if denied)
+      ✅ View their consent history
+      ✅ Revoke an existing consent
+      ✅ Download consent artefact as CSV
+
+    Forbidden actions:
+      ❌ View other customers' requests
+      ❌ Modify consent records directly
+      ❌ Access any system or official workflows
+    """
+    import auth as _auth
+    _cu         = _auth.get_current_user() or {}
+    user        = _cu.get("username", st.session_state.get("username", "customer"))
+    # Customer ID is always auto-loaded — never entered manually
+    customer_id = (
+        st.session_state.user.get("customer_id")
+        if hasattr(st.session_state, "user") and isinstance(st.session_state.user, dict)
+        else _cu.get("customer_id", user)
+    )
+
+    # Masked identity display
+    masked_id = "****" + str(customer_id)[-4:] if customer_id and len(str(customer_id)) > 4 else "****"
+    st.info(f"🪪 Your Customer ID: **{masked_id}**")
+
+    # ── STEPS 7-8 — Load and filter pending requests for this customer ────────
+    all_requests     = load_access_requests()
+    # STEP 10 enforcement: only show own requests
+    pending_requests = [
+        r for r in all_requests
+        if r.get("customer_id") == customer_id and r.get("status") == "Pending"
+    ]
+    past_requests    = [
+        r for r in all_requests
+        if r.get("customer_id") == customer_id and r.get("status") != "Pending"
+    ]
+
+    # ── Pending access requests ────────────────────────────────────────────────
+    if not pending_requests:
+        st.success("✅ No pending data access requests. No action required.")
+    else:
+        st.warning(
+            f"⚠️ **{len(pending_requests)}** official data access "
+            f"request(s) require your decision."
+        )
+
+    for req in pending_requests:
+        with st.container(border=True):
+            # ── STEP 8 — Display request details ──────────────────────────────
+            st.subheader(f"📄 Request ID: `{req['request_id']}`")
+            col_info1, col_info2 = st.columns(2)
+            with col_info1:
+                st.markdown(f"**Requested by:** `{req.get('requested_by', '—')}`")
+                st.markdown(f"**Role:** {req.get('requested_role', '—')}")
+                st.markdown(f"**Submitted:** {req.get('timestamp', '—')[:10]}")
+            with col_info2:
+                st.markdown(f"**Purpose:** {req.get('purpose', '—')}")
+
+            if req.get("justification"):
+                st.caption(f"Official's justification: {req['justification']}")
+
+            st.markdown(
+                "> 🔏 **Your right**: Under **DPDP Act 2023 — Section 6**, you have the "
+                "right to grant or deny consent for each data field individually. "
+                "Your decisions are final and will be recorded."
+            )
+
+            # ── Per-field consent decisions ────────────────────────────────────
+            st.markdown("**Decide on each requested data field:**")
+            field_updates: list[dict] = []
+
+            for idx, field in enumerate(req.get("fields", [])):
+                fname = field["field_name"]
+                current_decision = field.get("decision", "Pending")
+
+                # Skip fields already decided in a prior session
+                if current_decision != "Pending":
+                    badge = "✅" if current_decision == "Approve" else "🚫"
+                    st.markdown(
+                        f"&nbsp;&nbsp;{badge} **{fname}** — `{current_decision}`"
+                        + (f" _(DPDP: {field.get('reason')})_" if field.get("reason") else "")
+                    )
+                    field_updates.append(field)
+                    continue
+
+                fcol1, fcol2 = st.columns([2, 3])
+                with fcol1:
+                    st.markdown(f"&nbsp;&nbsp;• **{fname}**")
+                with fcol2:
+                    # ── STEP 9 — Per-field decision radio ─────────────────────
+                    field_decision = st.radio(
+                        f"Decision for {fname}",
+                        ["Approve", "Deny"],
+                        key=f"field_decision_{req['request_id']}_{idx}",
+                        horizontal=True,
+                        label_visibility="collapsed",
+                    )
+
+                # ── STEP 10 — Per-field denial clause ─────────────────────────
+                field_reason = None
+                if field_decision == "Deny":
+                    field_reason = st.selectbox(
+                        f"DPDP Denial Clause — {fname}",
+                        DENIAL_CLAUSES,
+                        key=f"field_reason_{req['request_id']}_{idx}",
+                    )
+                    st.info(
+                        f"📖 **{fname}** → **{field_reason}** — "
+                        "This will be recorded as the legal basis for your refusal."
+                    )
+
+                field_updates.append({
+                    "field_name": fname,
+                    "decision":   field_decision,
+                    "reason":     field_reason,
+                })
+
+            # ── STEP 11 — Save per-field decisions and derive overall status ──
+            if st.button(
+                f"✅ Submit Decisions for {req['request_id']}",
+                key=f"submit_decision_{req['request_id']}",
+                type="primary",
+                use_container_width=True,
+            ):
+                approved = [f for f in field_updates if f["decision"] == "Approve"]
+                denied   = [f for f in field_updates if f["decision"] == "Deny"]
+                pending  = [f for f in field_updates if f["decision"] == "Pending"]
+
+                # Derive overall request status from field decisions
+                if pending:
+                    overall_status = "Partially Processed"
+                elif denied and not approved:
+                    overall_status = "Denied"
+                elif approved and not denied:
+                    overall_status = "Approve"
+                else:
+                    # Mixed: some approved, some denied
+                    overall_status = "Partially Approved"
+
+                # Mutate in-place and persist
+                for r in all_requests:
+                    if r["request_id"] == req["request_id"]:
+                        r["fields"]      = field_updates
+                        r["status"]      = overall_status
+                        r["decided_at"]  = datetime.utcnow().isoformat()
+                        # Preserve top-level dpdp_clause for full-denial case
+                        if overall_status == "Denied" and denied:
+                            r["dpdp_clause"] = denied[0].get("reason")
+
+                save_access_requests(all_requests)
+
+                if overall_status in ("Approve", "Partially Approved"):
+                    approved_names = ", ".join(f["field_name"] for f in approved)
+                    denied_names   = ", ".join(f["field_name"] for f in denied)
+                    msg = f"✅ Decision recorded for `{req['request_id']}`."
+                    if approved_names:
+                        msg += f" **Approved:** {approved_names}."
+                    if denied_names:
+                        msg += f" **Denied:** {denied_names}."
+                    st.success(msg)
+                elif overall_status == "Denied":
+                    st.error(
+                        f"🚫 All fields denied for request `{req['request_id']}`. "
+                        f"DPDP clause recorded: **{denied[0].get('reason', '—')}**."
+                    )
+                else:
+                    st.warning(f"⏳ Request `{req['request_id']}` partially processed.")
+
+                st.rerun()
+
+    # ── Past decisions ─────────────────────────────────────────────────────────
+    if past_requests:
+        with st.expander(f"📁 Past Decisions ({len(past_requests)})"):
+            for r in past_requests:
+                st.markdown(
+                    f"**{r['request_id']}** — {r.get('purpose', '—')} | "
+                    f"Requested by: `{r.get('requested_by', '—')}` | "
+                    f"Overall: `{r['status']}` | "
+                    f"Decided: {(r.get('decided_at') or '—')[:10]}"
+                )
+                field_rows = [
+                    {
+                        "Field":       f["field_name"],
+                        "Decision":    f["decision"],
+                        "DPDP Reason": f.get("reason") or "—",
+                    }
+                    for f in r.get("fields", [])
+                ]
+                if field_rows:
+                    st.dataframe(
+                        pd.DataFrame(field_rows),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                st.divider()
+
+    # ── STEP 12 — Consent history ──────────────────────────────────────────────
+    st.divider()
+    st.subheader("📜 My Consent History")
+    all_consents_raw = get_all_consents()
+    customer_consents = [
+        c for c in all_consents_raw
+        if c.get("customer_id") == customer_id or c.get("data_principal_id") == customer_id
+    ]
+
+    if not customer_consents:
+        st.info("No consent records found for your account.")
+    else:
+        rows = [
+            {
+                "Consent ID":  c.get("consent_id", "—"),
+                "Purpose":     c.get("purpose", "—"),
+                "Status":      c.get("status", "—"),
+                "Channel":     c.get("channel", "—"),
+                "Created":     str(c.get("created_at", ""))[:10],
+                "Expires":     str(c.get("expiry_date", ""))[:10],
+            }
+            for c in customer_consents
+        ]
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+        # ── STEP 13 — Consent revocation ──────────────────────────────────────
+        revocable = [
+            c for c in customer_consents
+            if c.get("status", "").lower() in ("active", "renewed")
+        ]
+        if revocable:
+            st.divider()
+            st.subheader("🔓 Revoke a Consent")
+            consent_id_to_revoke = st.selectbox(
+                "Select Consent to Revoke",
+                options=[c["consent_id"] for c in revocable],
+                format_func=lambda cid: next(
+                    (f"{cid[:8]}… — {c['purpose']}" for c in revocable if c["consent_id"] == cid),
+                    cid,
+                ),
+                key="revoke_consent_selector",
+            )
+            revoke_reason = st.text_input(
+                "Reason for Revocation (optional)",
+                placeholder="e.g. No longer consent to this processing",
+                key="revoke_reason_input",
+            )
+
+            if st.button(
+                "🔒 Revoke Selected Consent",
+                key="do_revoke_customer",
+                type="primary",
+                use_container_width=True,
+            ):
+                result = orchestration.execute_action(
+                    action_type="update_consent_status",
+                    payload={
+                        "customer_id": customer_id,
+                        "consent_id":  consent_id_to_revoke,
+                        "new_status":  "revoked",
+                        "reason":      revoke_reason or "Revoked by customer",
+                    },
+                    actor=user,
+                )
+                _ok = result.get("success") or result.get("status") == "success"
+                if _ok:
+                    st.success(f"✅ Consent `{consent_id_to_revoke[:8]}…` revoked successfully.")
+                    st.rerun()
+                else:
+                    st.error(f"Revocation failed: {result.get('reason', result.get('message', 'Unknown error'))}")
+
+        # ── STEP 14 — Download consent artefact ───────────────────────────────
+        st.divider()
+        consent_df = pd.DataFrame(rows)
+        st.download_button(
+            label="⬇️ Download Consent Artefact (CSV)",
+            data=consent_df.to_csv(index=False),
+            file_name="consent_history.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Main Streamlit show()
 # ---------------------------------------------------------------------------
 
@@ -482,11 +1086,12 @@ def show():
 
     more_info(t("kpi_realtime_note"))
 
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         t("submit_request"),
         t("consent_register"),
         t("revoke_renew"),
         t("analytics"),
+        "🔐 Access Requests",   # Tab 5: consent mediation workflow
     ])
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -498,16 +1103,72 @@ def show():
 
         # ── Customer / Customer Assisted: direct consent creation ─────────────
         if is_customer:
-            customer_id_val = user   # pre-fill from session
+            # ── Identity: auto-loaded from session — NEVER manually entered ────
+            # auth.py writes customer_id, aadhaar, account_number, ifsc_code,
+            # and district into session state at login time (auth.login()).
+            # Customers cannot override these values through any form.
+            _sess_cid     = st.session_state.get("customer_id", user)
+            _sess_aadhaar = st.session_state.get("aadhaar", "")
+            _sess_account = st.session_state.get("account_number", "")
+            _sess_ifsc    = st.session_state.get("ifsc_code", "")
+            _sess_district = st.session_state.get("district", KERALA_DISTRICTS[0])
+
+            # Display masked identity banner
+            import auth as _auth_mod
+            st.info(
+                f"🪪 **Your Identity** — "
+                f"Customer ID: `{_auth_mod.mask_value(_sess_cid)}` &nbsp;|&nbsp; "
+                f"Aadhaar: `{_auth_mod.mask_value(_sess_aadhaar)}` &nbsp;|&nbsp; "
+                f"Account: `{_auth_mod.mask_value(_sess_account)}`",
+            )
+
+            customer_id_val = _sess_cid   # used in payload — raw value, never shown
             col_form1, col_form2 = st.columns(2)
             with col_form1:
-                customer_id    = st.text_input(t("your_customer_id"), value=customer_id_val, key="cust_cid")
-                aadhaar        = st.text_input("Aadhaar Number", max_chars=12, placeholder="12-digit Aadhaar", key="cust_aadhaar")
-                account_number = st.text_input("Account Number", placeholder="Kerala Bank account number", key="cust_account")
-                ifsc_code      = st.text_input("IFSC Code", placeholder="e.g. KLBK0001234", key="cust_ifsc")
+                # Customer ID shown as read-only masked display — NOT a text_input
+                st.text_input(
+                    t("your_customer_id"),
+                    value=_auth_mod.mask_value(_sess_cid),
+                    disabled=True,
+                    key="cust_cid_display",
+                    help="Your Customer ID is automatically loaded from your login session.",
+                )
+                # Aadhaar — masked, disabled
+                st.text_input(
+                    "Aadhaar Number",
+                    value=_auth_mod.mask_value(_sess_aadhaar) if _sess_aadhaar else "",
+                    disabled=True,
+                    key="cust_aadhaar_display",
+                    help="Loaded from your account record. Cannot be changed here.",
+                )
+                # Account — masked, disabled
+                st.text_input(
+                    "Account Number",
+                    value=_auth_mod.mask_value(_sess_account) if _sess_account else "",
+                    disabled=True,
+                    key="cust_account_display",
+                    help="Loaded from your account record. Cannot be changed here.",
+                )
+                # IFSC — not sensitive, shown as-is, disabled
+                st.text_input(
+                    "IFSC Code",
+                    value=_sess_ifsc or "",
+                    disabled=True,
+                    key="cust_ifsc_display",
+                )
 
             with col_form2:
-                district = st.selectbox("District", KERALA_DISTRICTS, key="cust_district")
+                # District defaults from session; customer may confirm/select
+                district_idx = (
+                    KERALA_DISTRICTS.index(_sess_district)
+                    if _sess_district in KERALA_DISTRICTS else 0
+                )
+                district = st.selectbox(
+                    "District",
+                    KERALA_DISTRICTS,
+                    index=district_idx,
+                    key="cust_district",
+                )
                 purpose  = st.selectbox(t("processing_purpose"), PURPOSE_LABELS, key="cust_purpose")
                 channel  = st.selectbox(
                     "Consent Channel",
@@ -529,8 +1190,9 @@ def show():
                 f"{t('consent_auto_expiry_info')} **{purpose}** — **{expiry_preview}** ({retention_days} {t('days')})."
             )
 
-            if customer_id.strip():
-                status_info = get_consent_status(customer_id.strip(), purpose)
+            # Existing consent status check uses auto-loaded customer ID
+            if _sess_cid:
+                status_info = get_consent_status(_sess_cid, purpose)
                 if status_info["exists"]:
                     st.info(
                         f"{t('existing_consent_found')}: {t('status')}=**{t(status_info['status'].lower())}**  "
@@ -539,14 +1201,15 @@ def show():
                     )
 
             if st.button(t("submit_my_consent"), type="primary", use_container_width=True, key="cust_submit"):
-                if not customer_id.strip():
+                # customer_id always comes from session — never from a text input
+                if not _sess_cid:
                     st.error(t("customer_id_required"))
                 else:
                     payload = {
-                        "customer_id":    customer_id.strip(),
-                        "aadhaar":        aadhaar.strip() if aadhaar else "",
-                        "account_number": account_number.strip() if account_number else "",
-                        "ifsc_code":      ifsc_code.strip() if ifsc_code else "",
+                        "customer_id":    _sess_cid,
+                        "aadhaar":        _sess_aadhaar or "",
+                        "account_number": _sess_account or "",
+                        "ifsc_code":      _sess_ifsc or "",
                         "district":       district,
                         "purpose":        purpose,
                         "granted":        granted,
@@ -994,3 +1657,117 @@ def show():
                 f"</div>",
                 unsafe_allow_html=True,
             )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # TAB 5 — Access Requests (DPDP Consent Mediation Workflow)
+    # ─────────────────────────────────────────────────────────────────────────
+    # STEP 15 — Role routing:
+    #   Customer              → render_customer_requests()  (view + approve/deny)
+    #   Official roles        → render_official_request_interface() (submit requests)
+    #   Auditor / DPO / Ops   → read-only summary of all access requests
+    # ─────────────────────────────────────────────────────────────────────────
+    with tab5:
+        # ── STEP 15: Dispatch by role ─────────────────────────────────────────
+        if is_customer:
+            # Customers view, approve, or deny official access requests.
+            # They also see their consent history, can revoke, and download artefacts.
+            render_customer_requests()
+
+        elif role in OFFICIAL_REQUEST_ROLES and not is_dpo and not is_privacy_ops:
+            # Branch officers, customer support, regional officers:
+            # submit access requests directed to customers.
+            render_official_request_interface()
+
+        elif is_privacy_ops or is_dpo:
+            # Privacy Operations and DPO see the full access request register.
+            st.subheader("🔐 Official Data Access Request Register")
+            st.caption(
+                "Full view of all official access requests and customer consent decisions. "
+                "This is a governance read view; individual customer mediation is in "
+                "the customer portal."
+            )
+            all_access_reqs = load_access_requests()
+            if not all_access_reqs:
+                st.info("No access requests have been submitted yet.")
+            else:
+                _pending  = sum(1 for r in all_access_reqs if r["status"] == "Pending")
+                _approved = sum(1 for r in all_access_reqs if r["status"] in ("Approve", "Partially Approved"))
+                _denied   = sum(1 for r in all_access_reqs if r["status"] in ("Denied", "Deny"))
+                _partial  = sum(1 for r in all_access_reqs if r["status"] == "Partially Processed")
+
+                a1, a2, a3, a4 = st.columns(4)
+                with a1:
+                    st.metric("Total Requests", len(all_access_reqs))
+                with a2:
+                    st.metric("Pending Customer Decision", _pending)
+                with a3:
+                    st.metric("Approved (full/partial)", _approved)
+                with a4:
+                    st.metric("Denied", _denied)
+
+                fa_status = st.multiselect(
+                    "Filter by Status",
+                    ["Pending", "Approve", "Partially Approved", "Partially Processed", "Denied", "Deny"],
+                    default=[],
+                    key="dpo_access_filter",
+                )
+                filtered_access = all_access_reqs
+                if fa_status:
+                    filtered_access = [r for r in all_access_reqs if r["status"] in fa_status]
+
+                rows = [
+                    {
+                        "Request ID":    r["request_id"],
+                        "Customer ID":   r["customer_id"],
+                        "Requested By":  r.get("requested_by", "—"),
+                        "Role":          r.get("requested_role", "—"),
+                        "Purpose":       r["purpose"],
+                        "Fields": ", ".join(
+                            f["field_name"] if isinstance(f, dict) else str(f)
+                            for f in r.get("fields", [])
+                        ),
+                        "Field Decisions": ", ".join(
+                            f"{f['field_name']}: {f['decision']}"
+                            for f in r.get("fields", [])
+                            if isinstance(f, dict)
+                        ) or "—",
+                        "Status":        r["status"],
+                        "Submitted":     r["timestamp"][:10],
+                        "Decided At":    (r.get("decided_at") or "—")[:10],
+                        "DPDP Clause":   r.get("dpdp_clause") or "—",
+                    }
+                    for r in filtered_access
+                ]
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+                if _can_export():
+                    export_data(pd.DataFrame(rows), "access_requests")
+
+        elif is_auditor:
+            # Auditors see a read-only summary
+            st.subheader("🔍 Access Request Audit View (Read Only)")
+            st.info("🔒 Read-only view. Auditors may not submit or modify access requests.")
+            all_access_reqs = load_access_requests()
+            if not all_access_reqs:
+                st.info("No access requests recorded.")
+            else:
+                rows = [
+                    {
+                        "Request ID":  r["request_id"],
+                        "Purpose":     r["purpose"],
+                        "Fields": ", ".join(
+                            f["field_name"] if isinstance(f, dict) else str(f)
+                            for f in r.get("fields", [])
+                        ),
+                        "Status":      r["status"],
+                        "Submitted":   r["timestamp"][:10],
+                        "Decided At":  (r.get("decided_at") or "—")[:10],
+                    }
+                    for r in all_access_reqs
+                ]
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                if _can_export():
+                    export_data(pd.DataFrame(rows), "access_requests_audit")
+
+        else:
+            st.info("Access request management is not available for your role.")

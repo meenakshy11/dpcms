@@ -5,16 +5,45 @@ Kerala Bank — DPCMS Research Repository
 Provides a searchable, filterable knowledge base of data protection laws
 and regulatory frameworks relevant to DPDP Act 2023 compliance.
 
-Access: DPO, Auditor, Board, PrivacySteward, Regional, PrivacyOperations
-Read-only reference module — no engine writes, no audit ledger entries.
+Access: Privacy Operations, DPO, Internal Auditor, Board
+Read-only for most roles — Privacy Operations can add research records.
+Append-only to maintain research traceability.
 """
 
 from __future__ import annotations
 
+import json
+import os
+
+import pandas as pd
 import streamlit as st
 
 from utils.i18n import t, t_safe
 from utils.ui_helpers import render_page_title
+
+
+# ===========================================================================
+# Storage path for user-added research records
+# ===========================================================================
+
+RESEARCH_FILE = "storage/research_repository.json"
+
+
+# ===========================================================================
+# Load / Save helpers for user-added records
+# ===========================================================================
+
+def load_repository() -> list[dict]:
+    if not os.path.exists(RESEARCH_FILE):
+        return []
+    with open(RESEARCH_FILE) as f:
+        return json.load(f)
+
+
+def save_repository(data: list[dict]) -> None:
+    os.makedirs(os.path.dirname(RESEARCH_FILE), exist_ok=True)
+    with open(RESEARCH_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
 
 # ===========================================================================
@@ -180,37 +209,38 @@ _LAW_REPOSITORY: list[dict] = [
             "and increased financial penalties up to 10% of annual local turnover."
         ),
         "topics": [
-            "consent obligation", "purpose limitation", "breach notification",
+            "consent", "purpose limitation", "breach notification",
             "data portability", "deemed consent", "legitimate interests",
-            "do-not-call registry",
+            "mandatory data breach notification",
         ],
         "key_sections": [
-            ("Part III",  "Data Protection Obligations"),
-            ("Part IV",   "Do Not Call Registry"),
-            ("Section 26A", "Mandatory data breach notification"),
-            ("Section 26B", "Notification to affected individuals"),
+            ("Part III",  "Data Protection Provisions"),
+            ("Part IV",   "Consent Obligation"),
+            ("Part VI",   "Access and Correction Obligation"),
+            ("Part VIA",  "Data Portability Obligation"),
+            ("Part VIII", "Data Breach Notification"),
         ],
-        "relevance": "🔵 Reference — comparable jurisdiction for regional operations",
+        "relevance": "🔵 Reference — benchmark for APAC compliance comparison",
     },
     {
-        "title":        "RBI Guidelines on Data Localisation",
+        "title":        "RBI Master Direction — Data Localisation",
         "short":        "RBI Data Localisation",
         "jurisdiction": "India",
         "category":     "Regulatory Guidance",
         "effective":    "2018",
         "summary": (
-            "Reserve Bank of India circular mandating that all payment system "
-            "data relating to Indian users be stored only in India. Relevant "
-            "to Kerala Bank for payment data processing, cross-border transfer "
-            "restrictions, and audit requirements."
+            "Reserve Bank of India directive mandating that all data related to "
+            "payment systems be stored only in India. Applies directly to Kerala "
+            "Bank's payment processing infrastructure and cross-border data flows."
         ),
         "topics": [
-            "data localisation", "payment data", "cross-border transfer",
-            "RBI audit", "storage restriction", "financial data",
+            "data localisation", "payment systems", "cross-border transfer",
+            "storage restriction", "RBI compliance", "payment data",
         ],
         "key_sections": [
-            ("Para 3", "Storage of payment system data — India only"),
-            ("Para 4", "Audit and compliance certification requirements"),
+            ("Para 2", "Scope of payment system data"),
+            ("Para 3", "Storage of payment data in India"),
+            ("Para 4", "System audit and reporting"),
             ("Para 5", "Reporting and monitoring by system providers"),
         ],
         "relevance": "🔴 Mandatory — applies directly to Kerala Bank payment operations",
@@ -288,10 +318,37 @@ def _render_law_card(law: dict) -> None:
 def show() -> None:
     """
     Render the Research Repository module.
-    Read-only — no engine writes.
-    Accessible to: DPO, Auditor, Board, PrivacySteward, Regional, PrivacyOperations.
+    Accessible to: Privacy Operations, DPO, Internal Auditor, Board.
+    Privacy Operations can add records; all other allowed roles are read-only.
+    Repository is append-only to maintain research traceability.
     """
-    render_page_title("research_repository")
+
+    # ── Role access guard ─────────────────────────────────────────────────────
+    role = st.session_state.get("role")
+
+    allowed_roles = [
+        "Privacy Operations",
+        "DPO",
+        "Internal Auditor",
+        "Board",
+    ]
+
+    if role not in allowed_roles:
+        st.warning("Research repository not accessible for this role.")
+        return
+
+    # ── Page header ───────────────────────────────────────────────────────────
+    st.markdown("""
+    <div style="
+    background:#f4f6fa;
+    padding:18px;
+    border-radius:8px;
+    border:1px solid #e5e9ef;
+    margin-bottom:20px;
+    ">
+    <h2>Privacy Research & Policy Repository</h2>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.caption(
         t_safe(
@@ -303,7 +360,82 @@ def show() -> None:
 
     st.markdown("---")
 
-    # ── Search + filter controls ──────────────────────────────────────────────
+    # ── Table styling ─────────────────────────────────────────────────────────
+    st.markdown("""
+    <style>
+    th {
+        background:#003366;
+        color:white;
+        padding:10px;
+    }
+    td {
+        padding:8px;
+        border-bottom:1px solid #ddd;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ── Privacy Operations: upload research record ────────────────────────────
+    if role == "Privacy Operations":
+        st.subheader("Upload Research Record")
+
+        title = st.text_input("Title")
+
+        category = st.selectbox(
+            "Category",
+            [
+                "DPIA Framework",
+                "Compliance Guideline",
+                "Risk Assessment",
+                "Policy Research",
+            ]
+        )
+
+        description = st.text_area("Description")
+
+        if st.button("Add Record"):
+            if not title.strip():
+                st.error("Title is required.")
+            else:
+                repo = load_repository()
+                record = {
+                    "record_id":   str(len(repo) + 1),
+                    "title":       title.strip(),
+                    "category":    category,
+                    "description": description.strip(),
+                    "added_by":    st.session_state.get("username", "unknown"),
+                }
+                repo.append(record)
+                save_repository(repo)
+                st.success("Research record added.")
+
+        st.markdown("---")
+
+    # ── Saved research records viewer (all allowed roles) ─────────────────────
+    repo = load_repository()
+
+    if repo:
+        st.subheader("Internal Research Records")
+
+        df = pd.DataFrame(repo)
+
+        # Category filter for records
+        available_categories = list(df["category"].unique())
+        category_filter = st.selectbox(
+            "Filter by Category",
+            ["All"] + available_categories,
+            key="record_category_filter",
+        )
+
+        if category_filter != "All":
+            df = df[df["category"] == category_filter]
+
+        st.dataframe(df, use_container_width=True)
+        st.markdown("---")
+
+    # ── Statutory law reference library ───────────────────────────────────────
+    st.subheader("Statutory & Regulatory Reference Library")
+
     ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([3, 2, 2])
 
     with ctrl_col1:
@@ -321,7 +453,7 @@ def show() -> None:
         )
 
     with ctrl_col3:
-        category_filter = st.selectbox(
+        category_filter_law = st.selectbox(
             t_safe("repo_filter_category", "Category"),
             ["All"] + _ALL_CATEGORIES,
             key="repo_category",
@@ -329,18 +461,15 @@ def show() -> None:
 
     st.markdown("---")
 
-    # ── Filter and display ────────────────────────────────────────────────────
+    # ── Filter and display law cards ──────────────────────────────────────────
     search_lower = search.strip().lower()
 
     matched: list[dict] = []
     for law in _LAW_REPOSITORY:
-        # Jurisdiction filter
         if jurisdiction_filter != "All" and law["jurisdiction"] != jurisdiction_filter:
             continue
-        # Category filter
-        if category_filter != "All" and law["category"] != category_filter:
+        if category_filter_law != "All" and law["category"] != category_filter_law:
             continue
-        # Search filter — match across title, short name, summary, topics, sections
         if search_lower:
             searchable = " ".join([
                 law["title"].lower(),
@@ -356,13 +485,7 @@ def show() -> None:
     # Results count
     total = len(_LAW_REPOSITORY)
     showing = len(matched)
-    if search_lower or jurisdiction_filter != "All" or category_filter != "All":
-        st.caption(
-            t_safe("repo_results_count", f"Showing {showing} of {total} entries")
-            if not hasattr(t_safe, "__self__")
-            else f"Showing {showing} of {total} entries"
-        )
-        # Simple fallback — always show the count clearly
+    if search_lower or jurisdiction_filter != "All" or category_filter_law != "All":
         st.caption(f"**{showing}** result(s) from {total} entries.")
 
     if not matched:
@@ -371,7 +494,7 @@ def show() -> None:
         )
         return
 
-    # Relevance legend at top
+    # Relevance legend
     with st.container():
         legend_col1, legend_col2, legend_col3 = st.columns(3)
         legend_col1.markdown("🔴 **Mandatory** — directly applicable")

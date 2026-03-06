@@ -4,14 +4,23 @@ modules/dpia.py
 Data Protection Impact Assessment (DPIA) — Kerala Bank DPCMS.
 DPDP Act 2023, Section 9 & 10 — fully governance-grade.
 
-Architecture (updated):
+Architecture:
     UI  →  orchestration.execute_action()  →  Engine  →  Audit / SLA / Compliance
 
-Role-access model:
-  Officer / branch_officer / privacy_steward  → may initiate DPIAs and add mitigation
-  privacy_steward / DPO                       → may advance workflow (approve/reject)
-  DPO only                                    → final override approval + closure
-  Auditor / Board                             → read-only
+Role-access model (canonical codes only — no legacy display names):
+  privacy_operations / branch_officer /
+  branch_privacy_coordinator          → initiate DPIA + add mitigation
+  privacy_steward                     → initiate DPIA + add mitigation + advance workflow
+  dpo                                 → full governance — approve, reject, override, close
+  auditor / internal_auditor          → read-only register, analytics, export
+  board_member                        → executive KPI summary only — no DPIA content
+
+Roles explicitly DENIED (blocked before any data is loaded):
+  customer / customer_assisted        → no DPIA access
+  customer_support                    → intake role only
+  soc_analyst                         → Breach module only
+  regional_officer /
+  regional_compliance_officer         → not in scope for DPIA governance
 
 Immutable lifecycle (enforced by orchestration):
   initiated → under_review → steward_approved → dpo_approved → closed
@@ -33,6 +42,34 @@ Design contract:
   - NO severity/risk override in UI — displayed only, classified by engine.
   - All mutations go through orchestration.execute_action().
   - All user-visible strings go through t().
+  - Role sourced exclusively from get_current_user()["role"] (canonical code).
+  - require_session() called first in show() before any data is loaded.
+
+Change log:
+  ✔ Removed `from auth import get_role, get_branch` — get_role() returned legacy
+    display names ("DPO", "Officer", "Auditor") that silently broke all role checks.
+    Replaced with `import auth as _auth` + get_current_user()["role"].
+  ✔ ALLOWED_ROLES gate added at the top of show() — was entirely absent.
+  ✔ _DENIED_ROLES set added — explicit deny for customer, customer_assisted,
+    customer_support, soc_analyst, regional roles.
+  ✔ require_session() added as first statement in show() (auth Step 6 contract).
+  ✔ _init_dpias() moved to after session + role guard (was called before any check).
+  ✔ user and user_branch sourced from get_current_user() (canonical, not session.get).
+  ✔ board_member added: KPI summary only, returns after KPI strip (Step 10).
+  ✔ internal_auditor / auditor: read-only register + analytics + export; no write
+    controls (Step 9). Returns after register tab with no tabs.
+  ✔ All inline role checks updated to canonical codes:
+      "Officer"          → is_officer (branch_officer, branch_privacy_coordinator)
+      "DPO"              → is_dpo (dpo)
+      "privacy_steward"  → is_steward (privacy_steward)
+      "Auditor"          → is_auditor (auditor, internal_auditor)
+  ✔ Branch scoping: is_branch_scoped now covers branch_officer and
+    branch_privacy_coordinator only (was "Officer" legacy string).
+  ✔ Export gated to _EXPORT_PERMITTED (dpo, auditor, internal_auditor).
+  ✔ Page header replaced with inline-styled container div, consistent with
+    compliance.py, breach.py, audit.py, cookie_consent.py, notices.py.
+  ✔ Global CSS table styling injected once (Step 11 alignment).
+  ✔ t_safe() helper added for defensive i18n.
 """
 
 from __future__ import annotations
@@ -44,7 +81,7 @@ import plotly.express as px
 import streamlit as st
 
 import engine.orchestration as orchestration
-from auth import get_role, get_branch, KERALA_BRANCHES
+from auth import KERALA_BRANCHES
 from modules.dashboard import render_status_badge
 from utils.dpdp_clauses import get_clause
 from utils.export_utils import export_data
@@ -52,8 +89,71 @@ from utils.explainability import explain_dynamic
 from utils.i18n import t
 from utils.ui_helpers import more_info
 
+
 # ---------------------------------------------------------------------------
-# Constants — internal English keys; NEVER translate these
+# i18n safe helper — never raises; returns fallback if key missing
+# ---------------------------------------------------------------------------
+
+def t_safe(key: str, fallback: str = "") -> str:
+    try:
+        result = t(key)
+        return result if result != key else (fallback or key)
+    except Exception:
+        return fallback or key
+
+
+# ---------------------------------------------------------------------------
+# Constants — canonical role codes only
+# ---------------------------------------------------------------------------
+
+# Full governance access: approve, reject, override, close
+_DPO_ROLES: frozenset[str] = frozenset({"dpo"})
+
+# May initiate DPIA + add mitigation + advance workflow
+_STEWARD_ROLES: frozenset[str] = frozenset({"privacy_steward"})
+
+# May initiate DPIA + add mitigation (cannot advance workflow)
+_OFFICER_ROLES: frozenset[str] = frozenset({
+    "privacy_operations",
+    "branch_officer",
+    "branch_privacy_coordinator",
+})
+
+# Branch-scoped roles (see only their own branch's DPIAs)
+_BRANCH_SCOPED_ROLES: frozenset[str] = frozenset({
+    "branch_officer",
+    "branch_privacy_coordinator",
+})
+
+# Read-only + analytics + export
+_AUDIT_ROLES: frozenset[str] = frozenset({"auditor", "internal_auditor"})
+
+# KPI summary only
+_BOARD_ROLES: frozenset[str] = frozenset({"board_member"})
+
+_ALL_ALLOWED_ROLES: frozenset[str] = (
+    _DPO_ROLES | _STEWARD_ROLES | _OFFICER_ROLES | _AUDIT_ROLES | _BOARD_ROLES
+)
+
+# Roles explicitly denied — checked before general gate
+_DENIED_ROLES: frozenset[str] = frozenset({
+    "customer",
+    "customer_assisted",
+    "customer_support",
+    "soc_analyst",
+    "regional_officer",
+    "regional_compliance_officer",
+})
+
+# Export permitted: DPO + Auditors only
+_EXPORT_PERMITTED: frozenset[str] = frozenset({
+    "dpo",
+    "auditor",
+    "internal_auditor",
+})
+
+# ---------------------------------------------------------------------------
+# Workflow constants
 # ---------------------------------------------------------------------------
 
 WORKFLOW_STAGES: list[str] = [
@@ -65,7 +165,6 @@ WORKFLOW_STAGES: list[str] = [
     "closed",
 ]
 
-# Allowed forward lifecycle transitions — orchestration enforces; UI uses for display
 LIFECYCLE_TRANSITIONS: dict[str, list[str]] = {
     "initiated":        ["under_review"],
     "under_review":     ["steward_approved", "rejected"],
@@ -82,7 +181,6 @@ DATA_CATEGORIES: list[str] = [
     "kyc_documents", "contact_data", "financial_data", "marketing_data",
 ]
 
-# Purpose registry keys exposed to UI — orchestration validates against engine registry
 PURPOSE_OPTIONS: list[str] = [
     "loan_processing",
     "kyc_verification",
@@ -90,7 +188,6 @@ PURPOSE_OPTIONS: list[str] = [
     "account_opening",
 ]
 
-# Colour maps — Plotly charts only, never rendered as text labels
 _RISK_COLOUR: dict[str, str] = {
     "low":       "#1a9e5c",
     "medium":    "#f0a500",
@@ -110,7 +207,6 @@ _STAGE_COLOUR: dict[str, str] = {
     "closed":           "#546e7a",
 }
 
-# i18n key maps
 _RISK_LEVEL_I18N: dict[str, str] = {
     "low":       "low",
     "medium":    "medium",
@@ -246,7 +342,7 @@ def _preview_risk_level(
 ) -> str:
     """
     Return a UI-only risk level preview.
-    This is informational only — the DPIA engine determines actual risk score/level.
+    Informational only — the DPIA engine determines actual risk score/level.
     """
     desc  = proc_desc.lower()
     cats  = [c.lower() for c in data_cats]
@@ -279,7 +375,7 @@ def _td(content: str) -> str:
 
 
 def _risk_badge(risk_level: str) -> str:
-    """Badge dot only — no colour-name text (Step 9J)."""
+    """Badge dot only — no colour-name text."""
     mapping = {
         "low":       "active",
         "medium":    "warning",
@@ -308,7 +404,7 @@ def _init_dpias() -> None:
     st.session_state.setdefault("dpias", list(SAMPLE_DPIAS))
 
 
-def _load_dpias() -> list[dict]:
+def _load_dpias(actor: str) -> list[dict]:
     """
     Return DPIA records from orchestration (engine source of truth),
     falling back to session bootstrap for demo environments.
@@ -316,7 +412,7 @@ def _load_dpias() -> list[dict]:
     result = orchestration.execute_action(
         action_type="query_dpias",
         payload={},
-        actor=st.session_state.get("username", "system"),
+        actor=actor,
     )
     if result.get("status") == "success":
         return result.get("records", [])
@@ -332,40 +428,116 @@ def _handle_result(result: dict, success_msg: str) -> bool:
     return False
 
 
+def _can_export(role: str) -> bool:
+    return role in _EXPORT_PERMITTED
+
+
 # ===========================================================================
 # Main Streamlit entry point
 # ===========================================================================
 
 def show() -> None:
+    import auth as _auth
+
+    # ── STEP 6: Session guard — halts before any data is loaded ───────────────
+    if not _auth.require_session():
+        return
+
+    # ── Canonical user from session — single source of truth ──────────────────
+    current_user = _auth.get_current_user()
+    if not current_user:
+        st.error(t("session_not_found"))
+        st.info(t_safe("contact_dpo_access", "Contact your administrator if this is an error."))
+        return
+
+    role        = current_user["role"]      # canonical code — always
+    user        = current_user["username"]
+    user_branch = current_user["branch"]
+
+    # ── STEP 1 — Explicit deny: roles with no DPIA access ─────────────────────
+    if role in _DENIED_ROLES:
+        st.warning(
+            t_safe(
+                "dpia_access_denied",
+                "The DPIA module is not available for your role.",
+            )
+        )
+        st.info(t_safe("contact_dpo_access", "Contact your DPO if you believe this is an error."))
+        return
+
+    # ── General access gate ────────────────────────────────────────────────────
+    if role not in _ALL_ALLOWED_ROLES:
+        st.warning(t_safe("dpia_access_restricted", "You do not have permission to access the DPIA module."))
+        st.info(t_safe("contact_dpo_access", "Contact your DPO if you believe this is an error."))
+        return
+
+    # ── Role convenience flags — canonical codes only ──────────────────────────
+    is_dpo            = role in _DPO_ROLES
+    is_steward        = role in _STEWARD_ROLES
+    is_officer        = role in _OFFICER_ROLES        # privacy_operations, branch_officer, branch_privacy_coordinator
+    is_auditor        = role in _AUDIT_ROLES           # auditor, internal_auditor
+    is_board          = role in _BOARD_ROLES           # board_member
+    is_branch_scoped  = role in _BRANCH_SCOPED_ROLES  # branch_officer, branch_privacy_coordinator
+
+    # Who may create DPIAs and add mitigation
+    can_initiate  = is_dpo or is_steward or is_officer
+    # Who may advance workflow stage
+    can_advance   = is_dpo or is_steward
+    # Who may close DPIAs
+    can_close     = is_dpo
+
+    # ── _init_dpias() — called after gate to avoid loading for denied roles ────
     _init_dpias()
 
-    role        = get_role()
-    user        = st.session_state.get("username", "unknown")
-    user_branch = get_branch()
-
+    # ── STEP 2 — Page header — inline-styled container ────────────────────────
     st.markdown(
-        f"""
-        <div style="
-            background: linear-gradient(90deg, #1a237e, #283593, #3949ab);
-            color: white; padding: 16px 24px; border-radius: 10px;
-            font-size: 26px; font-weight: 600; margin-bottom: 20px;">
-            {t("dpia")}
-        </div>
-        """,
+        '<div style="background:#f4f6fa;padding:18px 24px;border-radius:8px;'
+        'border:1px solid #e5e9ef;margin-bottom:20px;">'
+        f'<h2 style="margin:0;color:#0A3D91;">'
+        f'{t_safe("dpia_title", "Data Protection Impact Assessment (DPIA)")}'
+        f'</h2>'
+        '</div>',
         unsafe_allow_html=True,
     )
     st.caption(t("dpia_caption"))
     more_info(t("dpia_more_info"))
 
-    dpias = _load_dpias()
+    # ── STEP 11 — Global CSS table styling — injected once ────────────────────
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stMarkdownContainer"] table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        div[data-testid="stMarkdownContainer"] th {
+            background-color: #0d47a1;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        div[data-testid="stMarkdownContainer"] td {
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+        div[data-testid="stMarkdownContainer"] tr:hover td {
+            background-color: #f5f8ff;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # Branch filter for officers
-    if role == "Officer":
+    dpias = _load_dpias(actor=user)
+
+    # Branch filter — branch-scoped roles see only their own branch
+    if is_branch_scoped and user_branch and user_branch not in ("All", "-", None):
         view_dpias = [d for d in dpias if d["branch_id"] == user_branch]
     else:
         view_dpias = dpias
 
-    # ── KPI Strip ─────────────────────────────────────────────────────────────
+    # ── KPI Strip — shown to all roles (board exits immediately after) ─────────
     _total     = len(view_dpias)
     _open      = sum(1 for d in view_dpias if d["workflow_stage"] not in CLOSED_STAGES)
     _high_risk = sum(1 for d in view_dpias if d.get("risk_level") in ("high", "critical", "escalated"))
@@ -379,7 +551,7 @@ def show() -> None:
     k1.markdown(f'''<div class="kpi-card">
         <div style="font-size:14px;color:#555;">{t("total_dpias")}</div>
         <div style="font-size:24px;font-weight:600;color:#0d47a1;">{_total}</div>
-        <div style="font-size:13px;color:#6B7A90;">{t("this_branch") if role == "Officer" else t("all_branches")}</div>
+        <div style="font-size:13px;color:#6B7A90;">{t("this_branch") if is_branch_scoped else t("all_branches")}</div>
     </div>''', unsafe_allow_html=True)
     k2.markdown(f'''<div class="kpi-card">
         <div style="font-size:14px;color:#555;">{t("open_in_progress")}</div>
@@ -399,6 +571,130 @@ def show() -> None:
 
     st.divider()
 
+    # ── STEP 10 — Board view: KPI summary only, then return ───────────────────
+    if is_board:
+        st.subheader(t_safe("board_dpia_summary", "DPIA Summary"))
+        b1, b2 = st.columns(2)
+        b1.metric(t_safe("total_assessments", "Total DPIA Assessments"), _total)
+        b2.metric(
+            t_safe("approved_dpias", "Approved DPIAs"),
+            sum(1 for d in view_dpias if d["workflow_stage"] in ("dpo_approved", "closed")),
+        )
+
+        if _high_risk > 0:
+            st.warning(
+                f"⚠️ **{_high_risk} high/critical risk DPIA(s) pending resolution** — "
+                "review with DPO before next board meeting."
+            )
+        else:
+            st.success("✅ No high-risk DPIAs pending — all critical assessments are resolved.")
+
+        st.caption(
+            t_safe(
+                "board_dpia_note",
+                "🔒 Full DPIA details and management are available to DPO, Privacy Operations, and Auditor roles.",
+            )
+        )
+        return   # Board exits here
+
+    # ── STEP 9 — Auditor view: read-only register + analytics + export ────────
+    if is_auditor:
+        st.info(t_safe("auditor_read_only", "📖 Audit View — Read-only access. No modifications permitted."))
+
+        st.subheader(t_safe("dpia_audit_review", "DPIA Audit Review"))
+        if not view_dpias:
+            st.info(t("no_dpias_recorded"))
+        else:
+            rows = []
+            for d in view_dpias:
+                rows.append({
+                    t("dpia_id"):      d["dpia_id"],
+                    t("title"):        d["title"],
+                    t("branch"):       d["branch_id"],
+                    t("purpose"):      d.get("purpose", "—"),
+                    t("risk_score"):   d.get("risk_score", "—"),
+                    t("risk_level"):   _t_risk(d.get("risk_level", "")),
+                    t("stage"):        _t_stage(d["workflow_stage"]),
+                    t("created"):      d["created_at"][:10],
+                    t("next_review"):  (d.get("next_review_date") or "—")[:10],
+                })
+            df_audit = pd.DataFrame(rows)
+            st.dataframe(df_audit, use_container_width=True, hide_index=True, height=420)
+
+            if _can_export(role):
+                export_data(
+                    pd.DataFrame([generate_dpia_report(d) for d in view_dpias]),
+                    "dpia_audit_register",
+                )
+
+        # Analytics for auditors
+        st.divider()
+        st.subheader(t("dpia_analytics"))
+        if view_dpias:
+            df = pd.DataFrame(view_dpias)
+            col1, col2 = st.columns(2)
+            with col1:
+                risk_counts = df["risk_level"].value_counts().reset_index()
+                risk_counts.columns = ["risk_level_internal", t("count")]
+                risk_counts[t("risk_level")] = risk_counts["risk_level_internal"].apply(_t_risk)
+                _translated_risk_colour = {_t_risk(k): v for k, v in _RISK_COLOUR.items()}
+                fig_risk = px.pie(
+                    risk_counts, names=t("risk_level"), values=t("count"),
+                    color=t("risk_level"), color_discrete_map=_translated_risk_colour,
+                    hole=0.55, title=t("dpias_by_risk_level"),
+                )
+                fig_risk.update_layout(
+                    height=300, showlegend=False,
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    paper_bgcolor="#ffffff",
+                    font=dict(color="#0A3D91", size=14),
+                    title_font=dict(size=18), template="plotly_white",
+                )
+                st.plotly_chart(fig_risk, use_container_width=True)
+                more_info(t("risk_level_auto_computed_note"))
+
+            with col2:
+                stage_counts = df["workflow_stage"].value_counts().reset_index()
+                stage_counts.columns = ["stage_internal", t("count")]
+                stage_counts[t("stage")] = stage_counts["stage_internal"].apply(_t_stage)
+                _translated_stage_colour = {_t_stage(k): v for k, v in _STAGE_COLOUR.items()}
+                fig_stage = px.bar(
+                    stage_counts, x=t("stage"), y=t("count"),
+                    color=t("stage"), color_discrete_map=_translated_stage_colour,
+                    text=t("count"), title=t("dpias_by_workflow_stage"),
+                )
+                fig_stage.update_traces(textposition="outside")
+                fig_stage.update_layout(
+                    height=300, showlegend=False,
+                    plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+                    font=dict(color="#0A3D91", size=14),
+                    title_font=dict(size=18), template="plotly_white",
+                    xaxis_tickangle=-20,
+                )
+                st.plotly_chart(fig_stage, use_container_width=True)
+
+        return   # Auditors exit here — no write controls below
+
+    # =========================================================================
+    # Tab-based interface: DPO + steward + officer roles
+    # =========================================================================
+
+    if is_officer and not is_steward and not is_dpo:
+        st.info(
+            t_safe(
+                "officer_dpia_note",
+                "📋 You may initiate DPIAs and add mitigation actions. "
+                "Workflow advancement requires Privacy Steward or DPO approval.",
+            )
+        )
+    elif is_steward:
+        st.info(
+            t_safe(
+                "steward_dpia_note",
+                "🔍 You may initiate DPIAs, add mitigation, and advance the workflow to steward-approved.",
+            )
+        )
+
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         t("dpia_register"),
         t("new_dpia"),
@@ -411,7 +707,7 @@ def show() -> None:
     # TAB 1 — DPIA Register
     # =========================================================================
     with tab1:
-        _branch_label = t("all_branches") if role != "Officer" else user_branch
+        _branch_label = user_branch if is_branch_scoped else t("all_branches")
         st.subheader(f"{t('dpia_register')} — {_branch_label}")
 
         if not view_dpias:
@@ -458,12 +754,18 @@ def show() -> None:
             </div>
             """, unsafe_allow_html=True)
 
-            export_data(
-                pd.DataFrame([generate_dpia_report(d) for d in view_dpias]),
-                "dpia_register",
-            )
+            # Export — DPO and auditors only (auditors already returned above)
+            if _can_export(role):
+                export_data(
+                    pd.DataFrame([generate_dpia_report(d) for d in view_dpias]),
+                    "dpia_register",
+                )
+            else:
+                st.caption(
+                    "🔒 Export available to authorised roles only (DPO, Auditor, Internal Auditor)."
+                )
 
-            # ── Approval history viewer (read-only) ───────────────────────────
+            # Approval history viewer (read-only)
             st.divider()
             st.markdown(f"#### {t('approval_history')}")
             hist_id = st.selectbox(
@@ -506,7 +808,7 @@ def show() -> None:
         st.subheader(t("initiate_new_dpia"))
         more_info(t("dpia_creation_note"))
 
-        if role not in ("Officer", "branch_officer", "privacy_steward", "DPO"):
+        if not can_initiate:
             st.info(t("dpia_creation_restricted"))
         else:
             title_in  = st.text_input(
@@ -517,23 +819,19 @@ def show() -> None:
                 placeholder=t("processing_activity_placeholder"),
                 height=120,
             )
-
-            # Purpose-DPIA linkage — must be included in payload
             purpose_in = st.selectbox(
                 t("processing_purpose"),
                 PURPOSE_OPTIONS,
                 help=t("purpose_dpia_linkage_help"),
             )
-
             data_cats = st.multiselect(t("data_categories_involved"), DATA_CATEGORIES)
-
             third_parties_raw = st.text_area(
                 t("third_parties_involved_label"), height=80
             )
 
             col_a, col_b = st.columns(2)
             with col_a:
-                if role == "Officer":
+                if is_branch_scoped and user_branch and user_branch not in ("All", "-", None):
                     branch_in = user_branch
                     st.info(f"{t('branch')}: **{branch_in}** ({t('auto_assigned')})")
                 else:
@@ -543,8 +841,7 @@ def show() -> None:
                     t("estimated_records_affected"), min_value=0, value=0, step=100
                 )
 
-            # Risk level preview — display only; engine scores on submission
-            tp_list      = [tp.strip() for tp in third_parties_raw.splitlines() if tp.strip()]
+            tp_list       = [tp.strip() for tp in third_parties_raw.splitlines() if tp.strip()]
             preview_level = _preview_risk_level(data_cats, tp_list, int(est_volume), proc_desc)
             preview_badge = _risk_badge(preview_level)
             st.markdown(
@@ -568,7 +865,7 @@ def show() -> None:
                         payload={
                             "title":                  title_in.strip(),
                             "processing_description": proc_desc.strip(),
-                            "purpose":                purpose_in,       # purpose-DPIA linkage
+                            "purpose":                purpose_in,
                             "branch_id":              branch_in,
                             "third_parties":          tp_list,
                             "data_categories":        data_cats,
@@ -598,7 +895,6 @@ def show() -> None:
                                 f"{t('dpo_notified_automatically')} "
                                 f"{t('mitigation_required_before_approval')}"
                             )
-                        # Reflect in session state immediately for demo
                         st.session_state.dpias.append(record)
                         st.rerun()
                     else:
@@ -621,7 +917,7 @@ def show() -> None:
             # ── Mitigation Action ─────────────────────────────────────────────
             with col_mit:
                 st.markdown(f"#### {t('add_mitigation_action')}")
-                if role not in ("Officer", "branch_officer", "privacy_steward", "DPO"):
+                if not can_initiate:
                     st.info(t("mitigation_restricted"))
                 else:
                     open_dpia_ids = [
@@ -653,21 +949,19 @@ def show() -> None:
                                     result,
                                     f"{t('mitigation_recorded')} **{mit_id}**.",
                                 ):
-                                    # Reflect in session state immediately
-                                    from datetime import datetime as _dt
                                     for d in st.session_state.dpias:
                                         if d["dpia_id"] == mit_id:
                                             d.setdefault("mitigation_actions", []).append({
                                                 "action":    mit_text.strip(),
                                                 "added_by":  user,
-                                                "timestamp": _dt.utcnow().isoformat(),
+                                                "timestamp": datetime.utcnow().isoformat(),
                                             })
                                     st.rerun()
 
             # ── Workflow Advancement ──────────────────────────────────────────
             with col_wf:
                 st.markdown(f"#### {t('advance_workflow_stage')}")
-                if role not in ("privacy_steward", "DPO"):
+                if not can_advance:
                     st.info(t("stage_advancement_restricted"))
                 else:
                     advanceable = [
@@ -679,16 +973,14 @@ def show() -> None:
                     if not advanceable_ids:
                         st.success(t("no_dpias_awaiting_approval"))
                     else:
-                        adv_id  = st.selectbox(t("select_dpia"), advanceable_ids, key="adv_sel")
+                        adv_id   = st.selectbox(t("select_dpia"), advanceable_ids, key="adv_sel")
                         adv_dpia = next((d for d in advanceable if d["dpia_id"] == adv_id), None)
                         current_stage = adv_dpia["workflow_stage"] if adv_dpia else "initiated"
 
-                        # Only show valid forward transitions from current stage
                         allowed_next = LIFECYCLE_TRANSITIONS.get(current_stage, [])
                         if not allowed_next:
                             st.info(t("no_transitions_available"))
                         else:
-                            # Translate allowed transitions for display
                             _next_display     = [_t_stage(s) for s in allowed_next]
                             _display_to_stage = {_t_stage(s): s for s in allowed_next}
 
@@ -697,7 +989,6 @@ def show() -> None:
                             )
                             chosen_stage = _display_to_stage[chosen_display]
 
-                            # Additional inputs for rejection
                             reject_reason = ""
                             is_rejection  = chosen_stage == "rejected"
                             if is_rejection:
@@ -709,7 +1000,7 @@ def show() -> None:
                             is_override = (
                                 chosen_stage == "dpo_approved"
                                 and current_stage not in ("steward_approved",)
-                                and role == "DPO"
+                                and is_dpo
                             )
                             if is_override:
                                 st.warning(t("final_override_dpo_warning"))
@@ -722,10 +1013,10 @@ def show() -> None:
                                     result = orchestration.execute_action(
                                         action_type="update_dpia_stage",
                                         payload={
-                                            "dpia_id":      adv_id,
-                                            "new_stage":    chosen_stage,
-                                            "reason":       reject_reason,
-                                            "is_override":  is_override,
+                                            "dpia_id":     adv_id,
+                                            "new_stage":   chosen_stage,
+                                            "reason":      reject_reason,
+                                            "is_override": is_override,
                                         },
                                         actor=user,
                                     )
@@ -740,14 +1031,13 @@ def show() -> None:
                                             old_clause=clause["old"],
                                             new_clause=clause["new"],
                                         )
-                                        # Reflect in session state immediately
                                         for d in st.session_state.dpias:
                                             if d["dpia_id"] == adv_id:
                                                 d["workflow_stage"] = chosen_stage
                                         st.rerun()
 
             # ── DPO-only closure ──────────────────────────────────────────────
-            if role == "DPO":
+            if is_dpo:
                 st.divider()
                 st.markdown(f"#### {t('close_dpia')}")
                 closeable = [
@@ -825,7 +1115,8 @@ def show() -> None:
                 )
                 st.plotly_chart(fig_stage, use_container_width=True)
 
-            if role in ("DPO", "Auditor"):
+            # Risk score distribution — DPO and auditors (auditors handled above)
+            if is_dpo:
                 st.subheader(t("risk_score_distribution"))
                 if "risk_score" in df.columns and df["risk_score"].notna().any():
                     fig_hist = px.histogram(
@@ -842,7 +1133,7 @@ def show() -> None:
                     )
                     st.plotly_chart(fig_hist, use_container_width=True)
 
-            # High-risk escalation notice (badge only — no colour-name text)
+            # High-risk escalation notice
             pending_high = [
                 d for d in view_dpias
                 if d.get("risk_level") in ("high", "critical")
@@ -914,4 +1205,11 @@ def show() -> None:
                         old_clause=clause.get("old", ""),
                         new_clause=clause.get("new", ""),
                     )
-                    export_data(pd.DataFrame([report]), f"dpia_report_{sel_export}")
+
+                    # Export — gated to permitted roles
+                    if _can_export(role):
+                        export_data(pd.DataFrame([report]), f"dpia_report_{sel_export}")
+                    else:
+                        st.caption(
+                            "🔒 Export available to authorised roles only (DPO, Auditor, Internal Auditor)."
+                        )

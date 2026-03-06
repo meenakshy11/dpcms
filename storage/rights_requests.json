@@ -121,5 +121,52 @@
     "updated_at": "2026-03-05T13:10:31.857685+00:00",
     "updated_by": "support_01",
     "resolution_note": ""
+  },
+  {
+    "request_id": "REQ-001",
+    "request_category": "official_data_access",
+    "customer_id": "customer_01",
+    "requested_by": "officer_01",
+    "requested_role": "branch_officer",
+    "purpose": "Loan Processing",
+    "justification": "Customer has applied for a home loan. Aadhaar and PAN are required for KYC verification per RBI guidelines.",
+    "timestamp": "2026-03-06T10:10:00",
+    "status": "Pending",
+    "decided_at": null,
+    "dpdp_clause": null,
+    "fields": [
+      {
+        "field_name": "Aadhaar Details",
+        "decision": "Pending",
+        "reason": null
+      },
+      {
+        "field_name": "PAN Details",
+        "decision": "Pending",
+        "reason": null
+      }
+    ],
+    "sla_status": "Green"
+  },
+  {
+    "request_id": "REQ-002",
+    "request_category": "official_data_access",
+    "customer_id": "customer_01",
+    "requested_by": "officer_02",
+    "requested_role": "regional_officer",
+    "purpose": "KYC Verification",
+    "justification": "Routine KYC update as per RBI Master Direction on KYC 2016. Account number required for record linkage.",
+    "timestamp": "2026-03-06T11:10:00",
+    "status": "Pending",
+    "decided_at": null,
+    "dpdp_clause": null,
+    "fields": [
+      {
+        "field_name": "Account Information",
+        "decision": "Pending",
+        "reason": null
+      }
+    ],
+    "sla_status": "Green"
   }
 ]
